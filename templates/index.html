@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topología de Red</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        #red {
+            height: 500px;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visualización de Topología Punto a Punto</h1>
+
+    <!-- Formulario para ingresar la longitud de la fibra -->
+    <form method="get" action="/">
+        <label for="fibra_length">Introduce la longitud de la fibra (km):</label>
+        <input type="number" name="fibra_length" value="100" required>
+        <button type="submit">Calcular</button>
+    </form>
+
+    <div id="red"></div>
+
+    <h2>Resultados de la Red</h2>
+    <ul>
+        <li>Potencia de la señal antes de la fibra (dBm): {{ resultados.potencia_antes_fibra }}</li>
+        <li>Potencia de la señal después de la fibra (dBm): {{ resultados.potencia_despues_fibra }}</li>
+        <li>Potencia de la señal recibida (dBm): {{ resultados.potencia_recibida }}</li>
+        <li>OSNR en el transmisor (dB): {{ resultados.osnr_tx }}</li>
+        <li>OSNR antes de la fibra (dB): {{ resultados.osnr_before_fiber }}</li>
+        <li>OSNR después de la fibra (dB): {{ resultados.osnr_after_fiber }}</li>
+        <li>OSNR en el receptor (dB): {{ resultados.osnr_rx }}</li>
+    </ul>
+
+    <script>
+        async function dibujarRed() {
+            const response = await fetch('/red');
+            const data = await response.json();
+            
+            const nodos = new vis.DataSet(data.nodos);
+            const enlaces = new vis.DataSet(data.enlaces);
+            
+            const container = document.getElementById('red');
+            const opciones = {
+                physics: {
+                    enabled: false
+                }
+            };
+            
+            const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
+        }
+
+        dibujarRed();
+    </script>
+</body>
+</html>
