@@ -6,9 +6,58 @@
     <title>Topología de Red</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            max-width: 1200px;
+            width: 100%;
+            padding: 20px;
+        }
+
         #red {
             height: 500px;
+            width: 50%;
             border: 1px solid black;
+        }
+
+        .results {
+            width: 45%;
+            padding: 20px;
+            border-left: 1px solid black;
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        form {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        form label, form input, form button {
+            margin: 5px 0;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 10px 0;
         }
     </style>
 </head>
@@ -22,18 +71,24 @@
         <button type="submit">Calcular</button>
     </form>
 
-    <div id="red"></div>
+    <div class="container">
+        <!-- Sección del gráfico -->
+        <div id="red"></div>
 
-    <h2>Resultados de la Red</h2>
-    <ul>
-        <li>Potencia de la señal antes de la fibra (dBm): {{ resultados.potencia_antes_fibra }}</li>
-        <li>Potencia de la señal después de la fibra (dBm): {{ resultados.potencia_despues_fibra }}</li>
-        <li>Potencia de la señal recibida (dBm): {{ resultados.potencia_recibida }}</li>
-        <li>OSNR en el transmisor (dB): {{ resultados.osnr_tx }}</li>
-        <li>OSNR antes de la fibra (dB): {{ resultados.osnr_before_fiber }}</li>
-        <li>OSNR después de la fibra (dB): {{ resultados.osnr_after_fiber }}</li>
-        <li>OSNR en el receptor (dB): {{ resultados.osnr_rx }}</li>
-    </ul>
+        <!-- Sección de resultados -->
+        <div class="results">
+            <h2>Resultados de la Red</h2>
+            <ul>
+                <li>Potencia de la señal antes de la fibra (dBm): {{ resultados.potencia_antes_fibra }}</li>
+                <li>Potencia de la señal después de la fibra (dBm): {{ resultados.potencia_despues_fibra }}</li>
+                <li>Potencia de la señal recibida (dBm): {{ resultados.potencia_recibida }}</li>
+                <li>OSNR en el transmisor (dB): {{ resultados.osnr_tx }}</li>
+                <li>OSNR antes de la fibra (dB): {{ resultados.osnr_before_fiber }}</li>
+                <li>OSNR después de la fibra (dB): {{ resultados.osnr_after_fiber }}</li>
+                <li>OSNR en el receptor (dB): {{ resultados.osnr_rx }}</li>
+            </ul>
+        </div>
+    </div>
 
     <script>
         async function dibujarRed() {

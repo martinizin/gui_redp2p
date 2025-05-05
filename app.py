@@ -6,7 +6,7 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     # Tomamos la longitud de la fibra desde el formulario
-    fibra_length = request.args.get('fibra_length', default=100, type=float)  # Valor por defecto: 100 km
+    fibra_length = request.args.get('fibra_length', default=0, type=float)  # Valor por defecto: 100 km
     
     # Llamamos a la función para realizar los cálculos y obtener los resultados
     resultados = calcular_red(fiber_length=fibra_length)
