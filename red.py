@@ -6,18 +6,19 @@ from gnpy.core.utils import watt2dbm, db2lin, dbm2watt
 
 # Función para obtener la topología de la red
 def obtener_topologia_datos():
+    # Nodos: el nodo de la fibra se elimina ya que no se quiere mostrar
     nodos = [
         {"id": 1, "label": "Transmisor", "x": 100, "y": 100},  # Nodo 1: Transmisor
-        {"id": 2, "label": "Fibra", "x": 300, "y": 100},  # Nodo 2: Fibra
-        {"id": 3, "label": "Receptor", "x": 500, "y": 100}  # Nodo 3: Receptor
+        {"id": 3, "label": "Receptor", "x": 500, "y": 100}     # Nodo 3: Receptor
     ]
     
+    # Enlaces: Definir los enlaces que conectan los nodos (Emisor -> Fibra -> Receptor)
     enlaces = [
-        {"from": 1, "to": 2},  # Enlace entre el Transmisor y la Fibra
-        {"from": 2, "to": 3}   # Enlace entre la Fibra y el Receptor
+        {"from": 1, "to": 3, "label": "", "length": 5}  # Enlace entre el Emisor y el Receptor, representando la fibra
     ]
     
     return nodos, enlaces
+
 
 # Función para realizar los cálculos de la red óptica
 def calcular_red(fiber_length=100):
