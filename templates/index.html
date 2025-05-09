@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topología de Red</title>
+    <title>Simulación de Red de Fibra Óptica</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,32 +12,16 @@
             padding: 0;
         }
 
-        h1, h2 {
+        h1 {
             color: #333;
             font-weight: 600;
         }
 
         .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            max-width: 1200px;
+            max-width: 700px;
             margin: 20px auto;
             padding: 20px;
-        }
-
-        #red {
-            height: 500px;
-            width: 70%;
-            border: 1px solid #ccc;
             background-color: #fff;
-            border-radius: 8px;
-        }
-
-        .results {
-            width: 28%;
-            background-color: #fff;
-            padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
@@ -48,7 +30,6 @@
             margin-bottom: 20px;
             display: flex;
             flex-direction: column;
-            align-items: center;
             gap: 10px;
         }
 
@@ -58,15 +39,9 @@
         }
 
         input, button {
-            width: 100%;
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
-        }
-
-        input {
-            font-size: 16px;
-            background-color: #f9f9f9;
         }
 
         button {
@@ -81,7 +56,15 @@
             background-color: #0056b3;
         }
 
-        /* Estilo para el tooltip */
+        #red {
+            height: 500px;
+            width: 100%;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
         tool-tip {
             position: absolute;
             z-index: 1;
@@ -97,176 +80,183 @@
             transition: opacity 0.3s ease-in-out;
         }
 
-        /* Mostrar tooltip cuando se pase el cursor sobre el nodo */
         :has(>tool-tip):hover tool-tip {
             opacity: 1;
-        }
-
-        .modal-backdrop.show {
-            opacity: 0.5;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="col-md-8">
-            <h1>Visualización de Topología Punto a Punto</h1>
+        <h1>Simulación de Red de Fibra Óptica</h1>
 
-            <!-- Formulario para ingresar la longitud de la fibra -->
-            <form method="get" action="/">
-                <label for="fibra_length">Introduce la longitud de la fibra (km):</label>
-                <input type="number" name="fibra_length" value="" required>
-                <button type="submit">Calcular</button>
-            </form>
-        </div>
+        <!-- Formulario para los inputs del usuario -->
+        <form action="/" method="POST">
+            <div class="mb-3">
+                <label for="unit" class="form-label">Unidad de Potencia</label>
+                <select class="form-select" id="unit" name="unit">
+                    <option value="dBm">dBm</option>
+                    <option value="mW">mW</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="tx_power" class="form-label">Potencia de Entrada</label>
+                <input type="number" class="form-control" id="tx_power" name="tx_power" required>
+            </div>
+            <div class="mb-3">
+                <label for="receiver_sensitivity" class="form-label">Sensibilidad del Receptor (dBm)</label>
+                <input type="number" class="form-control" id="receiver_sensitivity" name="receiver_sensitivity" required>
+            </div>
+            <div class="mb-3">
+                <label for="num_segments" class="form-label">Número de Tramos</label>
+                <select class="form-select" id="num_segments" name="num_segments" onchange="updateSegmentFields()">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
 
-        <div class="results col-md-4">
-            <h2>Resultados de la Red</h2>
-            <ul>
-                <li><strong>Potencia antes de la fibra (dBm):</strong> {{ resultados.potencia_antes_fibra }}</li>
-                <li><strong>Potencia después de la fibra (dBm):</strong> {{ resultados.potencia_despues_fibra }}</li>
-                <li><strong>Potencia recibida (dBm):</strong> {{ resultados.potencia_recibida }}</li>
-                <li><strong>OSNR en el transmisor (dB):</strong> {{ resultados.osnr_tx }}</li>
-                <li><strong>OSNR antes de la fibra (dB):</strong> {{ resultados.osnr_before_fiber }}</li>
-                <li><strong>OSNR después de la fibra (dB):</strong> {{ resultados.osnr_after_fiber }}</li>
-                <li><strong>OSNR en el receptor (dB):</strong> {{ resultados.osnr_rx }}</li>
-            </ul>
-        </div>
-    </div>
+            <div id="segment_lengths">
+                <!-- Aquí se generarán los campos dinámicamente -->
+            </div>
 
-    <!-- Sección de gráfico de la red -->
-    <div class="container">
+            <button type="submit" class="btn btn-primary">Calcular</button>
+        </form>
+        <!-- Resultados -->
+        <!-- {% if results %}
+            <div class="alert alert-info" role="alert">
+                <strong>Resultados:</strong><br>
+                Potencia de Salida: {{ results['output_power'] }} {{ results['unit'] }}<br>
+                Distancia Total: {{ results['total_distance'] }} km<br>
+                Número de Tramos: {{ results['num_segments'] }}<br>
+            </div>
+        {% endif %}
+        {% if error %}
+            <div class="alert alert-danger" role="alert">
+                <strong>Error:</strong> {{ error }}
+            </div>
+        {% endif %} -->
+        {% if resultados %}
+        <h3>Resultados:</h3>
+        <p><strong>Potencia Inicial (dBm):</strong> {{ resultados.initial_power }}</p>
+        <p><strong>Potencia Final (dBm):</strong> {{ resultados.final_power }}</p>
+        <p><strong>Potencia Final (mW):</strong> {{ resultados.final_power_mw }}</p>
+        <p><strong>Atenuación Total (dB):</strong> {{ resultados.attenuation }}</p>
+        <p><strong>Sensibilidad del Receptor (dBm):</strong> {{ resultados.receiver_sensitivity }}</p>
+
+        <h3>Detalles por Tramo:</h3>
+        <ul>
+            {% for i in range(resultados.longitud_acumulada|length) %}
+                <li>
+                    Tramo {{ loop.index }}: 
+                    Longitud Acumulada = {{ resultados.longitud_acumulada[i] }} km, 
+                    Potencia Final = {{ resultados.power_history_dbm[i] }} dBm, 
+                    Atenuación = {{ resultados.attenuation_history[i] }} dB
+                </li>
+            {% endfor %}
+        </ul>
+
+        <h3>Gráficas:</h3>
+        <!-- Gráficas de potencia en dBm -->
+        <img src="data:image/png;base64,{{ resultados.plot_dbm }}" alt="Gráfica Potencia dBm">
+
+        <!-- Gráficas de potencia lineal -->
+        <img src="data:image/png;base64,{{ resultados.plot_linear }}" alt="Gráfica Potencia Lineal">
+    {% else %}
+        <p>No hay resultados para mostrar.</p>
+    {% endif %}
+
+        <!-- Sección de gráfico de la red -->
         <div id="red"></div>
     </div>
 
-    <!-- Modal para editar parámetros -->
-    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editModalLabel">Editar Parámetros del Nodo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editForm">
-                        <div class="mb-3">
-                            <label for="nodoId" class="form-label">ID Nodo</label>
-                            <input type="text" class="form-control" id="nodoId" disabled>
-                        </div>
-                        <div class="mb-3">
-                            <label for="nodoLabel" class="form-label">Etiqueta</label>
-                            <input type="text" class="form-control" id="nodoLabel">
-                        </div>
-                        <div class="mb-3">
-                            <label for="nodoPotencia" class="form-label">Potencia (dBm)</label>
-                            <input type="text" class="form-control" id="nodoPotencia">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <script>
-       async function dibujarRed() {
-    const response = await fetch('/red');
-    const data = await response.json();
-    
-    const nodos = new vis.DataSet(data.nodos);
-    const enlaces = new vis.DataSet(data.enlaces);
-    
-    nodos.forEach(function(nodo) {
-        if (nodo.label === "Transmisor") {
-            nodo.shape = "box";  // Emisor cuadrado
-        } else if (nodo.label === "Receptor") {
-            nodo.shape = "box";  // Receptor cuadrado
-        }
-    });
+        function updateSegmentFields() {
+            const numSegments = document.getElementById('num_segments').value;
+            const segmentFields = document.getElementById('segment_lengths');
+            segmentFields.innerHTML = '';  // Clear existing fields
 
-    // Establecer opciones de visualización para la red
-    const container = document.getElementById('red');
-    const opciones = {
-        physics: {
-            enabled: false
-        },
-        interaction: {
-            tooltipDelay: 100, // Para que el tooltip aparezca rápido
-            hover: true
-        }
-    };
-
-    // Crear la red
-    const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
-
-    // Crear una variable para el tooltip y asegurarnos que solo haya uno visible
-    let currentTooltip = null;
-
-    // Mostrar tooltip para el enlace de la fibra cuando se pase el cursor por él
-    red.on("hoverEdge", function(event) {
-        // Si ya hay un tooltip, lo eliminamos
-        if (currentTooltip) {
-            currentTooltip.style.opacity = 0;
+            // Create input fields dynamically based on selected number of segments
+            for (let i = 0; i < numSegments; i++) {
+                const div = document.createElement('div');
+                div.classList.add('mb-3');
+                div.innerHTML = ` 
+                    <label for="segment_${i+1}" class="form-label">Longitud del Tramo ${i+1} (km)</label>
+                    <input type="number" class="form-control" id="segment_${i+1}" name="segment_${i+1}" required>
+                `;
+                segmentFields.appendChild(div);
+            }
         }
 
-        // Crear el tooltip nuevo para la fibra
-        const edgeId = event.edge;
-        const edgeData = enlaces.get(edgeId);
-        currentTooltip = document.createElement('tool-tip');
-        currentTooltip.innerHTML = `Longitud de la fibra: 5 km`;  // Aquí puedes agregar más parámetros de la fibra
-        document.body.appendChild(currentTooltip);
-
-        // Posicionar el tooltip donde está el cursor
-        const position = event.event.pointer;
-        currentTooltip.style.left = position.x + 'px';
-        currentTooltip.style.top = position.y + 'px';
-
-        currentTooltip.style.opacity = 1;
-    });
-
-    // Quitar el tooltip cuando el cursor ya no esté sobre el enlace
-    red.on("blurEdge", function() {
-        if (currentTooltip) {
-            currentTooltip.style.opacity = 0;
-        }
-    });
-
-    // Mostrar tooltip para los nodos cuando se pase el cursor por ellos
-    red.on("hoverNode", function(event) {
-        // Si ya hay un tooltip, lo eliminamos
-        if (currentTooltip) {
-            currentTooltip.style.opacity = 0;
-        }
-
-        const nodeId = event.node;
-        const nodeData = nodos.get(nodeId);
-        currentTooltip = document.createElement('tool-tip');
-        currentTooltip.innerHTML = `Nodo: ${nodeData.label}<br>Potencia: ${nodeData.potencia}`;  // Personalizar según los parámetros del nodo
-        document.body.appendChild(currentTooltip);
-
-        // Posicionar el tooltip sobre el nodo
-        const position = event.event.pointer;
-        currentTooltip.style.left = position.x + 'px';
-        currentTooltip.style.top = position.y + 'px';
-
-        currentTooltip.style.opacity = 1;
-    });
-
-    // Quitar el tooltip cuando el cursor ya no esté sobre el nodo
-    red.on("blurNode", function() {
-        if (currentTooltip) {
-            currentTooltip.style.opacity = 0;
-        }
-    });
-}
-
-dibujarRed();
-
-
+        // Initialize segment fields on page load based on the selected number of segments
+        window.onload = function() {
+            updateSegmentFields();
+        };
     </script>
+    <script>
+        async function dibujarRed() {
+            const response = await fetch('/red');
+            const data = await response.json();
+            
+            const nodos = new vis.DataSet(data.nodos);
+            const enlaces = new vis.DataSet(data.enlaces);
+            
+            // Modificar los nodos para que el Transmisor no tenga etiqueta
+            nodos.forEach(function(nodo) {
+                if (nodo.label === "Transmisor") {
+                    nodo.label = "";  // Eliminar etiqueta para Transmisor
+                    nodo.shape = "circle";  // Dejar el Transmisor como un nodo de tipo círculo
+                } else if (nodo.label === "Emisor" || nodo.label === "Receptor") {
+                    nodo.shape = "box";  // Cambiar Emisor y Receptor a cuadrado
+                }
+            });
 
-    <!-- Incluir Bootstrap JS para el modal -->
+            // Agregar la funcionalidad de tooltip y click para editar parámetros
+            const container = document.getElementById('red');
+            const opciones = {
+                physics: {
+                    enabled: false
+                },
+                interaction: {
+                    tooltipDelay: 100, // Para que el tooltip aparezca rápido
+                    hover: true
+                }
+            };
+
+            const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
+
+            // Tooltip para cada nodo (seguimos la estructura de tool-tip)
+            red.on("hoverNode", function(event) {
+                const nodeId = event.node;
+                const nodeData = nodos.get(nodeId);
+                const tooltip = document.createElement('tool-tip');
+                tooltip.innerHTML = `ID: ${nodeData.id}<br>Label: ${nodeData.label}<br>Potencia: ${nodeData.potencia}`;
+                document.body.appendChild(tooltip);
+
+                const position = event.event.pointer;
+                tooltip.style.left = position.x + 'px';
+                tooltip.style.top = position.y + 'px';
+
+                tooltip.style.opacity = 1;
+            });
+
+            // Lógica para abrir el modal y editar parámetros
+            red.on("click", function(event) {
+                const nodeId = event.nodes[0]; // Obtener ID del nodo clicado
+                const nodeData = nodos.get(nodeId);
+
+                document.getElementById('nodoId').value = nodeData.id;
+                document.getElementById('nodoLabel').value = nodeData.label;
+                document.getElementById('nodoPotencia').value = nodeData.potencia;
+
+                var myModal = new bootstrap.Modal(document.getElementById('editModal'), {
+                    keyboard: false
+                });
+                myModal.show();
+            });
+        }
+
+        dibujarRed();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-</html>
-
