@@ -83,6 +83,6 @@ def calcular_red(tx_power, receiver_sensitivity, num_segments, segment_lengths):
         "receiver_sensitivity": receiver_sensitivity,
         "longitud_acumulada": accumulated_length,
         "power_history_dbm": power_history_dbm,
-        "power_history_linear": power_history_linear,
+        "power_history_linear": power_history_dbm,  # Se debe ajustar a la potencia lineal
         "attenuation_history": attenuation_history
     }

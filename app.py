@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify
 from red import calcular_red, obtener_topologia_datos
 import matplotlib.pyplot as plt
+import matplotlib 
+matplotlib.use('Agg')
 import io
 import base64
 
@@ -31,6 +33,7 @@ def index():
             print("RESULTADOS:", resultados)
 
             # Generar gráficas (potencia vs longitud)
+             # Generar gráficas (potencia vs longitud)
             fig, ax = plt.subplots()
             ax.plot(resultados['longitud_acumulada'], resultados['power_history_dbm'], label="Potencia (dBm)")
             ax.set_xlabel('Longitud (km)')
@@ -62,6 +65,32 @@ def index():
             resultados['plot_linear'] = plot_linear
         except Exception as e:
             print(f"Error al procesar el formulario: {e}")
+        # Generar gráficos iniciales si no hay resultados
+    if not resultados:
+        resultados = calcular_red(30, 14, 1, [23])  # Valores iniciales
+        fig, ax = plt.subplots()
+        ax.plot(resultados['longitud_acumulada'], resultados['power_history_dbm'], label="Potencia (dBm)")
+        ax.set_xlabel('Longitud (km)')
+        ax.set_ylabel('Potencia (dBm)')
+        ax.set_title('Potencia vs Longitud')
+        ax.legend()
+
+        img = io.BytesIO()
+        fig.savefig(img, format='png')
+        img.seek(0)
+        resultados['plot_dbm'] = base64.b64encode(img.getvalue()).decode('utf-8')
+
+        fig, ax = plt.subplots()
+        ax.plot(resultados['longitud_acumulada'], resultados['power_history_linear'], label="Potencia (mW)")
+        ax.set_xlabel('Longitud (km)')
+        ax.set_ylabel('Potencia (mW)')
+        ax.set_title('Potencia vs Longitud')
+        ax.legend()
+
+        img = io.BytesIO()
+        fig.savefig(img, format='png')
+        img.seek(0)
+        resultados['plot_linear'] = base64.b64encode(img.getvalue()).decode('utf-8')
 
     return render_template('index.html', resultados=resultados, nodos=nodos, enlaces=enlaces)
 
