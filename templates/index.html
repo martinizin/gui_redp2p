@@ -1,11 +1,16 @@
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Simulación de Red de Fibra Óptica</title>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    />
+    <script
+        type="text/javascript"
+        src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"
+    ></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,7 +24,8 @@
             font-weight: 600;
         }
 
-        .container {
+        /* Contenedor principal para resultados y formulario, ancho restringido */
+        .container-main {
             max-width: 700px;
             margin: 20px auto;
             padding: 20px;
@@ -28,43 +34,50 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
+        /* Contenedor para la red, ancho completo */
         #red {
             height: 500px;
-            width: 100%;
+            width: 100vw; /* ancho de toda la ventana */
+            max-width: 100%;
             border: 1px solid #ccc;
             background-color: #fff;
             border-radius: 8px;
             margin-top: 20px;
+            box-sizing: border-box;
         }
 
-        tool-tip {
-            position: absolute;
-            z-index: 1000;
-            pointer-events: none;
-            user-select: none;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            padding: .5rem 2rem;
-            font-size: 12px;
-            border-radius: 8px;
-            top: 123%;
-            left: 20%;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        :has(>tool-tip):hover tool-tip {
-            opacity: 1;
-        }
+        /* Estilos para tooltip personalizados */
+        /* In your style.css */
+    .tooltip-custom {
+        position: fixed; /* changed from absolute */
+        z-index: 9999;   /* ensure it's on top */
+        pointer-events: none;
+        user-select: none;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        padding: 0.5rem 2rem;
+        font-size: 12px;
+        border-radius: 8px;
+        background: white;
+        opacity: 0.9;
+        transition: opacity 0.3s ease-in-out;
+    }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Contenedor ancho completo para el dibujo -->
+    <div id="red"></div>
+
+    <!-- Contenedor principal para resultados y formulario -->
+    <div class="container-main">
         <h1>Simulación de Red de Fibra Óptica</h1>
 
         <!-- Resultados iniciales de la simulación -->
         <h3>Resultados Iniciales:</h3>
         <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
-        <p><strong>Tramo 1:</strong> Longitud acumulada = 23.00 km, Potencia final = 24.85 dBm, Atenuación = 5.15 dB</p>
+        <p>
+            <strong>Tramo 1:</strong> Longitud acumulada = 23.00 km, Potencia final =
+            24.85 dBm, Atenuación = 5.15 dB
+        </p>
 
         <h3>Resultados Finales:</h3>
         <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
@@ -73,660 +86,464 @@
         <p><strong>Atenuación total simulada (dB):</strong> 12.10 dB</p>
         <p><strong>Sensibilidad del receptor (dBm):</strong> 14.00 dBm</p>
 
-          <!-- Combo box para seleccionar el numero de tramos de fibra -->
-    <div class="mb-3">
-        <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra</label>
-        <select id="fiberSpanSelector" class="form-select">
-            <option value="1" selected>1 Tramo</option>
-            <option value="2">2 Tramos</option>
-            <option value="3">3 Tramos</option>
-            <option value="4">4 Tramos</option>
-        </select>
+        <!-- Combo box para seleccionar el numero de tramos de fibra -->
+        <div class="mb-3">
+            <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra</label>
+            <select id="fiberSpanSelector" class="form-select">
+                <option value="1" selected>1 Tramo</option>
+                <option value="2">2 Tramos</option>
+                <option value="3">3 Tramos</option>
+                <option value="4">4 Tramos</option>
+            </select>
+        </div>
+        <!-- Formulario para ingresar el valor de longitud del tramo -->
+        <div id="fiberSpanFormContainer" class="mb-3">
+            <h5>Longitudes de los Tramos de Fibra</h5>
+            <form id="fiberSpanForm">
+                <!-- Se agregan en función del número seleccionado -->
+            </form>
+            <button id="saveFiberSpans" class="btn btn-primary">Guardar Cambios</button>
+        </div>
     </div>
-    <!-- Formulario para ingresar el valor de longitud del tramo -->
-    <div id="fiberSpanFormContainer" class="mb-3">
-        <h5>Longitudes de los Tramos de Fibra</h5>
-        <form id="fiberSpanForm">
-            <!-- Se agregan en función del número seleccionado -->
-        </form>
-        <button id="saveFiberSpans" class="btn btn-primary">Guardar Cambios</button>
-    </div>
-    
 
+    <!-- Contenedor para gráficas (ancho restringido igual que resultados) -->
+    <div class="container-main mt-4">
+        <h3>Gráficas de Potencia vs Longitud</h3>
 
-        <!-- Sección de gráfico de la red -->
-        <div id="red"></div>
+        {% if resultados and resultados.plot_dbm and resultados.plot_linear %}
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Potencia (dBm)</h5>
+                <img
+                    src="data:image/png;base64,{{ resultados.plot_dbm }}"
+                    alt="Gráfica Potencia (dBm)"
+                    class="img-fluid"
+                />
+            </div>
+            <div class="col-md-6">
+                <h5>Potencia (mW)</h5>
+                <img
+                    src="data:image/png;base64,{{ resultados.plot_linear }}"
+                    alt="Gráfica Potencia (mW)"
+                    class="img-fluid"
+                />
+            </div>
+        </div>
+        {% else %}
+        <p>No hay gráficas disponibles. Por favor, realice una simulación.</p>
+        {% endif %}
     </div>
-    <!-- Add this modal inside the <body> -->
-<div class="modal fade" id="editNodeModal" tabindex="-1" aria-labelledby="editNodeModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editNodeModalLabel">Editar Nodo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editNodeForm">
-                    <div class="mb-3">
-                        <label for="nodeLabel" class="form-label">Etiqueta</label>
-                        <input type="text" class="form-control" id="nodeLabel" name="label">
-                    </div>
-                    <div class="mb-3">
-                        <label for="nodePotencia" class="form-label">Potencia</label>
-                        <input type="number" class="form-control" id="nodePotencia" name="potencia">
-                    </div>
-                    <div id="additionalParams"></div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="saveNodeChanges">Guardar Cambios</button>
+
+    <!-- Modal para edición (sin cambios) -->
+    <div
+        class="modal fade"
+        id="editNodeModal"
+        tabindex="-1"
+        aria-labelledby="editNodeModalLabel"
+        aria-hidden="true"
+    >
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editNodeModalLabel">Editar Nodo</h5>
+                    <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                    ></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editNodeForm">
+                        <div class="mb-3">
+                            <label for="nodeLabel" class="form-label">Etiqueta</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="nodeLabel"
+                                name="label"
+                            />
+                        </div>
+                        <div class="mb-3">
+                            <label for="nodePotencia" class="form-label">Potencia</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="nodePotencia"
+                                name="potencia"
+                            />
+                        </div>
+                        <div id="additionalParams"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal"
+                    >
+                        Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveNodeChanges">
+                        Guardar Cambios
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- <script>
-    function dibujarRed() {
-        const nodos = new vis.DataSet([
-            { 
-                id: 1, 
-                label: 'Emisor', 
-                x: 100, 
-                y: 100, 
-                potencia: 30, 
-                unidad_potencia: 'dBm', 
-                shape: 'box',
-                parametros: {
-                    'Unidad de Potencia': 'dBm',
-                    'Potencia de Entrada': '30.00 dBm'
-                }
-            },
-            { 
-                id: 3, 
-                label: 'Receptor', 
-                x: 500, 
-                y: 100, 
-                potencia: 17.90, 
-                sensibilidad_receptor_dbm: 14, 
-                shape: 'box',
-                parametros: {
-                    'Sensibilidad del Receptor': '14.00 dBm'
-                }
-            }
-        ]);
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
 
-        const enlaces = new vis.DataSet([
-            { from: 1, to: 3, label: '' }
-        ]);
-
-        const container = document.getElementById('red');
-        const opciones = {
-            physics: { enabled: false },
-            interaction: { tooltipDelay: 10, hover: true }
-        };
-
-        const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
-
-        let selectedNode = null;
-        let tooltip;
-
-        // Tooltip functionality
-        red.on("hoverNode", function(event) {
-            const nodeId = event.node;
-            const nodeData = nodos.get(nodeId);
-
-            if (!nodeData || !nodeData.parametros ){
-                console.error("Node data or parameters not found");
-                return;
-            }
-            tooltip = document.createElement('tool-tip');
-
-            // Display node parameters in the tooltip
-            let tooltipContent = `<strong>${nodeData.label}</strong><br>`;
-            for (const key in nodeData.parametros) {
-                tooltipContent += `<strong>${key}:</strong> ${nodeData.parametros[key]}<br>`;
-            }
-            tooltip.innerHTML = tooltipContent;
-
-            document.body.appendChild(tooltip);
-
-            const position = event.event.pointer;
-            tooltip.style.left = position.x + 'px';
-            tooltip.style.top = position.y + 'px';
-
-            tooltip.style.opacity = 1;
-        });
-
-        red.on("blurNode", function() {
-            if (tooltip) {
-                tooltip.remove();
-                tooltip = null;
-            }
-        });
-
-        // Click functionality to open modal
-        red.on("click", function(event) {
-            const nodeId = event.nodes[0];
-            if (!nodeId) return;
-
-            const nodeData = nodos.get(nodeId);
-            
-            if (!nodeData || !nodeData.parametros) {
-                console.warn(`El nodo ${nodeId} no tiene parámetros.`);
-                return;
-            }
-            if (nodeId) {
-                selectedNode = nodos.get(nodeId);
-
-                // Populate the modal with node data
-                document.getElementById('nodeLabel').value = selectedNode.label;
-                document.getElementById('nodePotencia').value = selectedNode.potencia;
-
-                // Populate additional parameters
-                const additionalParamsDiv = document.getElementById('additionalParams');
-                additionalParamsDiv.innerHTML = '';
-                for (const key in selectedNode.parametros) {
-                    additionalParamsDiv.innerHTML += `
-                        <div class="mb-3">
-                            <label for="${key}" class="form-label">${key}</label>
-                            <input type="text" class="form-control" id="${key}" name="${key}" value="${selectedNode.parametros[key]}">
-                        </div>
-                    `;
-                }
-
-                // Show the modal
-                const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
-                modal.show();
-            }
-        });
-
-        // Save changes from modal
-        document.getElementById('saveNodeChanges').addEventListener('click', function() {
-            if (selectedNode) {
-                // Update node data
-                selectedNode.label = document.getElementById('nodeLabel').value;
-                selectedNode.potencia = parseFloat(document.getElementById('nodePotencia').value);
-
-                // Update additional parameters
-                const additionalParamsDiv = document.getElementById('additionalParams');
-                const inputs = additionalParamsDiv.querySelectorAll('input');
-                inputs.forEach(input => {
-                    selectedNode.parametros[input.name] = input.value;
-                });
-
-                // Update the node in the dataset
-                nodos.update(selectedNode);
-
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editNodeModal'));
-                modal.hide();
-
-                // Optionally, update results or perform recalculations here
-                alert('Cambios guardados. Actualiza los resultados según sea necesario.');
-            }
-        });
-
-        // Handle fiber span selection
-        document.getElementById('fiberSpanSelector').addEventListener('change', function(event) {
-            const numSpans = parseInt(event.target.value);
-
-            // Clear existing nodes and edges
-            nodos.clear();
-            enlaces.clear();
-
-            // Add emitter node
-            nodos.add({
-                id: 1,
-                label: 'Emisor',
-                x: 100,
-                y: 100,
-                potencia: 30,
-                unidad_potencia: 'dBm',
-                shape: 'box',
-                parametros: {
-                    'Unidad de Potencia': 'dBm',
-                    'Potencia de Entrada': '30.00 dBm'
-                }
-            });
-
-            // Add fiber spans and intermediate nodes
-            let previousNodeId = 1;
-            for (let i = 1; i <= numSpans; i++) {
-                const fiberNodeId = 100 + i; // Unique ID for fiber spans
-                const intermediateNodeId = 200 + i; // Unique ID for intermediate nodes
-
-                // Prompt user for fiber span length
-                const fiberLength = prompt(`Ingrese la longitud del Tramo de Fibra ${i} (en km):`, "23");
-
-                // Add fiber span node
-                nodos.add({
-                    id: fiberNodeId,
-                    label: `Tramo${i}`,
-                    x: 100 + i * 150,
+    <script>
+        function dibujarRed() {
+            const nodos = new vis.DataSet([
+                {
+                    id: 1,
+                    label: 'Transmisor',
+                    x: 100,
                     y: 100,
-                    potencia: 24.85,
-                    loss_coef: 0.2,
-                    att_in: 0,
-                    con_in: 0.25,
-                    con_out: 0.30,
-                    longitud: fiberLength,
-                    
+                    potencia: 30,
+                    unidad_potencia: 'dBm',
+                    shape: 'box',
                     parametros: {
+                        'Unidad de Potencia': 'dBm',
+                        'Potencia de Entrada': '30.00 dBm',
+                    },
+                },
+                {
+                    id: 3,
+                    label: 'Receptor',
+                    x: 500,
+                    y: 100,
+                    potencia: 17.9,
+                    sensibilidad_receptor_dbm: 14,
+                    shape: 'box',
+                    parametros: {
+                        'Sensibilidad del Receptor': '14.00 dBm',
+                    },
+                },
+            ]);
+
+            const enlaces = new vis.DataSet([
+                {
+                    id: 1,
+                    from: 1,
+                    to: 3,
+                    label: '',
+                    parametros: {
+                        'Sección de Fibra': 'Tramo de fibra 1',
                         'Coeficiente de Pérdida': '0.2 dB/km',
                         'Atenuación en la Entrada': '0 dB',
                         'Conector de Entrada': '0.25 dB',
                         'Conector de Salida': '0.30 dB',
-                        'Longitud': `${fiberLength} km`
-                    }
-                });
+                        Longitud: '23 km',
+                    },
+                },
+            ]);
 
-                // // Add intermediate node (no label)
-                // nodos.add({
-                //     id: intermediateNodeId,
-                //     x: 100 + i * 150 + 50,
-                //     y: 100,
-                //     parametros: {}
-                // });
+            const container = document.getElementById('red');
+            const opciones = {
+                physics: { enabled: false },
+                interaction: { tooltipDelay: 10, hover: true },
+            };
 
-                // Add edges
-                // enlaces.add({ from: previousNodeId, to: fiberNodeId });
-                // enlaces.add({ from: fiberNodeId, to: intermediateNodeId });
-                enlaces.add({ from: 1, to: 3 });
-             
-            }
+            const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
 
-            // Add receiver node
-            nodos.add({
-                id: 3,
-                label: 'Receptor',
-                x: 100 + (numSpans + 1) * 150,
-                y: 100,
-                potencia: 17.90,
-                sensibilidad_receptor_dbm: 14,
-                shape: 'box',
-                parametros: {
-                    'Sensibilidad del Receptor': '14.00 dBm'
-                }
-            });
+            let selectedElement = null;
+            let tooltip;
 
-            // Connect the last intermediate node to the receiver
-            enlaces.add({ from: previousNodeId, to: 3, label: '' });
-        });
-    }
-
-    dibujarRed();
-</script> -->
-
-<script>
-    function dibujarRed() {
-        const nodos = new vis.DataSet([
-            { 
-                id: 1, 
-                label: 'Emisor', 
-                x: 100, 
-                y: 100, 
-                potencia: 30, 
-                unidad_potencia: 'dBm', 
-                shape: 'box',
-                parametros: {
-                    'Unidad de Potencia': 'dBm',
-                    'Potencia de Entrada': '30.00 dBm'
-                }
-            },
-            { 
-                id: 3, 
-                label: 'Receptor', 
-                x: 500, 
-                y: 100, 
-                potencia: 17.90, 
-                sensibilidad_receptor_dbm: 14, 
-                shape: 'box',
-                parametros: {
-                    'Sensibilidad del Receptor': '14.00 dBm'
-                }
-            }
-        ]);
-
-        const enlaces = new vis.DataSet([
-            { 
-                id: 1, 
-                from: 1, 
-                to: 3, 
-                label: '', 
-                parametros: {
-                    'Sección de Fibra': 'Tramo de fibra 1',
-                    'Coeficiente de Pérdida': '0.2 dB/km',
-                    'Atenuación en la Entrada': '0 dB',
-                    'Conector de Entrada': '0.25 dB',
-                    'Conector de Salida': '0.30 dB',
-                    'Longitud': '23 km'
-                }
-            }
-        ]);
-
-        const container = document.getElementById('red');
-        const opciones = {
-            physics: { enabled: false },
-            interaction: { tooltipDelay: 10, hover: true }
-        };
-
-        const red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
-
-        let selectedElement = null;
-        let tooltip;
-
-        // Tooltip functionality for nodes
-        red.on("hoverNode", function(event) {
-            const nodeId = event.node;
-            const nodeData = nodos.get(nodeId);
-
-            if (!nodeData || !nodeData.parametros) {
-                console.error("Node data or parameters not found");
-                return;
-            }
-
-            tooltip = document.createElement('tool-tip');
-
-            // Display node parameters in the tooltip
-            let tooltipContent = `<strong>${nodeData.label}</strong><br>`;
-            for (const key in nodeData.parametros) {
-                tooltipContent += `<strong>${key}:</strong> ${nodeData.parametros[key]}<br>`;
-            }
-            tooltip.innerHTML = tooltipContent;
-
-            document.body.appendChild(tooltip);
-
-            const position = event.event.pointer;
-            tooltip.style.left = position.x + 'px';
-            tooltip.style.top = (position.y+  30 ) + 'px';
-
-            tooltip.style.opacity = 1;
-        });
-
-        red.on("blurNode", function() {
-            if (tooltip) {
-                tooltip.remove();
-                tooltip = null;
-            }
-        });
-
-        // Tooltip functionality for links
-        red.on("hoverEdge", function(event) {
-            const edgeId = event.edge;
-            const edgeData = enlaces.get(edgeId);
-
-            if (!edgeData || !edgeData.parametros) {
-                console.error("Edge data or parameters not found");
-                return;
-            }
-
-            tooltip = document.createElement('tool-tip');
-
-            // Display edge parameters in the tooltip
-            let tooltipContent = `<strong>${edgeData.parametros['Sección de Fibra']}</strong><br>`;
-            for (const key in edgeData.parametros) {
-                tooltipContent += `<strong>${key}:</strong> ${edgeData.parametros[key]}<br>`;
-            }
-            tooltip.innerHTML = tooltipContent;
-
-            document.body.appendChild(tooltip);
-
-            const position = event.event.pointer;
-            tooltip.style.left = position.x + 'px';
-            tooltip.style.top = (position.y + 30) + 'px';
-
-            tooltip.style.opacity = 1;
-        });
-
-        red.on("blurEdge", function() {
-            if (tooltip) {
-                tooltip.remove();
-                tooltip = null;
-            }
-        });
-
-        // Click functionality for nodes and links to open modal
-        red.on("click", function(event) {
-            if (event.nodes.length > 0) {
-                // Node clicked
-                const nodeId = event.nodes[0];
+            // Tooltip para nodos
+            red.on('hoverNode', function (event) {
+                const nodeId = event.node;
                 const nodeData = nodos.get(nodeId);
 
                 if (!nodeData || !nodeData.parametros) {
-                    console.warn(`El nodo ${nodeId} no tiene parámetros.`);
+                    console.error('Node data or parameters not found');
                     return;
                 }
 
-                selectedElement = { type: 'node', data: nodeData };
+                tooltip = document.createElement('div');
+                tooltip.className = 'tooltip-custom';
 
-                // Populate the modal with node data
-                document.getElementById('nodeLabel').value = nodeData.label || "";
-                document.getElementById('nodePotencia').value = nodeData.potencia || "";
-
-                // Populate additional parameters
-                const additionalParamsDiv = document.getElementById('additionalParams');
-                additionalParamsDiv.innerHTML = '';
+                let tooltipContent = `<strong>${nodeData.label}</strong><br>`;
                 for (const key in nodeData.parametros) {
-                    additionalParamsDiv.innerHTML += `
+                    tooltipContent += `<strong>${key}:</strong> ${nodeData.parametros[key]}<br>`;
+                }
+                tooltip.innerHTML = tooltipContent;
+
+                document.body.appendChild(tooltip);
+
+                const pointer = event.event.srcEvent || event.event;
+                tooltip.style.left = (pointer.clientX + 10) + 'px';
+                tooltip.style.top = (pointer.clientY + 20) + 'px';
+                tooltip.style.opacity = 1;
+            });
+
+            red.on('blurNode', function () {
+                if (tooltip) {
+                    tooltip.remove();
+                    tooltip = null;
+                }
+            });
+
+            // Tooltip para enlaces
+            red.on('hoverEdge', function (event) {
+                const edgeId = event.edge;
+                const edgeData = enlaces.get(edgeId);
+
+                if (!edgeData || !edgeData.parametros) {
+                    console.error('Edge data or parameters not found');
+                    return;
+                }
+
+                tooltip = document.createElement('div');
+                tooltip.className = 'tooltip-custom';
+
+                let tooltipContent = `<strong>${edgeData.parametros['Sección de Fibra']}</strong><br>`;
+                for (const key in edgeData.parametros) {
+                    tooltipContent += `<strong>${key}:</strong> ${edgeData.parametros[key]}<br>`;
+                }
+                tooltip.innerHTML = tooltipContent;
+
+                document.body.appendChild(tooltip);
+
+               // ...inside hoverNode or hoverEdge event...
+                const pointer = event.event.srcEvent || event.event;
+                tooltip.style.left = (pointer.clientX + 10) + 'px';
+                tooltip.style.top = (pointer.clientY + 20) + 'px';
+                tooltip.style.opacity = 1;
+            });
+
+            red.on('blurEdge', function () {
+                if (tooltip) {
+                    tooltip.remove();
+                    tooltip = null;
+                }
+            });
+
+            // Click para abrir modal de edición
+            red.on('click', function (event) {
+                if (event.nodes.length > 0) {
+                    // Nodo seleccionado
+                    const nodeId = event.nodes[0];
+                    const nodeData = nodos.get(nodeId);
+
+                    if (!nodeData || !nodeData.parametros) {
+                        console.warn(`El nodo ${nodeId} no tiene parámetros.`);
+                        return;
+                    }
+
+                    selectedElement = { type: 'node', data: nodeData };
+
+                    // Llenar modal con datos del nodo
+                    document.getElementById('nodeLabel').value = nodeData.label || '';
+                    document.getElementById('nodePotencia').value = nodeData.potencia || '';
+
+                    // Parámetros adicionales
+                    const additionalParamsDiv = document.getElementById('additionalParams');
+                    additionalParamsDiv.innerHTML = '';
+                    for (const key in nodeData.parametros) {
+                        additionalParamsDiv.innerHTML += `
                         <div class="mb-3">
                             <label for="${key}" class="form-label">${key}</label>
                             <input type="text" class="form-control" id="${key}" name="${key}" value="${nodeData.parametros[key]}">
                         </div>
                     `;
-                }
-            } else if (event.edges.length > 0) {
-                // Edge clicked
-                const edgeId = event.edges[0];
-                const edgeData = enlaces.get(edgeId);
+                    }
 
-                if (!edgeData || !edgeData.parametros) {
-                    console.warn(`El enlace ${edgeId} no tiene parámetros.`);
-                    return;
-                }
+                    // Mostrar modal
+                    if (tooltip) {
+                        tooltip.remove();
+                        tooltip = null;
+                    }
+                    const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
+                    modal.show();
 
-                selectedElement = { type: 'edge', data: edgeData };
+                } else if (event.edges.length > 0) {
+                    // Enlace seleccionado
+                    const edgeId = event.edges[0];
+                    const edgeData = enlaces.get(edgeId);
 
-                // Populate the modal with edge data
-                document.getElementById('nodeLabel').value = edgeData.parametros['Sección de Fibra'] || "";
-                document.getElementById('nodePotencia').value = edgeData.parametros['Longitud'] || "";
+                    if (!edgeData || !edgeData.parametros) {
+                        console.warn(`El enlace ${edgeId} no tiene parámetros.`);
+                        return;
+                    }
 
-                // Populate additional parameters
-                const additionalParamsDiv = document.getElementById('additionalParams');
-                additionalParamsDiv.innerHTML = '';
-                for (const key in edgeData.parametros) {
-                    additionalParamsDiv.innerHTML += `
+                    selectedElement = { type: 'edge', data: edgeData };
+
+                    // Llenar modal con datos del enlace
+                    document.getElementById('nodeLabel').value =
+                        edgeData.parametros['Sección de Fibra'] || '';
+                    document.getElementById('nodePotencia').value =
+                        edgeData.parametros['Longitud'] || '';
+
+                    // Parámetros adicionales
+                    const additionalParamsDiv = document.getElementById('additionalParams');
+                    additionalParamsDiv.innerHTML = '';
+                    for (const key in edgeData.parametros) {
+                        additionalParamsDiv.innerHTML += `
                         <div class="mb-3">
                             <label for="${key}" class="form-label">${key}</label>
                             <input type="text" class="form-control" id="${key}" name="${key}" value="${edgeData.parametros[key]}">
                         </div>
                     `;
+                    }
+
+                    // Mostrar modal
+                    if (tooltip) {
+                        tooltip.remove();
+                        tooltip = null;
+                    }
+                    const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
+                    modal.show();
                 }
-            }
+                // Si no se seleccionó ni nodo ni enlace, no hacer nada
+            });
 
-            // Show the modal
-            const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
-            modal.show();
-        });
+            // Guardar cambios modal
+            document.getElementById('saveNodeChanges').addEventListener('click', function () {
+                if (selectedElement) {
+                    const additionalParamsDiv = document.getElementById('additionalParams');
+                    const inputs = additionalParamsDiv.querySelectorAll('input');
 
-        // Save changes from modal
-        document.getElementById('saveNodeChanges').addEventListener('click', function() {
-            if (selectedElement) {
-                const additionalParamsDiv = document.getElementById('additionalParams');
-                const inputs = additionalParamsDiv.querySelectorAll('input');
+                    if (selectedElement.type === 'node') {
+                        const nodeData = selectedElement.data;
+                        nodeData.label = document.getElementById('nodeLabel').value;
+                        nodeData.potencia = parseFloat(document.getElementById('nodePotencia').value);
 
-                if (selectedElement.type === 'node') {
-                    // Update node parameters
-                    const nodeData = selectedElement.data;
-                    nodeData.label = document.getElementById('nodeLabel').value;
-                    nodeData.potencia = parseFloat(document.getElementById('nodePotencia').value);
+                        inputs.forEach((input) => {
+                            nodeData.parametros[input.name] = input.value;
+                        });
 
-                    inputs.forEach(input => {
-                        nodeData.parametros[input.name] = input.value;
-                    });
+                        nodos.update(nodeData);
+                    } else if (selectedElement.type === 'edge') {
+                        const edgeData = selectedElement.data;
 
-                    nodos.update(nodeData);
-                } else if (selectedElement.type === 'edge') {
-                    // Update edge parameters
-                    const edgeData = selectedElement.data;
+                        inputs.forEach((input) => {
+                            edgeData.parametros[input.name] = input.value;
+                        });
 
-                    inputs.forEach(input => {
-                        edgeData.parametros[input.name] = input.value;
-                    });
+                        enlaces.update(edgeData);
+                    }
 
-                    enlaces.update(edgeData);
+                    // Cerrar modal
+                    const modal = bootstrap.Modal.getInstance(
+                        document.getElementById('editNodeModal')
+                    );
+                    modal.hide();
+
+                    alert('Cambios guardados. Actualiza los resultados según sea necesario.');
                 }
+            });
 
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('editNodeModal'));
-                modal.hide();
+            // Cambiar número de tramos de fibra
+            document
+                .getElementById('fiberSpanSelector')
+                .addEventListener('change', function (event) {
+                    const numSpans = parseInt(event.target.value);
+                    generateFiberSpanForm(numSpans);
+                });
 
-                alert('Cambios guardados. Actualiza los resultados según sea necesario.');
-            }
-        });
+            // Generar formulario dinámico para tramos de fibra
+            function generateFiberSpanForm(numSpans) {
+                const formContainer = document.getElementById('fiberSpanForm');
+                formContainer.innerHTML = '';
 
-        // Handle fiber span selection
-        document.getElementById('fiberSpanSelector').addEventListener('change', function(event) {
-            const numSpans = parseInt(event.target.value);
-            generateFiberSpanForm(numSpans);
-        });
-
-        // Generate the dynamic form for fiber spans
-        function generateFiberSpanForm(numSpans) {
-            const formContainer = document.getElementById('fiberSpanForm');
-            formContainer.innerHTML = ''; // Clear existing fields
-
-            for (let i = 1; i <= numSpans; i++) {
-                formContainer.innerHTML += `
+                for (let i = 1; i <= numSpans; i++) {
+                    formContainer.innerHTML += `
                     <div class="mb-3">
                         <label for="fiberSpan${i}" class="form-label">Longitud del Tramo ${i} (km)</label>
-                        <input type="number" class="form-control" id="fiberSpan${i}" name="fiberSpan${i}" value="23">
+                        <input type="number" class="form-control" id="fiberSpan${i}" name="fiberSpan${i}" value="23" />
                     </div>
                 `;
+                }
             }
+
+            // Guardar longitudes y actualizar red
+document
+    .getElementById('saveFiberSpans')
+    .addEventListener('click', function () {
+        const formContainer = document.getElementById('fiberSpanForm');
+        const inputs = formContainer.querySelectorAll('input');
+
+        // Limpiar nodos y enlaces
+        nodos.clear();
+        enlaces.clear();
+
+        // Crear nodos
+        const nodeIds = [];
+        // Emisor
+        nodos.add({
+            id: 1,
+            label: 'Transmisor',
+            x: 100,
+            y: 100,
+            potencia: 30,
+            unidad_potencia: 'dBm',
+            shape: 'box',
+            parametros: {
+                'Unidad de Potencia': 'dBm',
+                'Potencia de Entrada': '30.00 dBm',
+            },
+        });
+        nodeIds.push(1);
+
+        // Nodos intermedios (solo si hay más de 1 tramo)
+        for (let i = 1; i < inputs.length; i++) {
+            const fiberNodeId = 100 + i;
+            nodos.add({
+                id: fiberNodeId,
+                label: '',
+                x: 100 + i * 150,
+                y: 100,
+                shape: 'ellipse',
+                parametros: {},
+            });
+            nodeIds.push(fiberNodeId);
         }
 
-        // Save fiber spans and update the network
-        document.getElementById('saveFiberSpans').addEventListener('click', function() {
-            const formContainer = document.getElementById('fiberSpanForm');
-            const inputs = formContainer.querySelectorAll('input');
-
-            // Clear existing nodes and edges
-            nodos.clear();
-            enlaces.clear();
-
-            // Add emitter node
-            nodos.add({
-                id: 1,
-                label: 'Emisor',
-                x: 100,
-                y: 100,
-                potencia: 30,
-                unidad_potencia: 'dBm',
-                shape: 'box',
-                parametros: {
-                    'Unidad de Potencia': 'dBm',
-                    'Potencia de Entrada': '30.00 dBm'
-                }
-            });
-
-            // Add fiber spans and intermediate nodes
-            let previousNodeId = 1;
-            inputs.forEach((input, index) => {
-                const fiberNodeId = 100 + index + 1; // Unique ID for fiber spans
-                const fiberLength = parseFloat(input.value);
-
-                // Add fiber span node
-                nodos.add({
-                    id: fiberNodeId,
-                    label: '', // No label displayed on the network
-                    x: 100 + (index + 1) * 150,
-                    y: 100,
-                    potencia: 24.85,
-                    loss_coef: 0.2,
-                    att_in: 0,
-                    con_in: 0.25,
-                    con_out: 0.30,
-                    longitud: fiberLength,
-                    shape: 'ellipse',
-                    parametros: {
-                        'Sección de Fibra': `Tramo de fibra ${index + 1}`,
-                        'Coeficiente de Pérdida': '0.2 dB/km',
-                        'Atenuación en la Entrada': '0 dB',
-                        'Conector de Entrada': '0.25 dB',
-                        'Conector de Salida': '0.30 dB',
-                        'Longitud': `${fiberLength} km`
-                    }
-                });
-
-                // Add edge
-                enlaces.add({
-                    from: previousNodeId,
-                    to: fiberNodeId,
-                    label: '',
-                    parametros: {
-                        'Sección de Fibra': `Tramo de fibra ${index + 1}`,
-                        'Longitud': `${fiberLength} km`
-                    }
-                });
-
-                previousNodeId = fiberNodeId;
-            });
-
-            // Add receiver node
-            nodos.add({
-                id: 3,
-                label: 'Receptor',
-                x: 100 + (inputs.length + 1) * 150,
-                y: 100,
-                potencia: 17.90,
-                sensibilidad_receptor_dbm: 14,
-                shape: 'box',
-                parametros: {
-                    'Sensibilidad del Receptor': '14.00 dBm'
-                }
-            });
-
-            // Connect the last fiber span to the receiver
-            enlaces.add({
-                from: previousNodeId,
-                to: 3,
-                label: '',
-                parametros: {}
-            });
-
-            // Redraw the network
-            red.setData({ nodes: nodos, edges: enlaces });
+        // Receptor
+        const receiverId = 3;
+        nodos.add({
+            id: receiverId,
+            label: 'Receptor',
+            x: 100 + inputs.length * 150,
+            y: 100,
+            potencia: 17.9,
+            sensibilidad_receptor_dbm: 14,
+            shape: 'box',
+            parametros: {
+                'Sensibilidad del Receptor': '14.00 dBm',
+            },
         });
+        nodeIds.push(receiverId);
 
-        // Initialize the form with 1 fiber span
-        generateFiberSpanForm(1);
-    }
+        // Crear los enlaces (spans)
+        for (let i = 0; i < inputs.length; i++) {
+            const fiberLength = parseFloat(inputs[i].value);
+            enlaces.add({
+                from: nodeIds[i],
+                to: nodeIds[i + 1],
+                label: '',
+                parametros: {
+                    'Sección de Fibra': `Tramo de fibra ${i + 1}`,
+                    'Coeficiente de Pérdida': '0.2 dB/km',
+                    'Atenuación en la Entrada': '0 dB',
+                    'Conector de Entrada': '0.25 dB',
+                    'Conector de Salida': '0.30 dB',
+                    Longitud: `${fiberLength} km`,
+                },
+            });
+        }
 
-    dibujarRed();
-</script>
-<div class="container mt-4">
-    <h3>Gráficas de Potencia vs Longitud</h3>
+        // Redibujar red
+        red.setData({ nodes: nodos, edges: enlaces });
+    });
 
-    <!-- Check if the graphics are available -->
-    {% if resultados and resultados.plot_dbm and resultados.plot_linear %}
-        <div class="row">
-            <!-- Potencia (dBm) -->
-            <div class="col-md-6">
-                <h5>Potencia (dBm)</h5>
-                <img src="data:image/png;base64,{{ resultados.plot_dbm }}" alt="Gráfica Potencia (dBm)" class="img-fluid">
-            </div>
+            // Inicializar formulario con 1 tramo
+            generateFiberSpanForm(1);
+        }
 
-            <!-- Potencia (mW) -->
-            <div class="col-md-6">
-                <h5>Potencia (mW)</h5>
-                <img src="data:image/png;base64,{{ resultados.plot_linear }}" alt="Gráfica Potencia (mW)" class="img-fluid">
-            </div>
-        </div>
-    {% else %}
-        <p>No hay gráficas disponibles. Por favor, realice una simulación.</p>
-    {% endif %}
-</div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+        dibujarRed();
+    </script>
 </body>
-
