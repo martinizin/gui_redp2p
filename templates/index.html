@@ -323,82 +323,82 @@
 
             // Click para abrir modal de edición
             red.on('click', function (event) {
-                if (event.nodes.length > 0) {
-                    // Nodo seleccionado
-                    const nodeId = event.nodes[0];
-                    const nodeData = nodos.get(nodeId);
+    if (event.nodes.length > 0) {
+        // Nodo seleccionado
+        const nodeId = event.nodes[0];
+        const nodeData = nodos.get(nodeId);
 
-                    if (!nodeData || !nodeData.parametros) {
-                        console.warn(`El nodo ${nodeId} no tiene parámetros.`);
-                        return;
-                    }
+        if (!nodeData || !nodeData.parametros) {
+            console.warn(`El nodo ${nodeId} no tiene parámetros.`);
+            return;
+        }
 
-                    selectedElement = { type: 'node', data: nodeData };
+        selectedElement = { type: 'node', data: nodeData };
 
-                    // Llenar modal con datos del nodo
-                    document.getElementById('nodeLabel').value = nodeData.label || '';
-                    document.getElementById('nodePotencia').value = nodeData.potencia || '';
+        // Llenar modal con datos del nodo
+        document.getElementById('nodeLabel').value = nodeData.label || '';
+        document.getElementById('nodePotencia').value = nodeData.potencia || '';
 
-                    // Parámetros adicionales
-                    const additionalParamsDiv = document.getElementById('additionalParams');
-                    additionalParamsDiv.innerHTML = '';
-                    for (const key in nodeData.parametros) {
-                        additionalParamsDiv.innerHTML += `
-                        <div class="mb-3">
-                            <label for="${key}" class="form-label">${key}</label>
-                            <input type="text" class="form-control" id="${key}" name="${key}" value="${nodeData.parametros[key]}">
-                        </div>
-                    `;
-                    }
+        // Parámetros adicionales
+        const additionalParamsDiv = document.getElementById('additionalParams');
+        additionalParamsDiv.innerHTML = '';
+        for (const key in nodeData.parametros) {
+            additionalParamsDiv.innerHTML += `
+            <div class="mb-3">
+                <label for="${key}" class="form-label">${key}</label>
+                <input type="text" class="form-control" id="${key}" name="${key}" value="${nodeData.parametros[key]}">
+            </div>
+        `;
+        }
 
-                    // Mostrar modal
-                    if (tooltip) {
-                        tooltip.remove();
-                        tooltip = null;
-                    }
-                    const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
-                    modal.show();
+        // Mostrar modal
+        if (tooltip) {
+            tooltip.remove();
+            tooltip = null;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
+        modal.show();
 
-                } else if (event.edges.length > 0) {
-                    // Enlace seleccionado
-                    const edgeId = event.edges[0];
-                    const edgeData = enlaces.get(edgeId);
+    } else if (event.edges.length > 0) {
+        // Enlace seleccionado
+        const edgeId = event.edges[0];
+        const edgeData = enlaces.get(edgeId);
 
-                    if (!edgeData || !edgeData.parametros) {
-                        console.warn(`El enlace ${edgeId} no tiene parámetros.`);
-                        return;
-                    }
+        if (!edgeData || !edgeData.parametros) {
+            console.warn(`El enlace ${edgeId} no tiene parámetros.`);
+            return;
+        }
 
-                    selectedElement = { type: 'edge', data: edgeData };
+        selectedElement = { type: 'edge', data: edgeData };
 
-                    // Llenar modal con datos del enlace
-                    document.getElementById('nodeLabel').value =
-                        edgeData.parametros['Sección de Fibra'] || '';
-                    document.getElementById('nodePotencia').value =
-                        edgeData.parametros['Longitud'] || '';
+        // Llenar modal con datos del enlace
+        document.getElementById('nodeLabel').value =
+            edgeData.parametros['Sección de Fibra'] || '';
+        document.getElementById('nodePotencia').value =
+            edgeData.parametros['Longitud'] || '';
 
-                    // Parámetros adicionales
-                    const additionalParamsDiv = document.getElementById('additionalParams');
-                    additionalParamsDiv.innerHTML = '';
-                    for (const key in edgeData.parametros) {
-                        additionalParamsDiv.innerHTML += `
-                        <div class="mb-3">
-                            <label for="${key}" class="form-label">${key}</label>
-                            <input type="text" class="form-control" id="${key}" name="${key}" value="${edgeData.parametros[key]}">
-                        </div>
-                    `;
-                    }
+        // Parámetros adicionales
+        const additionalParamsDiv = document.getElementById('additionalParams');
+        additionalParamsDiv.innerHTML = '';
+        for (const key in edgeData.parametros) {
+            additionalParamsDiv.innerHTML += `
+            <div class="mb-3">
+                <label for="${key}" class="form-label">${key}</label>
+                <input type="text" class="form-control" id="${key}" name="${key}" value="${edgeData.parametros[key]}">
+            </div>
+        `;
+        }
 
-                    // Mostrar modal
-                    if (tooltip) {
-                        tooltip.remove();
-                        tooltip = null;
-                    }
-                    const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
-                    modal.show();
-                }
-                // Si no se seleccionó ni nodo ni enlace, no hacer nada
-            });
+        // Mostrar modal
+        if (tooltip) {
+            tooltip.remove();
+            tooltip = null;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('editNodeModal'));
+        modal.show();
+    }
+    // Si no se seleccionó ni nodo ni enlace, no hacer nada
+});
 
             // Guardar cambios modal
             document.getElementById('saveNodeChanges').addEventListener('click', function () {

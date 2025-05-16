@@ -8,6 +8,10 @@ import base64
 
 app = Flask(__name__)
 
+def dbm2mw(dbm):
+    """Convierte dBm a mW."""
+    return 10 ** (dbm / 10)
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     resultados = None
@@ -15,25 +19,33 @@ def index():
 
     if request.method == 'POST':
         try:
-            # Captura de los datos del formulario
-            unidad_potencia = request.form['unit']
-            tx_power = float(request.form['tx_power'])
-            receiver_sensitivity = float(request.form['receiver_sensitivity'])
-            num_segments = int(request.form['num_segments'])
-            segment_lengths = []
+            # Obtener parámetros del formulario
+            params = {
+                'tx_power_dbm': float(request.form['tx_power_dbm']),
+                'tx_power_watts': float(request.form['tx_power_watts']),
+                'sensitivity_receiver_dbm': float(request.form['sensitivity_receiver_dbm']),
+                'fiber_params': []
+            }
 
-            for i in range(num_segments):
-                segment_length = float(request.form.get(f'segment_{i+1}', 0))
-                segment_lengths.append(segment_length)
+            # Obtener parámetros de cada fibra
+            num_fibers = int(request.form['num_fibers'])
+            for i in range(num_fibers):
+                fiber_id = f'fiber_{i+1}_'
+                params['fiber_params'].append({
+                    'loss_coef': float(request.form[fiber_id + 'loss_coef']),
+                    'att_in': float(request.form[fiber_id + 'att_in']),
+                    'con_in': float(request.form[fiber_id + 'con_in']),
+                    'con_out': float(request.form[fiber_id + 'con_out']),
+                    'length_stretch': float(request.form[fiber_id + 'length_stretch'])
+                })
 
             # Realizar los cálculos de la red
-            resultados = calcular_red(tx_power, receiver_sensitivity, num_segments, segment_lengths)
+            resultados = calcular_red(params)
 
             # Verificar los resultados en el backend
             print("RESULTADOS:", resultados)
 
             # Generar gráficas (potencia vs longitud)
-             # Generar gráficas (potencia vs longitud)
             fig, ax = plt.subplots()
             ax.plot(resultados['longitud_acumulada'], resultados['power_history_dbm'], label="Potencia (dBm)")
             ax.set_xlabel('Longitud (km)')
@@ -63,11 +75,28 @@ def index():
             # Incluir las gráficas en los resultados
             resultados['plot_dbm'] = plot_dbm
             resultados['plot_linear'] = plot_linear
+
         except Exception as e:
             print(f"Error al procesar el formulario: {e}")
-        # Generar gráficos iniciales si no hay resultados
+
+    # Generar gráficos iniciales si no hay resultados
     if not resultados:
-        resultados = calcular_red(30, 14, 1, [23])  # Valores iniciales
+        # Valores iniciales
+        initial_params = {
+            'tx_power_dbm': 30,
+            'tx_power_watts': dbm2mw(30),
+            'sensitivity_receiver_dbm': -28,
+            'fiber_params': [{
+                'loss_coef': 0.2,
+                'att_in': 0,
+                'con_in': 0.25,
+                'con_out': 0.30,
+                'length_stretch': 5
+            }]
+        }
+        resultados = calcular_red(initial_params)
+        
+        # Generar gráficas iniciales
         fig, ax = plt.subplots()
         ax.plot(resultados['longitud_acumulada'], resultados['power_history_dbm'], label="Potencia (dBm)")
         ax.set_xlabel('Longitud (km)')
@@ -100,5 +129,24 @@ def obtener_topologia():
     nodos, enlaces = obtener_topologia_datos()
     return jsonify({"nodos": nodos, "enlaces": enlaces})
 
+@app.route('/calcular', methods=['POST'])
+def calcular():
+    data = request.get_json()
+    # Parse parameters from data as needed
+    # Example:
+    tx_power_dbm = float(data.get('tx_power_dbm', 30))
+    tx_power_watts_input = float(data.get('tx_power_watts_input', 1))
+    sensitivity_receiver_dbm = float(data.get('sensitivity_receiver_dbm', 14))
+    fiber_params = data.get('fiber_params', [])
+
+    # Call your calculation function
+    resultados = calcular_red({
+        'tx_power_dbm': tx_power_dbm,
+        'tx_power_watts_input': tx_power_watts_input,
+        'sensitivity_receiver_dbm': sensitivity_receiver_dbm,
+        'fiber_params': fiber_params
+    })
+
+    return jsonify(resultados)
 if __name__ == '__main__':
     app.run(debug=True)
