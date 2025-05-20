@@ -45,6 +45,14 @@
             margin-top: 20px;
             box-sizing: border-box;
         }
+        button.calulos-button {
+            background-color: green;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
         /* Estilos para tooltip personalizados */
         /* In your style.css */
@@ -68,43 +76,45 @@
     <div id="red"></div>
 
     <!-- Contenedor principal para resultados y formulario -->
-    <div class="container-main">
-        <h1>Simulación de Red de Fibra Óptica</h1>
+<div class="container-main">
+    <h1>Simulación de Red de Fibra Óptica</h1>
 
-        <!-- Resultados iniciales de la simulación -->
-        <h3>Resultados Iniciales:</h3>
-        <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
-        <p>
-            <strong>Tramo 1:</strong> Longitud acumulada = 23.00 km, Potencia final =
-            24.85 dBm, Atenuación = 5.15 dB
-        </p>
-
-        <h3>Resultados Finales:</h3>
-        <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
-        <p><strong>Potencia de la señal recibida (dBm):</strong> 17.90 dBm</p>
-        <p><strong>Potencia de la señal recibida (mW):</strong> 61.66 mW</p>
-        <p><strong>Atenuación total simulada (dB):</strong> 12.10 dB</p>
-        <p><strong>Sensibilidad del receptor (dBm):</strong> 14.00 dBm</p>
-
-        <!-- Combo box para seleccionar el numero de tramos de fibra -->
-        <div class="mb-3">
-            <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra</label>
-            <select id="fiberSpanSelector" class="form-select">
-                <option value="1" selected>1 Tramo</option>
-                <option value="2">2 Tramos</option>
-                <option value="3">3 Tramos</option>
-                <option value="4">4 Tramos</option>
-            </select>
-        </div>
-        <!-- Formulario para ingresar el valor de longitud del tramo -->
-        <div id="fiberSpanFormContainer" class="mb-3">
-            <h5>Longitudes de los Tramos de Fibra</h5>
-            <form id="fiberSpanForm">
-                <!-- Se agregan en función del número seleccionado -->
-            </form>
-            <button id="saveFiberSpans" class="btn btn-primary">Guardar Cambios</button>
-        </div>
+    <!-- 1. FORMULARIO PARA TRAMOS DE FIBRA -->
+    <div class="mb-3">
+        <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra</label>
+        <select id="fiberSpanSelector" class="form-select">
+            <option value="1" selected>1 Tramo</option>
+            <option value="2">2 Tramos</option>
+            <option value="3">3 Tramos</option>
+            <option value="4">4 Tramos</option>
+        </select>
     </div>
+    <!-- Formulario para ingresar el valor de longitud del tramo -->
+    <div id="fiberSpanFormContainer" class="mb-3">
+        <h5>Longitudes de los Tramos de Fibra</h5>
+        <form id="fiberSpanForm">
+            <!-- Se agregan en función del número seleccionado -->
+        </form>
+        <button id="saveFiberSpans" class="btn btn-primary">Guardar Cambios</button>
+    </div>
+    <button class="calulos-button">Realizar Calculos</button>
+
+    <!-- 2. RESULTADOS INICIALES -->
+    <h3>Resultados Iniciales:</h3>
+    <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
+    <p>
+        <strong>Tramo 1:</strong> Longitud acumulada = 23.00 km, Potencia final =
+        24.85 dBm, Atenuación = 5.15 dB
+    </p>
+
+    <!-- 3. RESULTADOS FINALES -->
+    <h3>Resultados Finales:</h3>
+    <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
+    <p><strong>Potencia de la señal recibida (dBm):</strong> 17.90 dBm</p>
+    <p><strong>Potencia de la señal recibida (mW):</strong> 61.66 mW</p>
+    <p><strong>Atenuación total simulada (dB):</strong> 12.10 dB</p>
+    <p><strong>Sensibilidad del receptor (dBm):</strong> 14.00 dBm</p>
+</div>
 
     <!-- Contenedor para gráficas (ancho restringido igual que resultados) -->
     <div class="container-main mt-4">
