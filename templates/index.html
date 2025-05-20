@@ -100,21 +100,7 @@
     <button class="calulos-button">Realizar Calculos</button>
 
     <!-- 2. RESULTADOS INICIALES -->
-    <h3>Resultados Iniciales:</h3>
-    <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
-    <p>
-        <strong>Tramo 1:</strong> Longitud acumulada = 23.00 km, Potencia final =
-        24.85 dBm, Atenuación = 5.15 dB
-    </p>
-
-    <!-- 3. RESULTADOS FINALES -->
-    <h3>Resultados Finales:</h3>
-    <p><strong>Potencia de la señal inicial (dBm):</strong> 30.00 dBm</p>
-    <p><strong>Potencia de la señal recibida (dBm):</strong> 17.90 dBm</p>
-    <p><strong>Potencia de la señal recibida (mW):</strong> 61.66 mW</p>
-    <p><strong>Atenuación total simulada (dB):</strong> 12.10 dB</p>
-    <p><strong>Sensibilidad del receptor (dBm):</strong> 14.00 dBm</p>
-</div>
+    <div id="resultados-container" class="mt-4"></div>
 
     <!-- Contenedor para gráficas (ancho restringido igual que resultados) -->
     <div class="container-main mt-4">
@@ -203,8 +189,67 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
+document.querySelector('.calulos-button').addEventListener('click', function () {
+    // Gather fiber parameters from the form
+    const inputs = document.querySelectorAll('#fiberSpanForm input');
+    const fiber_params = [];
+    for (let i = 0; i < inputs.length; i++) {
+        fiber_params.push({
+            loss_coef: 0.2, // Default, or make editable if you want
+            att_in: 0,
+            con_in: 0.25,
+            con_out: 0.30,
+            length_stretch: parseFloat(inputs[i].value)
+        });
+    }
+
+    // Build the payload
+    const payload = {
+        tx_power_dbm: 30, // You can make this editable if you want
+        sensitivity_receiver_dbm: 14, // You can make this editable if you want
+        fiber_params: fiber_params
+    };
+
+    // Send AJAX request to Flask backend
+    fetch('/calcular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(resultados => {
+        // Show the results container
+        document.getElementById('resultados-container').style.display = 'block';
+
+        // Update the results section
+        let html = `
+        <h3>Resultados Iniciales:</h3>
+        <p><strong>Potencia de la señal inicial (dBm):</strong> ${resultados.potencia_inicial_dbm.toFixed(2)} dBm</p>
+        `;
+        resultados.detalles_tramos.forEach((detalle, idx) => {
+            html += `<p><strong>Tramo ${detalle.numero}:</strong> Longitud acumulada = ${detalle.longitud_acumulada.toFixed(2)} km, Potencia final = ${detalle.potencia_final_dbm.toFixed(2)} dBm, Atenuación = ${detalle.atenuacion_tramo.toFixed(2)} dB</p>`;
+        });
+        html += `
+        <h3>Resultados Finales:</h3>
+        <p><strong>Potencia de la señal inicial (dBm):</strong> ${resultados.potencia_inicial_dbm.toFixed(2)} dBm</p>
+        <p><strong>Potencia de la señal recibida (dBm):</strong> ${resultados.potencia_final_dbm.toFixed(2)} dBm</p>
+        <p><strong>Potencia de la señal recibida (mW):</strong> ${(Math.pow(10, resultados.potencia_final_dbm / 10)).toFixed(2)} mW</p>
+        <p><strong>Atenuación total simulada (dB):</strong> ${resultados.atenuacion_total.toFixed(2)} dB</p>
+        <p><strong>Sensibilidad del receptor (dBm):</strong> ${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm</p>
+        `;
+        document.getElementById('resultados-container').innerHTML = html;
+    })
+    .catch(err => {
+        document.getElementById('resultados-container').style.display = 'block';
+        document.getElementById('resultados-container').innerHTML = "<p>Error al calcular resultados.</p>";
+        console.error(err);
+    });
+});
+</script>
+>
+    <script>
+
         function dibujarRed() {
             const nodos = new vis.DataSet([
                 {
@@ -225,7 +270,6 @@
                     label: 'Receptor',
                     x: 500,
                     y: 100,
-                    potencia: 17.9,
                     sensibilidad_receptor_dbm: 14,
                     shape: 'box',
                     parametros: {
@@ -246,7 +290,7 @@
                         'Atenuación en la Entrada': '0 dB',
                         'Conector de Entrada': '0.25 dB',
                         'Conector de Salida': '0.30 dB',
-                        Longitud: '23 km',
+                        
                     },
                 },
             ]);
@@ -519,7 +563,6 @@ document
             label: 'Receptor',
             x: 100 + inputs.length * 150,
             y: 100,
-            potencia: 17.9,
             sensibilidad_receptor_dbm: 14,
             shape: 'box',
             parametros: {

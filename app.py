@@ -16,31 +16,29 @@ def dbm2mw(dbm):
 def index():
     resultados = None
     nodos, enlaces = obtener_topologia_datos()
-
     if request.method == 'POST':
         try:
-            # Obtener parámetros del formulario
+                
             params = {
-                'tx_power_dbm': float(request.form['tx_power_dbm']),
-                'tx_power_watts': float(request.form['tx_power_watts']),
-                'sensitivity_receiver_dbm': float(request.form['sensitivity_receiver_dbm']),
-                'fiber_params': []
+            'tx_power_dbm': float(request.form['tx_power_dbm']),
+            'sensitivity_receiver_dbm': float(request.form['sensitivity_receiver_dbm']),
+            'fiber_params': []
             }
-
-            # Obtener parámetros de cada fibra
             num_fibers = int(request.form['num_fibers'])
+
             for i in range(num_fibers):
-                fiber_id = f'fiber_{i+1}_'
-                params['fiber_params'].append({
+                    fiber_id = f'fiber_{i+1}_'
+                    params['fiber_params'].append({
                     'loss_coef': float(request.form[fiber_id + 'loss_coef']),
                     'att_in': float(request.form[fiber_id + 'att_in']),
                     'con_in': float(request.form[fiber_id + 'con_in']),
                     'con_out': float(request.form[fiber_id + 'con_out']),
                     'length_stretch': float(request.form[fiber_id + 'length_stretch'])
                 })
-
-            # Realizar los cálculos de la red
             resultados = calcular_red(params)
+        # ... (rest of your code for plotting, etc.)
+
+
 
             # Verificar los resultados en el backend
             print("RESULTADOS:", resultados)

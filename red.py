@@ -2,109 +2,219 @@ import numpy as np
 from gnpy.core.info import create_input_spectral_information
 from gnpy.core.elements import Fiber, Transceiver
 from gnpy.core.utils import watt2dbm, db2lin
+import matplotlib.pyplot as plt
 
 def dbm2mw(dbm):
     return 10 ** (dbm / 10)
-# Función para obtener la topología de la red
+
+# --- Funciones auxiliares para inputs robustos (opcional para CLI) ---
+
+def solicitar_float(mensaje, valor_por_defecto=None, minimo=None, maximo=None):
+    while True:
+        try:
+            entrada = input(f"{mensaje} " + (f"[Por defecto: {valor_por_defecto}]: " if valor_por_defecto is not None else ": "))
+            if entrada == "" and valor_por_defecto is not None:
+                return valor_por_defecto
+            valor = float(entrada)
+            if minimo is not None and valor < minimo:
+                print(f"El valor debe ser al menos {minimo}. Intenta de nuevo.")
+                continue
+            if maximo is not None and valor > maximo:
+                print(f"El valor debe ser máximo {maximo}. Intenta de nuevo.")
+                continue
+            return valor
+        except ValueError:
+            print("Entrada inválida. Ingresa un número válido.")
+
+def solicitar_int(mensaje, minimo=None, maximo=None):
+    while True:
+        try:
+            valor = int(input(mensaje + ": "))
+            if minimo is not None and valor < minimo:
+                print(f"El valor debe ser al menos {minimo}. Intenta de nuevo.")
+                continue
+            if maximo is not None and valor > maximo:
+                print(f"El valor debe ser máximo {maximo}. Intenta de nuevo.")
+                continue
+            return valor
+        except ValueError:
+            print("Entrada inválida. Ingresa un número entero válido.")
+
+def pedir_parametros_tramo(tramo_num, valores_default):
+    print(f"\nConfiguración del tramo {tramo_num}:")
+    cambiar = input("¿Desea cambiar los parámetros de la fibra de este tramo? (s/n): ").lower()
+    if cambiar == "s":
+        loss_coef = solicitar_float("Coeficiente de pérdida (dB/km)", valores_default['loss_coef'], minimo=0)
+        att_in = solicitar_float("Pérdida atenuación interna (dB)", valores_default['att_in'], minimo=0)
+        con_in = solicitar_float("Pérdida conector entrada (dB)", valores_default['con_in'], minimo=0)
+        con_out = solicitar_float("Pérdida conector salida (dB)", valores_default['con_out'], minimo=0)
+        return {
+            'loss_coef': loss_coef,
+            'att_in': att_in,
+            'con_in': con_in,
+            'con_out': con_out
+        }
+    else:
+        return valores_default.copy()
+
+# --- Función de simulación detallada ---
+
+def simular_red_por_tramos_detallado(tx_power_dbm=16.53,
+                                     sensibilidad_receptor_dbm=-28,
+                                     tramos_params=None):
+    if tramos_params is None:
+        raise ValueError("Debes proporcionar los parámetros de los tramos")
+
+    power_history_dbm = [tx_power_dbm]
+    power_history_linear = [db2lin(tx_power_dbm)]
+    longitud_acumulada = [0]
+    current_power_dbm = tx_power_dbm
+
+    num_tramos = len(tramos_params)
+    detalles_tramos = []
+
+    for i, params in enumerate(tramos_params):
+        longitud_tramo = params.get('length', 5)
+        loss_coef = params.get('loss_coef', 0.2)
+        att_in = params.get('att_in', 0)
+        con_in = params.get('con_in', 0.25)
+        con_out = params.get('con_out', 0.30)
+
+        num_segmentos = int(np.ceil(longitud_tramo / 5))
+        potencia_inicial_tramo = current_power_dbm
+
+        for j in range(num_segmentos):
+            segment_length = min(5, longitud_tramo - j * 5)
+            attenuation_segment_db = loss_coef * segment_length
+            current_power_dbm -= attenuation_segment_db
+            power_history_dbm.append(current_power_dbm)
+            power_history_linear.append(db2lin(current_power_dbm))
+            longitud_acumulada.append(longitud_acumulada[-1] + segment_length)
+
+        # Conectores y atenuaciones al final del tramo
+        current_power_dbm -= con_out
+        power_history_dbm.append(current_power_dbm)
+        power_history_linear.append(db2lin(current_power_dbm))
+        longitud_acumulada.append(longitud_acumulada[-1])
+
+        current_power_dbm -= con_in
+        power_history_dbm.append(current_power_dbm)
+        power_history_linear.append(db2lin(current_power_dbm))
+        longitud_acumulada.append(longitud_acumulada[-1])
+
+        current_power_dbm -= att_in
+        power_history_dbm.append(current_power_dbm)
+        power_history_linear.append(db2lin(current_power_dbm))
+        longitud_acumulada.append(longitud_acumulada[-1])
+
+        potencia_final_tramo = power_history_dbm[-1]
+        atenuacion_tramo = potencia_inicial_tramo - potencia_final_tramo
+        longitud_acum_tramo = longitud_acumulada[-1]
+
+        detalles_tramos.append({
+            'numero': i + 1,
+            'longitud_acumulada': longitud_acum_tramo,
+            'potencia_final_dbm': potencia_final_tramo,
+            'atenuacion_tramo': atenuacion_tramo,
+            'longitud_tramo': longitud_tramo,
+        })
+
+    resultados = {
+        'power_history_dbm': power_history_dbm,
+        'power_history_linear': power_history_linear,
+        'longitud_acumulada': longitud_acumulada,
+        'potencia_final_dbm': power_history_dbm[-1],
+        'atenuacion_total': tx_power_dbm - power_history_dbm[-1],
+        'sensibilidad_receptor_dbm': sensibilidad_receptor_dbm,
+        'detalles_tramos': detalles_tramos,
+        'potencia_inicial_dbm': tx_power_dbm,
+        'longitud_total': sum([d['longitud_tramo'] for d in detalles_tramos])
+    }
+
+    return resultados
+
+# --- Función para graficar resultados ---
+
+def graficar_potencia(longitud_acumulada, power_history_dbm, power_history_linear, sensibilidad_receptor_dbm):
+    x_dbm_unique = sorted(list(set([round(l, 2) for l in longitud_acumulada])))
+    y_dbm_unique = []
+    for length in x_dbm_unique:
+        indices = [i for i, l in enumerate([round(val, 2) for val in longitud_acumulada]) if l == length]
+        y_dbm_unique.append(power_history_dbm[indices[-1]])
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(x_dbm_unique, y_dbm_unique, marker='o', linestyle='-', label="Potencia (dBm)")
+    plt.xlabel("Longitud acumulada de la fibra (km)")
+    plt.ylabel("Potencia de la señal (dBm)")
+    plt.title("Potencia de salida (dBm) vs. Longitud")
+    plt.grid(True)
+    plt.xticks(np.arange(0, max(x_dbm_unique) + 5, 5))
+    plt.axhline(sensibilidad_receptor_dbm, color='r', linestyle='--', label=f'Sensibilidad del receptor: {sensibilidad_receptor_dbm:.2f} dBm')
+    plt.legend()
+    plt.show()
+
+    x_linear_unique = sorted(list(set([round(l, 2) for l in longitud_acumulada])))
+    y_linear_unique = []
+    for length in x_linear_unique:
+        indices = [i for i, l in enumerate([round(val, 2) for val in longitud_acumulada]) if l == length]
+        y_linear_unique.append(power_history_linear[indices[-1]])
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(x_linear_unique, y_linear_unique, marker='o', linestyle='-', label="Potencia (lineal)")
+    plt.xlabel("Longitud acumulada de la fibra (km)")
+    plt.ylabel("Potencia de la señal (Watts)")
+    plt.title("Potencia de salida (lineal) vs. Longitud")
+    plt.grid(True)
+    plt.xticks(np.arange(0, max(x_linear_unique) + 5, 5))
+    sensibilidad_lineal_watts = db2lin(sensibilidad_receptor_dbm)
+    plt.axhline(sensibilidad_lineal_watts, color='r', linestyle='--', label=f'Sensibilidad del receptor: {sensibilidad_lineal_watts:.2e} Watts')
+    plt.ylim(min(y_linear_unique) * 0.9, max(y_linear_unique) * 1.1)
+    plt.legend()
+    plt.show()
+
+# --- Función para obtener la topología de la red (puedes adaptar según tu app) ---
+
 def obtener_topologia_datos():
     nodos = [
         {"id": 1, "label": "Emisor", "x": 100, "y": 100, "potencia": 6},
         {"id": 2, "label": "Fibra", "x": 300, "y": 100, "potencia": -5, "loss_coef": 0.2, "att_in": 0, "con_in": 0.25, "con_out": 0.30, "longitud": 5},
         {"id": 3, "label": "Receptor", "x": 500, "y": 100, "potencia": -10, "sensibilidad_receptor_dbm": -28}
     ]
-    
     enlaces = [
         {"from": 1, "to": 2, "label": "Fibra 1", "longitud": 5},
         {"from": 2, "to": 3, "label": "Fibra 2", "longitud": 5}
     ]
-    
     return nodos, enlaces
 
-# Función para realizar los cálculos de la red óptica
+# --- Función principal para la web: calcular_red ---
+
 def calcular_red(params):
     """
-    Calcula la propagación de la señal en la red óptica basado en los parámetros proporcionados
-    
-    Args:
-        params (dict): Diccionario con los siguientes parámetros:
-            - tx_power_dbm: Potencia del transmisor en dBm
-            - tx_power_watts: Potencia del transmisor en watts
-            - sensitivity_receiver_dbm: Sensibilidad del receptor en dBm
-            - fiber_params: Lista de parámetros para cada tramo de fibra
-                - loss_coef: Coeficiente de pérdida en dB/km
-                - att_in: Atenuación en la entrada (dB)
-                - con_in: Pérdida del conector de entrada (dB)
-                - con_out: Pérdida del conector de salida (dB)
-                - num_stretches: Número de tramos
-                - length_stretch: Longitud de cada tramo
+    Calcula la propagación de la señal en la red óptica basado en los parámetros proporcionados.
+    Espera un diccionario con:
+        - tx_power_dbm: Potencia del transmisor en dBm
+        - sensitivity_receiver_dbm: Sensibilidad del receptor en dBm
+        - fiber_params: Lista de diccionarios para cada tramo de fibra, cada uno con:
+            - loss_coef: Coeficiente de pérdida en dB/km
+            - att_in: Atenuación en la entrada (dB)
+            - con_in: Pérdida del conector de entrada (dB)
+            - con_out: Pérdida del conector de salida (dB)
+            - length_stretch: Longitud del tramo (km)
     """
-    
-    # Parámetros del sistema
-    f_min = 191.4e12
-    f_max = 195.1e12
-    spacing = 50e9
-    roll_off = 0.15
-    tx_osnr = 40
-    baud_rate = 32e9
-    delta_pdb = 0
-    slot_width = spacing
+    # Adaptar los nombres de los parámetros para la función detallada
+    tramos_params = []
+    for tramo in params['fiber_params']:
+        tramos_params.append({
+            'length': tramo['length_stretch'],
+            'loss_coef': tramo['loss_coef'],
+            'att_in': tramo['att_in'],
+            'con_in': tramo['con_in'],
+            'con_out': tramo['con_out']
+        })
 
-    # Crear información espectral
-    si = create_input_spectral_information(f_min, f_max, roll_off, baud_rate, spacing, tx_osnr, params['tx_power_dbm'], slot_width)
-    si.signal = si.signal.astype(np.float64)
-    
-    # Inicializar variables
-    power_history_dbm = [params['tx_power_dbm']]
-    accumulated_length = [0]
-    attenuation_history = []
-    accumulated_power_dbm = params['tx_power_dbm']
-
-    # Procesar cada tramo de fibra
-    for fiber_param in params['fiber_params']:
-        # Parámetros de la fibra para este tramo
-        fiber_params = {
-            'length': fiber_param['length_stretch'],  # Longitud del tramo
-            'loss_coef': fiber_param['loss_coef'],    # Coeficiente de pérdida
-            'length_units': 'km',
-            'att_in': fiber_param['att_in'],
-            'con_in': fiber_param['con_in'],
-            'con_out': fiber_param['con_out'],
-            'pmd_coef': 0.1,
-            'dispersion': 16.5,
-            'gamma': 1.2,
-            'effective_area': 80e-12,
-            'core_radius': 4.2e-6,
-            'n1': 1.468,
-            'n2': 2.6e-20
-        }
-        
-        fiber = Fiber(uid="Fiber", params=fiber_params)
-        power_before_fiber = watt2dbm(np.sum(si.signal / 1000))
-        fiber.ref_pch_in_dbm = power_before_fiber
-
-        # Calcular atenuación para este tramo
-        attenuation = fiber_params['loss_coef'] * fiber_params['length']
-        attenuation += fiber_params['att_in'] + fiber_params['con_in'] + fiber_params['con_out']
-        
-        accumulated_power_dbm -= attenuation
-        power_history_dbm.append(accumulated_power_dbm)
-        accumulated_length.append(accumulated_length[-1] + fiber_params['length'])
-        attenuation_history.append(attenuation)
-
-    # Convertir potencia final a mW
-    final_power_mw = db2lin(accumulated_power_dbm)
-
-    return {
-        "initial_power": params['tx_power_dbm'],
-        "final_power": accumulated_power_dbm,
-        "final_power_mw": final_power_mw,
-        "attenuation": sum(attenuation_history),
-        "receiver_sensitivity": params['sensitivity_receiver_dbm'],
-        "longitud_acumulada": accumulated_length,
-        "power_history_dbm": power_history_dbm,
-        "power_history_linear": [db2lin(dbm) for dbm in power_history_dbm],
-        "attenuation_history": attenuation_history
-    }
-
-
-# Función para obtener los datos de la red
+    resultados = simular_red_por_tramos_detallado(
+        tx_power_dbm=params['tx_power_dbm'],
+        sensibilidad_receptor_dbm=params['sensitivity_receiver_dbm'],
+        tramos_params=tramos_params
+    )
+    return resultados
