@@ -3,6 +3,7 @@ from gnpy.core.info import create_input_spectral_information
 from gnpy.core.elements import Fiber, Transceiver
 from gnpy.core.utils import watt2dbm, db2lin
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 def dbm2mw(dbm):
     return 10 ** (dbm / 10)
@@ -172,6 +173,96 @@ def graficar_potencia(longitud_acumulada, power_history_dbm, power_history_linea
     plt.legend()
     plt.show()
 
+# --- Nueva función para graficar con Plotly (Lineal) ---
+def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, sensibilidad_receptor_dbm, tx_power_dbm):
+    """
+    Genera los datos para un gráfico Plotly de potencia lineal vs. longitud acumulada.
+    Devuelve una figura de Plotly como un diccionario.
+    """
+    sensibilidad_receptor_watts = db2lin(sensibilidad_receptor_dbm)
+    initial_power_watts = db2lin(tx_power_dbm)
+
+    # Asegurar que todos los historiales tengan la misma longitud que longitud_acumulada
+    # Esto es importante si los eventos de pérdida de conector no incrementan la longitud
+    # y queremos que cada punto de datos tenga una coordenada x correspondiente.
+    
+    # Crear listas únicas para x y para y, tomando el último valor de potencia para cada longitud única.
+    # Esto maneja los puntos verticales en las gráficas debido a pérdidas instantáneas (conectores).
+    unique_lengths_map = {}
+    for i, l in enumerate(longitud_acumulada):
+        unique_lengths_map[round(l, 5)] = power_history_linear[i]
+    
+    sorted_unique_lengths = sorted(unique_lengths_map.keys())
+    unique_power_history_linear = [unique_lengths_map[l] for l in sorted_unique_lengths]
+
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=sorted_unique_lengths,
+        y=unique_power_history_linear,
+        mode='lines+markers',
+        name='Potencia (Watts)'
+    ))
+
+    fig.add_hline(
+        y=sensibilidad_receptor_watts,
+        line_dash="dash",
+        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_watts:.2e} W",
+        annotation_position="bottom right",
+        line_color='red'
+    )
+
+    fig.update_layout(
+        title="Potencia de Salida (Lineal) vs. Longitud",
+        xaxis_title="Longitud acumulada de la fibra (km)",
+        yaxis_title="Potencia de la señal (Watts)",
+        yaxis_type="linear", # Puede ser 'log' si se prefiere para Watts
+        legend_title_text='Leyenda',
+        height=500  # Altura del gráfico
+    )
+    return fig.to_dict() # Usar to_dict() para que sea serializable a JSON directamente
+
+# --- Nueva función para graficar con Plotly (dBm) ---
+def graficar_potencia_plotly_dbm(longitud_acumulada, power_history_dbm, sensibilidad_receptor_dbm, tx_power_dbm):
+    """
+    Genera los datos para un gráfico Plotly de potencia dBm vs. longitud acumulada.
+    Devuelve una figura de Plotly como un diccionario.
+    """
+    # Crear listas únicas para x y para y, tomando el último valor de potencia para cada longitud única.
+    unique_lengths_map = {}
+    for i, l in enumerate(longitud_acumulada):
+        unique_lengths_map[round(l, 5)] = power_history_dbm[i]
+
+    sorted_unique_lengths = sorted(unique_lengths_map.keys())
+    unique_power_history_dbm = [unique_lengths_map[l] for l in sorted_unique_lengths]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=sorted_unique_lengths,
+        y=unique_power_history_dbm,
+        mode='lines+markers',
+        name='Potencia (dBm)'
+    ))
+
+    fig.add_hline(
+        y=sensibilidad_receptor_dbm,
+        line_dash="dash",
+        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_dbm:.2f} dBm",
+        annotation_position="bottom right",
+        line_color='red'
+    )
+
+    fig.update_layout(
+        title="Potencia de Salida (dBm) vs. Longitud",
+        xaxis_title="Longitud acumulada de la fibra (km)",
+        yaxis_title="Potencia de la señal (dBm)",
+        legend_title_text='Leyenda',
+        height=500 # Altura del gráfico
+    )
+    return fig.to_dict()
+
 # --- Función para obtener la topología de la red (puedes adaptar según tu app) ---
 
 def obtener_topologia_datos():
@@ -217,4 +308,19 @@ def calcular_red(params):
         sensibilidad_receptor_dbm=params['sensitivity_receiver_dbm'],
         tramos_params=tramos_params
     )
+
+    # Generar datos para gráficos Plotly
+    resultados['plot_linear_plotly'] = graficar_potencia_plotly_linear(
+        resultados['longitud_acumulada'],
+        resultados['power_history_linear'],
+        resultados['sensibilidad_receptor_dbm'],
+        resultados['potencia_inicial_dbm']
+    )
+    resultados['plot_dbm_plotly'] = graficar_potencia_plotly_dbm(
+        resultados['longitud_acumulada'],
+        resultados['power_history_dbm'],
+        resultados['sensibilidad_receptor_dbm'],
+        resultados['potencia_inicial_dbm']
+    )
+
     return resultados
