@@ -160,8 +160,8 @@
 
         #resetLayoutButton {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 25px;
+            right: 30px;
             z-index: 10; /* Ensure it's above the vis.js canvas elements */
         }
 
@@ -474,7 +474,6 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                     con_in: "Pérdida del conector de entrada",
                     con_out: "Pérdida del conector de salida"
                 };
-
                 for (const key in edgeData.parametros) {
                     if (key === 'label') continue; // Already used for title or not needed here
 
