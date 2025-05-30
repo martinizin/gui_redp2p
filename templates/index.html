@@ -238,9 +238,7 @@
             background-color: #e2e6ea;
             border-color: #dae0e5;
         }
-        #resetLayoutButton.btn-light svg {
-            /* margin-right: 5px; Handled by span margin or gap if parent is flex */
-        }
+       
 
 
         /* Right Panel: Span Configuration - Made smaller */
@@ -521,10 +519,20 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
         <p><strong>Atenuación total simulada (dB):</strong> ${resultados.atenuacion_total.toFixed(2)} dB</p>
         <p><strong>Sensibilidad del receptor (dBm):</strong> ${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm</p>
         `;
+
+        // Add the new "Estado de la red" label here
         if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
-            html += `<p class="text-success"><strong>Estado del Enlace:</strong> OPERACIONAL (Potencia recibida >= Sensibilidad)</p>`;
+            html += `<p><strong>Estado de la red:</strong> <span class="text-success">OPERACIONAL</span></p>`;
         } else {
-            html += `<p class="text-danger"><strong>Estado del Enlace:</strong> NO OPERACIONAL (Potencia recibida < Sensibilidad)</p>`;
+            html += `<p><strong>Estado de la red:</strong> <span class="text-danger">NO OPERACIONAL</span></p>`;
+        }
+
+        // Existing detailed link status
+        if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
+            html += `<p class="text-success"><strong>Estado del Enlace:</strong> ¡Éxitoso! La potencia de la señal recibida (${resultados.potencia_final_dbm.toFixed(2)} dBm) es mayor o igual a la sensibilidad del receptor (${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm).</p>`;
+        } else {
+            const missing_dbm = resultados.sensibilidad_receptor_dbm - resultados.potencia_final_dbm;
+            html += `<p class="text-danger"><strong>Estado del Enlace:</strong> Advertencia: La potencia de la señal recibida (${resultados.potencia_final_dbm.toFixed(2)} dBm) es menor que la sensibilidad del receptor (${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm), faltan (${missing_dbm.toFixed(2)} dBm)</p>`;
         }
         document.getElementById('resultados-container').innerHTML = html;
 
@@ -905,8 +913,8 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
             }
             
             // Initial render of Plotly graphs with data from Flask
-            const initialPlotDbmData = {{ initial_graph_dbm | tojson }};
-            const initialPlotLinearData = {{ initial_graph_linear | tojson }};
+            const initialPlotDbmData = JSON.parse('{{ initial_graph_dbm | tojson | safe }}');
+            const initialPlotLinearData = JSON.parse('{{ initial_graph_linear | tojson | safe }}');
 
             if (initialPlotDbmData && initialPlotDbmData.data && initialPlotDbmData.layout) {
                 Plotly.newPlot('plotly-graph-dbm', initialPlotDbmData.data, initialPlotDbmData.layout);
