@@ -7,10 +7,6 @@ __pycache__/
 venv/
 env/
 
-# Archivos de Docker
-*.tar
-flask-app.tar
-
 
 # Archivos de configuración del sistema
 *.DS_Store
