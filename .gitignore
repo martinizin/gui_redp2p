@@ -1,0 +1,27 @@
+# Archivos de Python
+*.pyc
+*.pyo
+__pycache__/
+
+# Entorno virtual
+venv/
+env/
+
+# Archivos de Docker
+*.tar
+flask-app.tar
+
+
+# Archivos de configuración del sistema
+*.DS_Store
+Thumbs.db
+
+# Archivos de logs
+*.log
+
+# Archivos de dependencias del sistema
+node_modules/
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
