@@ -182,6 +182,13 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     sensibilidad_receptor_watts = db2lin(sensibilidad_receptor_dbm)
     initial_power_watts = db2lin(tx_power_dbm)
 
+    # Convert power history from Watts. User wants to adapt from matplotlib example.
+    # Matplotlib example implies a /1000 scaling for sensitivity if axis is "mW" and base is Watts.
+    # And a label format like f'{value_in_watts:.2e} (MiliWatts)'
+    # For consistency, main power data also scaled by /1000.
+    power_history_scaled = [p / 1000 for p in power_history_linear] # Was p / 100
+    sensibilidad_receptor_scaled_for_plot = sensibilidad_receptor_watts / 1000 # Was sensibilidad_receptor_watts / 100
+
     # Asegurar que todos los historiales tengan la misma longitud que longitud_acumulada
     # Esto es importante si los eventos de pérdida de conector no incrementan la longitud
     # y queremos que cada punto de datos tenga una coordenada x correspondiente.
@@ -190,25 +197,27 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     # Esto maneja los puntos verticales en las gráficas debido a pérdidas instantáneas (conectores).
     unique_lengths_map = {}
     for i, l in enumerate(longitud_acumulada):
-        unique_lengths_map[round(l, 5)] = power_history_linear[i]
+        unique_lengths_map[round(l, 5)] = power_history_scaled[i] # Use scaled history
     
     sorted_unique_lengths = sorted(unique_lengths_map.keys())
-    unique_power_history_linear = [unique_lengths_map[l] for l in sorted_unique_lengths]
+    unique_power_history_scaled = [unique_lengths_map[l] for l in sorted_unique_lengths] # Use scaled history
 
 
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
         x=sorted_unique_lengths,
-        y=unique_power_history_linear,
+        y=unique_power_history_scaled, # Use scaled data for y-axis
         mode='lines+markers',
-        name='Potencia (Watts)'
+        name='Potencia (mW)' # Update label
     ))
 
     fig.add_hline(
-        y=sensibilidad_receptor_watts,
+        y=sensibilidad_receptor_scaled_for_plot, # Use scaled sensitivity for line position
         line_dash="dash",
-        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_watts:.2e} W",
+        # Annotation text based on user's f'Receiver sensitivity: {sensitivity_linear_watts:.2e} (MiliWatts)'
+        # This means displaying the original Watt value in the text, then "mW".
+        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_watts:.2e} mW", # Update annotation text
         annotation_position="bottom right",
         line_color='red'
     )
@@ -216,12 +225,15 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     fig.update_layout(
         title="Potencia de Salida (Lineal) vs. Longitud",
         xaxis_title="Longitud acumulada de la fibra (km)",
-        yaxis_title="Potencia de la señal (Watts)",
-        yaxis_type="linear", # Puede ser 'log' si se prefiere para Watts
+        yaxis_title="Potencia de la señal (mW)", # Update y-axis title
+        yaxis_type="linear", 
         legend_title_text='Leyenda',
-        height=500  # Altura del gráfico
+        height=500
     )
-    return fig.to_dict() # Usar to_dict() para que sea serializable a JSON directamente
+    # Plotly's autorange should handle the new mW scale well.
+    # If specific range adjustments are needed later, they can be added to yaxis layout:
+    # yaxis_range=[min_val_mw, max_val_mw] 
+    return fig.to_dict()
 
 # --- Nueva función para graficar con Plotly (dBm) ---
 def graficar_potencia_plotly_dbm(longitud_acumulada, power_history_dbm, sensibilidad_receptor_dbm, tx_power_dbm):

@@ -14,60 +14,61 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body {
-            font-family: Arial, Helvetica, sans-serif; /* Clean sans-serif font */
-            background-color: #f0f2f5; /* Light gray background */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern UI font stack */
+            background-color: #eef1f5; /* Slightly cooler light gray */
             margin: 0;
-            padding-top: 20px; /* Add some padding at the top */
+            padding-top: 15px; 
             color: #333; /* Default text color */
         }
 
         h1, h3, h5 {
-            color: #2c3e50; /* Darker blue-gray for headings */
+            color: #343a40; /* Darker, more standard heading color */
         }
         h1 {
             font-weight: 600;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px; /* Slightly less margin */
         }
         h3 {
             font-weight: 500;
-            margin-top: 20px;
+            margin-top: 25px; 
             margin-bottom: 15px;
             border-bottom: 1px solid #dee2e6;
             padding-bottom: 10px;
         }
         h5 {
             font-weight: 500;
-            color: #34495e; /* Slightly lighter blue-gray for sub-headings */
+            color: #495057; 
         }
 
-        /* Contenedor principal mejorado */
+        /* Contenedor principal para resultados y gráficas */
         .container-main {
-            max-width: 800px; /* Slightly wider for better content layout */
-            margin: 20px auto;
-            padding: 25px;
-            background-color: #ffffff; /* White background for content */
+            max-width: 900px; 
+            margin: 20px auto; 
+            padding: 20px;
+            background-color: #ffffff; 
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Enhanced shadow */
         }
 
         /* Network visualization container */
         #red {
-            height: 450px; /* Adjusted height */
+            height: 480px; /* Slightly taller */
             width: 100%; 
-            border: 1px solid #ced4da; /* Lighter border */
-            background-color: #fdfdfd; /* Very light off-white */
-            border-radius: 8px;
-            margin-top: 0; /* Remove top margin if container-main provides it */
+            border: 1px solid #dee2e6; /* Consistent border color */
+            background-color: #ffffff; 
+            border-radius: 6px; /* Consistent radius */
+            margin-top: 0; 
             box-sizing: border-box;
+            position: relative; /* For absolute positioning of controls inside */
         }
         
-        /* Button styling */
+        /* Button styling (general, can be overridden) */
         .btn {
             border-radius: 5px;
             padding: 10px 20px;
             font-weight: 500;
-            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
         }
         .btn-primary {
             background-color: #007bff;
@@ -85,9 +86,10 @@
             background-color: #1e7e34;
             border-color: #1e7e34;
         }
-        .calulos-button {
-            display: block; /* Make it block to center it */
-            margin: 20px auto; /* Center the main calculation button */
+        .calulos-button { /* Class for the main calculation button */
+            padding: 10px 24px; 
+            font-size: 1.05rem;
+            font-weight: 500;
         }
 
         /* Form styling */
@@ -104,10 +106,11 @@
             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
         
-        /* Results container */
-        #resultados-container p {
-            margin-bottom: 0.75rem;
-            line-height: 1.6;
+        /* Results container text styling */
+        #resultados-container {
+            width: 100%; /* Makes the container fill the width of its parent */
+            padding-left: 15px; /* Add some padding if container-fluid is used */
+            padding-right: 15px; /* Add some padding if container-fluid is used */
         }
         #resultados-container strong {
             color: #2c3e50;
@@ -116,7 +119,7 @@
         /* Tooltip custom styling */
         .tooltip-custom {
             position: fixed; 
-            z-index: 10000; /* Ensure it's on top of everything */
+            z-index: 10000; 
             pointer-events: none;
             user-select: none;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
@@ -125,11 +128,11 @@
             border-radius: 6px;
             background: #fff;
             border: 1px solid #eee;
-            opacity: 0.95; /* Slightly more opaque */
+            opacity: 0.95; 
             transition: opacity 0.2s ease-in-out;
         }
         .tooltip-custom strong {
-            color: #007bff; /* Primary color for keys in tooltip */
+            color: #007bff; 
         }
 
         /* Modal styling */
@@ -138,7 +141,7 @@
             box-shadow: 0 5px 15px rgba(0,0,0,.5);
         }
         .modal-header {
-            background-color: #f8f9fa; /* Light header for modal */
+            background-color: #f8f9fa; 
             border-bottom: 1px solid #dee2e6;
             color: #2c3e50;
         }
@@ -146,23 +149,156 @@
             font-weight: 500;
         }
 
-        /* Center the network container if it's not full width conceptually */
+        /* Wrapper for the Vis.js canvas and its overlay controls */
         #network-container-wrapper {
-            width: 100%; /* Full screen width */
-            padding: 20px;
+            height: 500px;
+            width: 100%;
+            padding: 0; /* Padding now handled by network-column */
+            background-color: transparent; /* Parent network-column provides background */
+            box-shadow: none; /* Parent network-column provides shadow */
+            margin-bottom: 15px; /* Space before "Realizar Calculos" button */
+            position: relative; 
+        }
+        
+        /* Styling for the main columns */
+        .col-md-8, .col-md-4 {
+            padding-left: 8px; /* Tighter gutters */
+            padding-right: 8px;
+        }
+        /* Specific styling for the left column containing the network */
+        .network-column { 
             background-color: #ffffff;
-            /* border-radius: 8px; */ /* Remove radius if it's truly edge-to-edge */
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
-            box-sizing: border-box; /* Include padding in width calculation */
-            position: relative; /* For positioning reset button inside */
+            padding: 15px; /* Internal padding for the column */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px; /* Overall bottom margin for this column */
         }
 
+        /* Custom Network Controls (Zoom, Fit) - Pan arrows removed */
+        #custom-network-controls {
+            position: absolute;
+            top: 10px; 
+            left: 10px;
+            z-index: 100; 
+            background-color: rgba(248, 249, 250, 0.92); 
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            display: flex;
+            /* flex-direction: column; /* Not needed if only one group */
+            gap: 4px; /* Gap between buttons if in a single row/group */
+        }
+        /* #custom-network-controls .control-group { 
+            display: flex; Removed as pan arrows group is gone 
+            gap: 4px;
+        } */
+        #custom-network-controls button {
+            min-width: 36px; 
+            height: 36px;
+            line-height: 1; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 8px; 
+            font-size: 1rem; 
+            font-weight: 500; 
+            text-align: center;
+            border: 1px solid #ced4da;
+            background-color: #ffffff;
+            color: #495057;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        #custom-network-controls button:hover {
+            background-color: #f8f9fa; 
+            border-color: #adb5bd;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); 
+        }
+        
+
+        /* Reset Layout Button */
         #resetLayoutButton {
             position: absolute;
-            top: 25px;
-            right: 30px;
-            z-index: 10; /* Ensure it's above the vis.js canvas elements */
+            top: 10px; /* Match custom controls */
+            right: 10px;
+            z-index: 100;
+        }
+        #resetLayoutButton.btn-light { 
+            background-color: #f8f9fa;
+            border-color: #ced4da;
+            color: #212529;
+            height: 36px; /* Match custom controls height */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px; 
+        }
+        #resetLayoutButton.btn-light:hover {
+            background-color: #e2e6ea;
+            border-color: #dae0e5;
+        }
+       
+
+
+        /* Right Panel: Span Configuration - Made smaller */
+        #span-configuration-panel {
+            background-color: #ffffff; 
+            padding: 15px; /* Reduced padding */
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            max-height: 548px;
+         
+            /* max-width: 300px; /* Optional: uncomment if still too wide */
+            /* margin-left: auto; /* Optional: if using max-width and col structure allows */
+            /* margin-right: auto; /* Optional: if using max-width and col structure allows */
+        }
+        #span-configuration-panel h5 {
+            margin-top: 0;
+            font-size: 1.1rem; /* Slightly smaller title */
+            color: #343a40; 
+            padding-bottom: 8px; /* Reduced padding */
+            margin-bottom: 12px; /* Reduced margin */
+            border-bottom: 1px solid #dee2e6;
+            height: 40px;
+        }
+        #span-configuration-panel .form-label {
+            margin-bottom: .3rem; /* Tighter label margin */
+            font-size: 0.9rem; /* Smaller label font */
+            font-weight: 500;
+            color: #495057;
+        }
+        #span-configuration-panel .form-select,
+        #span-configuration-panel .form-control { 
+            margin-bottom: 8px; /* Tighter control margin */
+            font-size: 0.9rem; /* Smaller font in controls */
+            height: 40px;
+        }
+        #span-configuration-panel #saveFiberSpans {
+            font-size: 0.85rem; /* Smaller button font */
+            padding: 0.4rem 0.8rem; /* Smaller button padding */
+        }
+
+        /* "Realizar Calculos" Button Container */
+        .realizar-calculos-container {
+            text-align: center;
+            padding: 10px 0 0 0; 
+            /* This class is now on a div that might be directly in container-fluid */
+            /* Adding margin-bottom here if it's moved above results */
+            margin-bottom: 20px; 
+        }
+        
+        /* Plotly Graph Styling */
+        #plotly-graph-dbm, #plotly-graph-linear {
+            min-height: 380px; 
+            width: 100%;
+            background-color: #fcfcfc; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 6px;
+            margin-top: 10px; 
+        }
+        .container-main h3 + .row { /* Space between H3 and first graph row */
+            margin-top: 5px;
         }
 
     </style>
@@ -173,49 +309,74 @@
         <h1>Simulación de Red de Fibra Óptica</h1>
     </div>
 
-    <!-- Envoltura para el contenedor de la red - NOW FULL WIDTH -->
-    <div id="network-container-wrapper">
-         <div id="red"></div>
-         <button id="resetLayoutButton" class="btn btn-secondary btn-sm mt-2 ms-2">Restablecer Diseño</button>
+    <div class="container-fluid">
+        <div class="row align-items-stretch">
+            <!-- Columna de la Red (Izquierda) -->
+            <div class="col-md-9 network-column h-125">
+                <div id="network-container-wrapper">
+                    <div id="custom-network-controls"> 
+                        <!-- Pan arrows group removed -->
+                        <!-- <div class="control-group">
+                            <button id="panUpBtn" title="Pan Up">&uarr;</button>
+                            <button id="panDownBtn" title="Pan Down">&darr;</button>
+                            <button id="panLeftBtn" title="Pan Left">&larr;</button>
+                            <button id="panRightBtn" title="Pan Right">&rarr;</button>
+                        </div> -->
+                        
+                    </div>
+                    <div id="red"></div>
+                    <button id="resetLayoutButton" class="btn btn-light btn-sm" title="Restablecer Diseño"> 
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.19a.25.25 0 0 0 0 .384l2.36 1.848A.25.25 0 0 0 8 4.466"/>
+                        </svg>
+                        <span style="margin-left: 5px;">Restablecer</span>
+                    </button> 
+                </div>
+                <!-- "Realizar Calculos" button MOVING FROM HERE -->
+            </div>
+
+            <!-- Columna de Controles y Formularios (Derecha) -->
+            <div class="col-md-3">
+                <div id="span-configuration-panel" class="p-10 bg-light border rounded h-100 mt-20">
+                    <h5>Configuración de Tramos</h5>
+                    <div class="mb-3">
+                        <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra:</label>
+                        <select id="fiberSpanSelector" class="form-select">
+                            <option value="1" selected>1 Tramo</option>
+                            <option value="2">2 Tramos</option>
+                            <option value="3">3 Tramos</option>
+                            <option value="4">4 Tramos</option>
+                        </select>
+                    </div>
+                    <button id="saveFiberSpans" class="btn btn-primary mt-2 w-100">Actualizar N° de Tramos de red</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Contenedor principal para formulario y resultados -->
-    <div class="container-main">
-        <!-- 1. FORMULARIO PARA TRAMOS DE FIBRA -->
-        <div class="mb-3">
-            <label for="fiberSpanSelector" class="form-label">Número de Tramos de Fibra</label>
-            <select id="fiberSpanSelector" class="form-select">
-                <option value="1" selected>1 Tramo</option>
-                <option value="2">2 Tramos</option>
-                <option value="3">3 Tramos</option>
-                <option value="4">4 Tramos</option>
-            </select>
+    <!-- Contenedor principal para resultados (debajo de la red y controles) -->
+    <!-- Changed to container-fluid for full width -->
+    <div class="container-fluid">
+        <!-- "Realizar Calculos" button MOVED TO HERE -->
+        <div class="realizar-calculos-container" style="text-align: center; margin-bottom: 20px;">
+            <button class="calulos-button btn btn-success btn-lg">Realizar Cálculos</button>
         </div>
-        <!-- Formulario para ingresar el valor de longitud del tramo -->
-        <div id="fiberSpanFormContainer" class="mb-3">
-            <h5>Longitudes de los Tramos de Fibra (km)</h5>
-            <form id="fiberSpanForm">
-                <!-- Se agregan en función del número seleccionado -->
-            </form>
-            <button id="saveFiberSpans" class="btn btn-primary mt-2">Guardar Tramos y Actualizar Red</button>
-        </div>
-        <button class="calulos-button btn btn-success mt-3">Realizar Cálculos</button>
-
         <!-- 2. RESULTADOS INICIALES -->
         <div id="resultados-container" class="mt-4"></div>
 
-        <!-- Contenedor para gráficas Plotly -->
-        <div class="container-main mt-4">
+        <!-- Contenedor para gráficas Plotly, also making this container-fluid -->
+        <div class="container-fluid mt-4">
             <h3>Gráficas de Potencia vs Longitud</h3>
             <div class="row">
-                <div class="col-md-12">
+                <div class="col-md-10 mx-auto">
                     <h5>Potencia (dBm)</h5>
                     <div id="plotly-graph-dbm"></div>
                 </div>
             </div>
             <div class="row mt-3">
-                <div class="col-md-12">
-                    <h5>Potencia (Lineal - Watts)</h5>
+                <div class="col-md-10 mx-auto">
+                    <h5>Potencia (Lineal - mili Watts)</h5>
                     <div id="plotly-graph-linear"></div>
                 </div>
             </div>
@@ -284,6 +445,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+
+function dbmToMw(dbm) {
+    return Math.pow(10, parseFloat(dbm) / 10);
+}
+
+function mwToDbm(mw) {
+    const mwFloat = parseFloat(mw);
+    if (mwFloat <= 0) { // Power must be > 0 for log
+        // Return a very small dBm value or handle as an error state
+        // For example, -100 dBm is 1e-10 mW, effectively zero for many practical purposes
+        return -100; // Or handle as an error, e.g., throw new Error("Power in mW must be positive.");
+    }
+    return 10 * Math.log10(mwFloat);
+}
+
 // Global Vis.js datasets
 let nodos = new vis.DataSet([]);
 let enlaces = new vis.DataSet([]);
@@ -291,7 +467,10 @@ let red = null; // network instance
 
 // Global parameters (editable via UI)
 let globalTxPowerDbm = 30.0;
+let globalDisplayTxPowerValue = 30.0; // Persists user's last entered display value for Tx
+let globalDisplayTxPowerUnit = 'dBm';   // Persists user's last entered display unit for Tx
 let globalReceiverSensitivityDbm = 14.0;
+let persistentSpanParams = {}; // Added for durable span parameters
 
 
 document.querySelector('.calulos-button').addEventListener('click', function () {
@@ -352,14 +531,24 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
         <p><strong>Longitud Total Acumulada de la Red:</strong> ${resultados.longitud_total.toFixed(2)} km</p>
         <p><strong>Potencia de la señal inicial (dBm):</strong> ${resultados.potencia_inicial_dbm.toFixed(2)} dBm</p>
         <p><strong>Potencia de la señal recibida (dBm):</strong> ${resultados.potencia_final_dbm.toFixed(2)} dBm</p>
-        <p><strong>Potencia de la señal recibida (mW):</strong> ${(Math.pow(10, resultados.potencia_final_dbm / 10)).toExponential(2)} mW</p>
+        <p><strong>Potencia de la señal recibida (mW):</strong> ${(Math.pow(10, resultados.potencia_final_dbm / 10)).toFixed(2)} mW</p>
         <p><strong>Atenuación total simulada (dB):</strong> ${resultados.atenuacion_total.toFixed(2)} dB</p>
         <p><strong>Sensibilidad del receptor (dBm):</strong> ${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm</p>
         `;
+
+        // Add the new "Estado de la red" label here
         if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
-            html += `<p class="text-success"><strong>Estado del Enlace:</strong> OPERACIONAL (Potencia recibida >= Sensibilidad)</p>`;
+            html += `<p><strong>Estado de la red:</strong> <span class="text-success">OPERACIONAL</span></p>`;
         } else {
-            html += `<p class="text-danger"><strong>Estado del Enlace:</strong> NO OPERACIONAL (Potencia recibida < Sensibilidad)</p>`;
+            html += `<p><strong>Estado de la red:</strong> <span class="text-danger">NO OPERACIONAL</span></p>`;
+        }
+
+        // Existing detailed link status
+        if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
+            html += `<p class="text-success"><strong>Estado del Enlace:</strong> ¡Éxitoso! La potencia de la señal recibida (${resultados.potencia_final_dbm.toFixed(2)} dBm) es mayor o igual a la sensibilidad del receptor (${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm).</p>`;
+        } else {
+            const missing_dbm = resultados.sensibilidad_receptor_dbm - resultados.potencia_final_dbm;
+            html += `<p class="text-danger"><strong>Estado del Enlace:</strong> Advertencia: La potencia de la señal recibida (${resultados.potencia_final_dbm.toFixed(2)} dBm) es menor que la sensibilidad del receptor (${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm), faltan (${missing_dbm.toFixed(2)} dBm)</p>`;
         }
         document.getElementById('resultados-container').innerHTML = html;
 
@@ -400,10 +589,6 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
 
             red = new vis.Network(container, { nodes: nodos, edges: enlaces }, opciones);
 
-            // Initial network drawing based on selected spans (or default 1)
-            const initialSpans = parseInt(document.getElementById('fiberSpanSelector').value);
-            generateFiberSpanForm(initialSpans); // This also calls buildNetworkFromForm
-
             // Tooltip and click logic (mostly unchanged, but ensure params are handled well)
             let selectedElement = null;
             let tooltip;
@@ -413,9 +598,8 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                 const nodeId = event.node;
                 const nodeData = nodos.get(nodeId);
 
-                if (!nodeData || !nodeData.parametros) {
-                    // console.error('Node data or parameters not found for hover');
-                    return; // Gracefully handle nodes without params if any
+                if (!nodeData) { // Simplified check, specific content handled below
+                    return;
                 }
 
                 tooltip = document.createElement('div');
@@ -423,13 +607,18 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
 
                 let tooltipContent = `<strong>${nodeData.label}</strong><br>`;
                 if (nodeData.id === 1) { // Transmisor
-                    tooltipContent += `<strong>Potencia:</strong> ${nodeData.potencia} ${nodeData.unidad_potencia}<br>`;
+                    // Use displayPotenciaValue and displayPotenciaUnit for tooltip
+                    const displayVal = nodeData.displayPotenciaValue !== undefined ? nodeData.displayPotenciaValue : nodeData.potencia;
+                    const displayUnit = nodeData.displayPotenciaUnit || 'dBm'; // Default to dBm if not set
+                    tooltipContent += `<strong>Potencia:</strong> ${displayVal} ${displayUnit}<br>`;
                 } else if (nodeData.id === 3) { // Receptor
                     tooltipContent += `<strong>Sensibilidad:</strong> ${nodeData.sensibilidad_receptor_dbm} dBm<br>`;
                 }
-                // Generic parameters
-                for (const key in nodeData.parametros) {
-                    tooltipContent += `<strong>${key.replace(/_/g, ' ')}:</strong> ${nodeData.parametros[key]}<br>`;
+                // Generic parameters (if nodeData.parametros exists)
+                if (nodeData.parametros) {
+                    for (const key in nodeData.parametros) {
+                        tooltipContent += `<strong>${key.replace(/_/g, ' ')}:</strong> ${nodeData.parametros[key]}<br>`;
+                    }
                 }
                 tooltip.innerHTML = tooltipContent;
 
@@ -529,14 +718,33 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                     // document.getElementById('nodeLabel').value = nodeData.label || ''; // Handled by specific cases
 
                     if (nodeData.id === 1) { // Transmisor
-                        document.getElementById('editNodeModalLabel').innerText = 'Editar Transmisor';
-                        additionalParamsDiv.innerHTML += `
+                        document.getElementById('editNodeModalLabel').innerText = 'Editar Transmisor (Edit Transmitter)';
+                        
+                        // Use displayValue and displayUnit if available, otherwise default to potencia (dBm)
+                        const displayValue = nodeData.displayPotenciaValue !== undefined ? nodeData.displayPotenciaValue : nodeData.potencia;
+                        const displayUnit = nodeData.displayPotenciaUnit || 'dBm';
+
+                        const selectedDbm = displayUnit === 'dBm' ? 'selected' : '';
+                        const selectedMw = displayUnit === 'mW' ? 'selected' : '';
+
+                        additionalParamsDiv.innerHTML = `
                         <div class="mb-3">
-                            <label for="nodePotenciaTx" class="form-label">Potencia (potencia, dBm)</label>
-                            <input type="number" step="0.01" class="form-control" id="nodePotenciaTx" name="potencia" value="${nodeData.potencia || globalTxPowerDbm}">
+                            <label for="nodePotenciaTxValue" class="form-label">Potencia (Power)</label>
+                            <div class="input-group">
+                                <input type="number" step="any" class="form-control" id="nodePotenciaTxValue" name="potenciaValue" value="${displayValue}">
+                                <select class="form-select" id="nodePotenciaTxUnit" style="max-width: 85px;">
+                                    <option value="dBm" ${selectedDbm}>dBm</option>
+                                    <option value="mW" ${selectedMw}>mW</option>
+                                </select>
+                            </div>
                         </div>`;
+
+                        // Listener for unit change is removed as per new requirement.
+                        // The numerical value in the input field will not change when units are switched.
+                        // Conversion happens only at the time of saving.
+
                     } else if (nodeData.id === 3) { // Receptor
-                        document.getElementById('editNodeModalLabel').innerText = 'Editar Receptor';
+                        document.getElementById('editNodeModalLabel').innerText = 'Editar Receptor (Edit Receiver)';
                          additionalParamsDiv.innerHTML += `
                         <div class="mb-3">
                             <label for="nodeSensibilidadRx" class="form-label">Sensibilidad del Receptor (sensibilidad_receptor_dbm, dBm)</label>
@@ -559,7 +767,7 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
 
                     // Fiber specific parameters with updated bilingual labels
                     const fiberParamsConfig = {
-                        // 'length_stretch': { label: 'Longitud (length_stretch)', unit: ' (km)' }, // Still removed from modal
+                        'length_stretch': { label: 'Longitud del Tramo (length_stretch)', unit: ' (km)' }, // Re-added for modal editing
                         'loss_coef': { label: 'Coeficiente de Pérdida (loss_coef)', unit: ' (dB/km)' },
                         'att_in': { label: 'Atenuación Interna (att_in)', unit: ' (dB)' },
                         'con_in': { label: 'Pérdida Conector Entrada (con_in)', unit: ' (dB)' },
@@ -593,38 +801,104 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                 if (!selectedElement) return;
 
                 const form = document.getElementById('editNodeForm');
-                const inputs = form.querySelectorAll('#additionalParams input'); // Get inputs from the additionalParams div
+                const inputs = form.querySelectorAll('#additionalParams input');
 
                 if (selectedElement.type === 'node') {
                     const nodeData = selectedElement.data;
-                    // nodeData.label = document.getElementById('nodeLabel').value; // Label usually not changed for Tx/Rx
 
-                    inputs.forEach((input) => {
-                        if (input.name === 'potencia') { // For Tx
-                            nodeData.potencia = parseFloat(input.value);
-                            globalTxPowerDbm = nodeData.potencia; // Update global
-                        } else if (input.name === 'sensibilidad_receptor_dbm') { // For Rx
-                            nodeData.sensibilidad_receptor_dbm = parseFloat(input.value);
-                            globalReceiverSensitivityDbm = nodeData.sensibilidad_receptor_dbm; // Update global
+                    if (nodeData.id === 1) { // Transmisor
+                        const powerValueInput = form.querySelector('#nodePotenciaTxValue');
+                        const powerUnitSelect = form.querySelector('#nodePotenciaTxUnit');
+                        
+                        if (powerValueInput && powerUnitSelect) {
+                            const rawValueStr = powerValueInput.value;
+                            const selectedUnit = powerUnitSelect.value;
+                            let rawValueNum = parseFloat(rawValueStr);
+
+                            if (isNaN(rawValueNum)) {
+                                console.error("Invalid power value entered. Save cancelled.");
+                                alert("Valor de potencia inválido. No se guardaron los cambios.");
+                                return; 
+                            }
+
+                            // Store the exact entered value and unit for display purposes
+                            nodeData.displayPotenciaValue = rawValueNum;
+                            nodeData.displayPotenciaUnit = selectedUnit;
+                            // Also update the global display preferences
+                            globalDisplayTxPowerValue = rawValueNum;
+                            globalDisplayTxPowerUnit = selectedUnit;
+
+                            // Determine the value to store for calculations (in dBm)
+                            let powerToStoreInDbm = rawValueNum;
+                            if (selectedUnit === 'mW') {
+                                if (rawValueNum <= 0) {
+                                    alert("La potencia en mW debe ser un valor positivo. No se guardaron los cambios.");
+                                    console.error("Power in mW must be positive.");
+                                    return;
+                                }
+                                powerToStoreInDbm = mwToDbm(rawValueNum); 
+                            }
+                            
+                            if (isNaN(powerToStoreInDbm)) {
+                                console.error("Power conversion resulted in NaN. Save cancelled.");
+                                alert("Error en la conversión de potencia. No se guardaron los cambios.");
+                                return;
+                            }
+
+                            nodeData.potencia = parseFloat(powerToStoreInDbm.toFixed(2)); 
+                            globalTxPowerDbm = nodeData.potencia; 
                         } else {
-                            nodeData.parametros[input.name] = input.value; // For other generic params
+                            console.error("Could not find power input or unit selector for transmitter.");
                         }
-                    });
+                    } else if (nodeData.id === 3) { // Receptor
+                        const sensitivityInput = form.querySelector('#nodeSensibilidadRx');
+                        if (sensitivityInput) {
+                            const sensitivityValue = parseFloat(sensitivityInput.value);
+                             if (isNaN(sensitivityValue)) {
+                                console.error("Invalid sensitivity value entered. Save cancelled.");
+                                alert("Valor de sensibilidad inválido. No se guardaron los cambios.");
+                                return;
+                            }
+                            nodeData.sensibilidad_receptor_dbm = parseFloat(sensitivityValue.toFixed(2));
+                            globalReceiverSensitivityDbm = nodeData.sensibilidad_receptor_dbm;
+                        }
+                    }
                     nodos.update(nodeData);
 
                 } else if (selectedElement.type === 'edge') {
-                    const edgeData = selectedElement.data;
-                    // edgeData.parametros.label = document.getElementById('nodeLabel').value;
-
+                    const edgeData = selectedElement.data; // Contains the edge id
+                    // Update edgeData.parametros from modal inputs
                     inputs.forEach((input) => {
-                        // Ensure numeric values are stored as numbers
                         if (['length_stretch', 'loss_coef', 'att_in', 'con_in', 'con_out'].includes(input.name)) {
                             edgeData.parametros[input.name] = parseFloat(input.value);
                         } else {
-                            edgeData.parametros[input.name] = input.value;
+                            // For the label of the span itself, which is directly on editNodeForm
+                            if (input.id === 'nodeLabel' && input.name === 'label') {
+                                edgeData.parametros[input.name] = input.value;
+                            } else {
+                                edgeData.parametros[input.name] = input.value; // Other params if any
+                            }
                         }
                     });
-                    enlaces.update(edgeData);
+                     // Also update the main label from the dedicated field if it was shown for edges
+                    const mainLabelInput = document.getElementById('nodeLabel');
+                    if (mainLabelInput && mainLabelInput.closest('#modalNodeLabelContainer').style.display !== 'none'){
+                         edgeData.parametros.label = mainLabelInput.value;
+                    }
+
+                    enlaces.update(edgeData); // Update Vis.js dataset
+
+                    // Store these parameters persistently against the edge's ID
+                    if (edgeData.id) { // Ensure edge has an ID
+                        persistentSpanParams[edgeData.id] = {
+                            length_stretch: parseFloat(edgeData.parametros.length_stretch),
+                            loss_coef: parseFloat(edgeData.parametros.loss_coef),
+                            att_in: parseFloat(edgeData.parametros.att_in),
+                            con_in: parseFloat(edgeData.parametros.con_in),
+                            con_out: parseFloat(edgeData.parametros.con_out),
+                            label: edgeData.parametros.label // also persist custom label if any
+                        };
+                    }
                 }
 
                 const modal = bootstrap.Modal.getInstance(document.getElementById('editNodeModal'));
@@ -636,29 +910,13 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
 
             // Cambiar número de tramos de fibra
             document.getElementById('fiberSpanSelector').addEventListener('change', function (event) {
-                const numSpans = parseInt(event.target.value);
-                generateFiberSpanForm(numSpans); // This now calls buildNetworkFromForm
+                // const numSpans = parseInt(event.target.value);
+                // generateFiberSpanForm(numSpans); // REMOVED - No longer generating form here
             });
             
-            // Generar formulario dinámico para tramos de fibra (longitudes)
-            function generateFiberSpanForm(numSpans) {
-                const formContainer = document.getElementById('fiberSpanForm');
-                formContainer.innerHTML = ''; // Clear previous form
-
-                for (let i = 1; i <= numSpans; i++) {
-                    formContainer.innerHTML += `
-                    <div class="mb-3">
-                        <label for="fiberSpanLength${i}" class="form-label">Longitud Tramo ${i} (km)</label>
-                        <input type="number" step="0.1" class="form-control" id="fiberSpanLength${i}" name="fiberSpanLength${i}" value="23" />
-                    </div>`;
-                }
-                // After generating form, rebuild the visual network.
-                // The button "Guardar Tramos y Actualizar Red" will handle this.
-            }
-
-            // Guardar longitudes y actualizar red (called by button)
+            // Guardar (Aplicar) N° de Tramos y actualizar red (called by button)
             document.getElementById('saveFiberSpans').addEventListener('click', function () {
-                buildNetworkFromForm();
+                buildNetworkFromForm(); // Builds network with default lengths for spans
             });
 
             // Event listener for the new Reset Layout button
@@ -667,9 +925,8 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
             });
 
             function buildNetworkFromForm() {
-                const formContainer = document.getElementById('fiberSpanForm');
-                const lengthInputs = formContainer.querySelectorAll('input[name^="fiberSpanLength"]');
-                const numSpans = lengthInputs.length;
+                const numSpans = parseInt(document.getElementById('fiberSpanSelector').value);
+                const defaultLengthPerSpan = 23; // Default length in km for new spans
 
                 nodos.clear();
                 enlaces.clear();
@@ -678,8 +935,10 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                 // Emisor (Tx) - ID 1
                 nodos.add({
                     id: 1, label: 'Transmisor', x: 50, y: 100, shape: 'box',
-                    potencia: globalTxPowerDbm, // Use global
-                    unidad_potencia: 'dBm',
+                    potencia: globalTxPowerDbm, // Canonical dBm value
+                    displayPotenciaValue: globalDisplayTxPowerValue, // Use persisted display value
+                    displayPotenciaUnit: globalDisplayTxPowerUnit,   // Use persisted display unit
+                    unidad_potencia: 'dBm', // Retained for now, might be useful for generic tooltips if any
                     parametros: { 'descripcion': 'Fuente de la señal óptica' } // Basic param
                 });
                 nodeIds.push(1);
@@ -707,24 +966,33 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                 });
                 nodeIds.push(3);
                 
-                // Crear los enlaces (spans de fibra)
                 for (let i = 0; i < numSpans; i++) {
-                    const fiberLength = parseFloat(lengthInputs[i].value) || 23; // Default if input is bad
+                    const edgeId = 'edge_' + i; // Assign a predictable, consistent ID
+                    let currentFiberLength = defaultLengthPerSpan;
+
                     // Default parameters for each new fiber span
-                    // These can be edited later by clicking on the fiber span
+                    let edgeParams = {
+                        label: `Tramo de Fibra ${i + 1}`, // Default label
+                        length_stretch: defaultLengthPerSpan,
+                        loss_coef: 0.2,                  
+                        att_in: 0.0,                     
+                        con_in: 0.25,                    
+                        con_out: 0.30                    
+                    };
+
+                    // If persistent data exists for this edgeId, merge/override defaults
+                    if (persistentSpanParams[edgeId]) {
+                        // Merge ensures that if new default params are added later, they are included
+                        // and user-set values for the specific persisted keys take precedence.
+                        Object.assign(edgeParams, persistentSpanParams[edgeId]);
+                    }
+
                     enlaces.add({
-                        // id: `edge_${i+1}` // Optional: assign explicit ID
+                        id: edgeId, // Use the predictable ID
                         from: nodeIds[i],
                         to: nodeIds[i+1],
-                        label: '', // Visual label on canvas removed
-                        parametros: {
-                            label: `Tramo de Fibra ${i + 1}`, // Internal label for modal title & identification
-                            length_stretch: fiberLength,      // For calculation (km)
-                            loss_coef: 0.2,                   // dB/km
-                            att_in: 0.0,                      // dB
-                            con_in: 0.25,                     // dB
-                            con_out: 0.30                     // dB
-                        }
+                        label: '', // Visual label on canvas is kept empty
+                        parametros: edgeParams
                     });
                 }
                 red.setData({ nodes: nodos, edges: enlaces });
@@ -733,8 +1001,8 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
             }
             
             // Initial render of Plotly graphs with data from Flask
-            const initialPlotDbmData = {{ initial_graph_dbm | tojson }};
-            const initialPlotLinearData = {{ initial_graph_linear | tojson }};
+            const initialPlotDbmData = JSON.parse('{{ initial_graph_dbm | tojson | safe }}');
+            const initialPlotLinearData = JSON.parse('{{ initial_graph_linear | tojson | safe }}');
 
             if (initialPlotDbmData && initialPlotDbmData.data && initialPlotDbmData.layout) {
                 Plotly.newPlot('plotly-graph-dbm', initialPlotDbmData.data, initialPlotDbmData.layout);
@@ -752,15 +1020,13 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
 
 
             // Initial call to set up the form and network based on default selector (1 span)
-             generateFiberSpanForm(parseInt(document.getElementById('fiberSpanSelector').value));
+             // generateFiberSpanForm(parseInt(document.getElementById('fiberSpanSelector').value));
              buildNetworkFromForm(); // Draw initial network
         }
 
         // Initialize everything when the DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            dibujarRed();
-             // Optional: Trigger an initial calculation on page load if desired
-            // document.querySelector('.calulos-button').click();
+            dibujarRed(); // dibujarRed will call buildNetworkFromForm, which initializes with default spans/lengths
         });
     </script>
 </body>
