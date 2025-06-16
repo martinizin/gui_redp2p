@@ -1,0 +1,183 @@
+{
+  "elements": [
+    {
+      "uid": "trx Quito",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Quito",
+          "region": "Ecuador",
+          "latitude": -0.1807,
+          "longitude": -78.4678
+        }
+      }
+    },
+    {
+      "uid": "trx Guayaquil",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Guayaquil",
+          "region": "Ecuador",
+          "latitude": -2.1700,
+          "longitude": -79.9221
+        }
+      }
+    },
+    {
+      "uid": "trx Cuenca",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Cuenca",
+          "region": "Ecuador",
+          "latitude": -2.9006,
+          "longitude": -79.0040
+        }
+      }
+    },
+    {
+      "uid": "trx Manta",
+      "type": "Transceiver",
+        "metadata": {
+            "location": {
+            "city": "Manta",
+            "region": "Ecuador",
+            "latitude": -0.94937,
+            "longitude": -80.7313
+            }
+        }
+    },
+    {
+      "uid": "trx Ambato",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Ambato",
+          "region": "Ecuador",
+          "latitude": -1.2587,
+          "longitude": -78.6354
+        }
+      }
+    },
+    {
+      "uid": "trx Loja",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Loja",
+          "region": "Ecuador",
+          "latitude": -4.0044,
+          "longitude": -79.2042
+        }
+      }
+    },
+    {
+      "uid": "fiber (Quito → Guayaquil)",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "metadata": {
+        "location": {
+          "latitude": -1.17535,
+          "longitude": -79.1950
+        }
+      },
+      "params": {
+        "length": 240,
+        "length_units": "km",
+        "loss_coef": 0.22,
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      }
+    },
+    {
+      "uid": "fiber (Guayaquil → Cuenca)",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "metadata": {
+        "location": {
+          "latitude": -2.5353,
+          "longitude": -79.46305
+        }
+      },
+      "params": {
+        "length": 18,
+        "length_units": "km",
+        "loss_coef": 0.22,
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      }
+    },
+    {
+      "uid": "fiber (Cuenca → Ambato)",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "metadata": {
+        "location": {
+          "latitude": -2.0800,
+          "longitude": -78.8197
+        }
+      },
+      "params": {
+        "length": 450,
+        "length_units": "km",
+        "loss_coef": 0.22,
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      }
+    },
+    {
+      "uid": "fiber (Ambato → Loja)",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "metadata": {
+        "location": {
+          "latitude": -2.63155,
+          "longitude": -79.0198
+        }
+      },
+      "params": {
+        "length": 10,
+        "length_units": "km",
+        "loss_coef": 0.22,
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      }
+    },
+    {
+      "uid": "fiber (Loja → Manta)",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "metadata": {
+        "location": {
+          "latitude": -2.09255,
+          "longitude": -78.486
+        }
+      },
+      "params": {
+        "length": 599,
+        "length_units": "km",
+        "loss_coef": 0.22,
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      }
+    }
+  ],
+  "connections": [
+    { "from_node": "trx Quito", "to_node": "fiber (Quito → Guayaquil)" },
+    { "from_node": "fiber (Quito → Guayaquil)", "to_node": "trx Guayaquil" },
+    { "from_node": "trx Guayaquil", "to_node": "fiber (Guayaquil → Cuenca)" },
+    { "from_node": "fiber (Guayaquil → Cuenca)", "to_node": "trx Cuenca" },
+    { "from_node": "trx Cuenca", "to_node": "fiber (Cuenca → Ambato)" },
+    { "from_node": "fiber (Cuenca → Ambato)", "to_node": "trx Ambato" },
+    { "from_node": "trx Ambato", "to_node": "fiber (Ambato → Loja)" },
+    { "from_node": "fiber (Ambato → Loja)", "to_node": "trx Loja" },
+    { "from_node": "trx Loja", "to_node": "fiber (Loja → Manta)" },
+    { "from_node": "fiber (Loja → Manta)", "to_node": "trx Manta" }
+  ]
+}
