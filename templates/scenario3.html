@@ -1,16 +1,461 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escenario 03</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Topología de Red</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #topology-select {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+        h1 {
+            font-size: 1.2em;
+            margin: 0;
+        }
+        #upload-button {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            background-color: white;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
+    <div id="controls">
+        <h1>Visualización de Topología</h1>
+        <select id="topology-select"></select>
+        <input type="file" id="topology-upload" accept="application/json" style="display: none;" />
+        <button id="upload-button">Subir Archivo</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let markers = [];
+        let polylines = [];
+        let openInfoWindow = null;
+
+        // Inicializa el mapa
+        function inicializarMapa() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: { lat: -1.831239, lng: -78.183406 }, // Centro de Ecuador
+                zoom: 7
+            });
+
+            // Carga los nombres de las topologías y llena el selector
+            fetch('/get_topology_names')
+                .then(response => response.json())
+                .then(files => {
+                    const select = document.getElementById('topology-select');
+                    files.forEach(file => {
+                        const option = document.createElement('option');
+                        option.value = file;
+                        option.textContent = file.replace('.json', '');
+                        select.appendChild(option);
+                    });
+
+                    // Carga la topología inicial
+                    if (files.length > 0) {
+                        cargarTopologia(files[0]);
+                    }
+                });
+
+            // Agrega el detector de eventos de cambio al selector
+            document.getElementById('topology-select').addEventListener('change', (e) => {
+                cargarTopologia(e.target.value);
+            });
+
+            const uploadButton = document.getElementById('upload-button');
+            const fileInput = document.getElementById('topology-upload');
+
+            uploadButton.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.filename) {
+                        // Actualiza la lista de topologías
+                        fetch('/get_topology_names')
+                            .then(response => response.json())
+                            .then(files => {
+                                const select = document.getElementById('topology-select');
+                                select.innerHTML = ''; // Limpia las opciones existentes
+                                files.forEach(f => {
+                                    const option = document.createElement('option');
+                                    option.value = f;
+                                    option.textContent = f.replace('.json', '');
+                                    select.appendChild(option);
+                                });
+                                
+                                // Selecciona y carga la nueva topología
+                                select.value = data.filename;
+                                cargarTopologia(data.filename);
+                                fileInput.value = ''; // Reinicia el input del archivo
+                            });
+                    } else {
+                        alert('Falló la subida del archivo: ' + (data.error || 'Error desconocido'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al subir el archivo:', error);
+                    alert('Ocurrió un error durante la subida del archivo.');
+                });
+            });
+        }
+
+        function cargarTopologia(filename) {
+            fetch(`/get_topology?filename=${encodeURIComponent(filename)}`)
+                .then(response => response.json())
+                .then(data => dibujarTopologiaEnMapa(data))
+                .catch(error => console.error('Error cargando la topología:', error));
+        }
+
+        function dibujarTopologiaEnMapa(data) {
+            limpiarMapa();
+            const nodesMap = procesarNodos(data);
+            dibujarNodos(nodesMap);
+            dibujarEnlaces(data, nodesMap);
+        }
+
+        function procesarNodos(data) {
+            const nodesMap = {};
+            const elements = data.elements || [];
+            
+            elements.forEach(el => {
+                // Omite elementos que no son nodos de red o no tienen ubicación
+                if (el.type === "Fiber" || el.type === "fibre") return;
+                
+                const nodeId = normalizarIdNodo(el.uid);
+                const location = extraerUbicacion(el);
+                
+                if (location && location.lat && location.lng) {
+                    nodesMap[nodeId] = {
+                        id: nodeId,
+                        latitude: parseFloat(location.lat),
+                        longitude: parseFloat(location.lng),
+                        title: String(el.uid),
+                        type: el.type,
+                        city: location.city || el.metadata?.location?.city,
+                        raw: el
+                    };
+                }
+            });
+            return nodesMap;
+        }
+
+        function extraerUbicacion(element) {
+            if (element.metadata?.location) {
+                return {
+                    lat: element.metadata.location.latitude,
+                    lng: element.metadata.location.longitude,
+                    city: element.metadata.location.city
+                };
+            } else if (element.location) {
+                return {
+                    lat: element.location.latitude || element.location.lat,
+                    lng: element.location.longitude || element.location.lng,
+                    city: element.location.city
+                };
+            }
+            return null;
+        }
+
+        function dibujarNodos(nodesMap) {
+            Object.values(nodesMap).forEach(node => {
+                const marker = new google.maps.Marker({
+                    position: { lat: node.latitude, lng: node.longitude },
+                    map: map,
+                    title: node.title
+                });
+                markers.push(marker);
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: crearContenidoInfoNodo(node)
+                });
+
+                marker.addListener("click", () => {
+                    if (openInfoWindow) openInfoWindow.close();
+                    infoWindow.open(map, marker);
+                    openInfoWindow = infoWindow;
+                });
+            });
+        }
+
+        function dibujarEnlaces(data, nodesMap) {
+            const elements = data.elements || [];
+            const connections = data.connections || [];
+
+            if (connections.length === 0) return;
+
+            const elementsMap = new Map(elements.map(el => [normalizarIdNodo(el.uid), el]));
+            const adj = new Map();
+
+            connections.forEach(c => {
+                const from = normalizarIdNodo(c.from_node);
+                const to = normalizarIdNodo(c.to_node);
+                if (!adj.has(from)) adj.set(from, new Set());
+                if (!adj.has(to)) adj.set(to, new Set());
+                adj.get(from).add(to);
+                adj.get(to).add(from); // Tratar como no dirigido para encontrar el camino
+            });
+
+            const drawnLinks = new Set();
+
+            for (const startNodeId of Object.keys(nodesMap)) {
+                const q = [[startNodeId, [startNodeId]]];
+                const visitedInSearch = new Set([startNodeId]);
+
+                while (q.length > 0) {
+                    const [currentNodeId, path] = q.shift();
+
+                    if (!adj.has(currentNodeId)) continue;
+
+                    for (const neighborId of adj.get(currentNodeId)) {
+                        if (visitedInSearch.has(neighborId)) continue;
+                        
+                        if (nodesMap[neighborId]) { // Se encontró otro nodo con ubicación
+                            const linkKey = [startNodeId, neighborId].sort().join('->');
+                            if (drawnLinks.has(linkKey)) continue;
+                            
+                            visitedInSearch.add(neighborId);
+                            const newPath = [...path, neighborId];
+                            
+                            const startNode = nodesMap[startNodeId];
+                            const endNode = nodesMap[neighborId];
+
+                            let totalLength = 0;
+                            let hasFiber = false;
+
+                            for (const nodeId of newPath) {
+                                const element = elementsMap.get(nodeId);
+                                if (element && (element.type === 'Fiber' || element.type === 'fibre')) {
+                                    hasFiber = true;
+                                    if (element.params && element.params.length) {
+                                        totalLength += element.params.length;
+                                    }
+                                }
+                            }
+
+                            dibujarConexion(startNode, endNode, { color: hasFiber ? "#FF0000" : "#007bff", weight: 3 });
+                            drawnLinks.add(linkKey);
+
+                            if (hasFiber && totalLength > 0) {
+                                colocarAmplificadores(startNode, endNode, totalLength);
+                            }
+                        } else {
+                            visitedInSearch.add(neighborId);
+                            const newPath = [...path, neighborId];
+                            q.push([neighborId, newPath]);
+                        }
+                    }
+                }
+            }
+        }
+
+        function crearContenidodelEdfa(edfa) {
+            const style = 'style="margin: 0; padding: 2px 5px; font-family: monospace; font-size: 12px;"';
+            const opStyle = 'style="margin: 0; padding: 2px 5px 2px 20px; font-family: monospace; font-size: 12px;"';
+
+            let content = `<div style="background-color: #CD5C5C; color: white; padding: 5px; border-radius: 3px;">`;
+            content += `<p ${style}>(${edfa.coordinates.lat.toFixed(6)}°, ${edfa.coordinates.lng.toFixed(6)}°)</p>`;
+            content += `<p ${style}>uid: ${edfa.uid}</p>`;
+            content += `<p ${style}>type: ${edfa.type}</p>`;
+            content += `<p ${style}>type_variety: ${edfa.type_variety}</p>`;
+            content += `<p ${style}>operational:</p>`;
+            content += `<p ${opStyle}>gain_target: ${edfa.operational.gain_target.toFixed(1)}</p>`;
+            content += `<p ${opStyle}>delta_p: ${edfa.operational.delta_p.toFixed(1)}</p>`;
+            content += `<p ${opStyle}>tilt_target: ${edfa.operational.tilt_target}</p>`;
+            content += `<p ${opStyle}>out_voa: ${edfa.operational.out_voa}</p>`;
+            content += `</div>`;
+
+            return content;
+        }
+
+        function colocarAmplificadores(startNode, endNode, length) {
+            const numAmps = Math.floor(length / 150);
+            if (numAmps <= 0) return;
+
+            const startPoint = new google.maps.LatLng(startNode.latitude, startNode.longitude);
+            const endPoint = new google.maps.LatLng(endNode.latitude, endNode.longitude);
+
+            for (let i = 1; i <= numAmps; i++) {
+                const fraction = i / (numAmps + 1);
+                const ampPosition = google.maps.geometry.spherical.interpolate(startPoint, endPoint, fraction);
+
+                const edfaData = {
+                    uid: `Edfa_fiber(${startNode.title} → ${endNode.title})_(${i}/${numAmps})`,
+                    type: 'Edfa',
+                    type_variety: 'std_medium_gain',
+                    operational: {
+                        gain_target: 23.0,
+                        delta_p: 1.0,
+                        tilt_target: 0,
+                        out_voa: 0
+                    },
+                    coordinates: {
+                        lat: ampPosition.lat(),
+                        lng: ampPosition.lng()
+                    }
+                };
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: crearContenidodelEdfa(edfaData)
+                });
+
+                const ampMarker = new google.maps.Marker({
+                    position: ampPosition,
+                    map: map,
+                    title: `Amplificador en el enlace ${startNode.title} a ${endNode.title}`,
+                    icon: {
+                        path: 'M -5,0 0,-8 5,0 0,8 Z',
+                        scale: 1.5,
+                        fillColor: '#FF4500',
+                        fillOpacity: 1,
+                        strokeWeight: 1,
+                        strokeColor: '#8B0000'
+                    }
+                });
+                
+                ampMarker.addListener("click", () => {
+                    if (openInfoWindow) openInfoWindow.close();
+                    infoWindow.open(map, ampMarker);
+                    openInfoWindow = infoWindow;
+                });
+
+                markers.push(ampMarker);
+            }
+        }
+
+        function dibujarConexion(startNode, endNode, style) {
+            const path = [
+                { lat: startNode.latitude, lng: startNode.longitude },
+                { lat: endNode.latitude, lng: endNode.longitude }
+            ];
+
+            const line = new google.maps.Polyline({
+                path: path,
+                geodesic: true,
+                strokeColor: style.color || "#FF0000",
+                strokeOpacity: style.opacity || 1.0,
+                strokeWeight: style.weight || 2,
+                map: map
+            });
+            polylines.push(line);
+
+            const distance = haversine(
+                startNode.latitude, startNode.longitude,
+                endNode.latitude, endNode.longitude
+            );
+
+            const infoWindow = new google.maps.InfoWindow({
+                content: crearContenidoInfoEnlace(style, startNode, endNode, distance)
+            });
+
+            line.addListener("click", (event) => {
+                if (openInfoWindow) openInfoWindow.close();
+                infoWindow.setPosition(event.latLng || obtenerPuntoMedio(path[0], path[1]));
+                infoWindow.open(map);
+                openInfoWindow = infoWindow;
+            });
+        }
+        
+        function limpiarMapa() {
+            markers.forEach(marker => marker.setMap(null));
+            polylines.forEach(line => line.setMap(null));
+            markers = [];
+            polylines = [];
+            if (openInfoWindow) {
+                openInfoWindow.close();
+                openInfoWindow = null;
+            }
+        }
+        
+        function obtenerPuntoMedio(p1, p2) {
+            return {
+                lat: (p1.lat + p2.lat) / 2,
+                lng: (p1.lng + p2.lng) / 2
+            };
+        }
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function crearContenidoInfoNodo(node) {
+            let content = `<div><h3>${node.title}</h3>`;
+            if (node.city) content += `<p><strong>Ciudad:</strong> ${node.city}</p>`;
+            content += `<p><strong>Latitud:</strong> ${node.latitude.toFixed(4)}</p>`;
+            content += `<p><strong>Longitud:</strong> ${node.longitude.toFixed(4)}</p>`;
+            if (node.type) content += `<p><strong>Tipo:</strong> ${node.type}</p>`;
+            return content + "</div>";
+        }
+
+        function crearContenidoInfoEnlace(linkData, startNode, endNode, distance) {
+            return `<div>
+                <h3>Enlace</h3>
+                <p>De: ${startNode.title}<br>A: ${endNode.title}</p>
+                <p><strong>Distancia:</strong> ${distance.toFixed(2)} km</p>
+            </div>`;
+        }
+
+        function normalizarIdNodo(id) {
+            return String(id).trim();
+        }
+    </script>
+    
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=inicializarMapa&libraries=geometry"
+        async
+        defer
+    ></script>
     <div class="container mt-5">
-        <h1>Simulador de topologías de red</h1>
+        <h1>Simulador de topologías de red en google maps</h1>
         <p>Bienvenido al escenario 03</p>
         <a href="{{ url_for('index') }}" class="btn btn-primary">Regresar al escenario Principal</a>
     </div>
 </body>
-</html>
