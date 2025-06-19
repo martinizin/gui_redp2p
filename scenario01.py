@@ -1,7 +1,5 @@
 import numpy as np
-from gnpy.core.info import create_input_spectral_information
-from gnpy.core.elements import Fiber, Transceiver
-from gnpy.core.utils import watt2dbm, db2lin
+from gnpy.core.utils import db2lin
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
@@ -180,7 +178,6 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     Devuelve una figura de Plotly como un diccionario.
     """
     sensibilidad_receptor_watts = db2lin(sensibilidad_receptor_dbm)
-    initial_power_watts = db2lin(tx_power_dbm)
 
     # Convert power history from Watts. User wants to adapt from matplotlib example.
     # Matplotlib example implies a /1000 scaling for sensitivity if axis is "mW" and base is Watts.
@@ -334,5 +331,5 @@ def calcular_red(params):
         resultados['sensibilidad_receptor_dbm'],
         resultados['potencia_inicial_dbm']
     )
-
+        
     return resultados

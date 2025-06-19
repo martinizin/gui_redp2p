@@ -5,56 +5,192 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Topología de Red</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
         }
+        /* Main layout containers */
+        body {
+            padding-top: 80px; /* Space for fixed navigation */
+        }
+        #navigation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: white;
+            z-index: 1000;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Upload section container */
+        #upload-section {
+            background-color: white;
+            padding: 40px;
+            margin: 20px auto;
+            max-width: 1400px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+        }
+        #upload-section h2 {
+            color: #343a40;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: 500;
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        #controls h1 {
+            font-size: 1rem;
+            margin: 0;
+            color: #495057;
+            font-weight: 500;
+        }
+        
+        /* Map section container */
+        #map-section {
+            background-color: #f8f9fa;
+            padding: 10px 20px;
+            margin-top: 20px;
+        }
+        #map-container {
+            height: 75vh;
+            width: 100%;
+            max-width: 1400px;
+            min-height: 500px;
+            margin: 0 auto;
+            position: relative;
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transition: border-color 0.3s ease;
+            background-color: white;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding-top: 90px; /* More space for mobile navigation */
+            }
+            #upload-section {
+                margin: 5px;
+                padding: 15px;
+            }
+            #map-section {
+                padding: 20px 10px;
+            }
+            #map-container {
+                height: 60vh;
+                min-height: 400px;
+                border-radius: 8px;
+            }
+            #controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+        
+        #map-container.active {
+            border-color: #007bff;
+            box-shadow: 0 8px 25px rgba(0,123,255,0.3);
+        }
+        #zoom-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+            z-index: 1000;
+            display: none;
+        }
         #map {
             height: 100%;
             width: 100%;
         }
-        #controls {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 5;
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
         #topology-select {
-            padding: 5px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            background-color: white;
+            font-size: 0.95rem;
+            min-width: 200px;
         }
-        h1 {
-            font-size: 1.2em;
-            margin: 0;
+        #topology-select:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            outline: none;
         }
         #upload-button {
-            padding: 5px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
-            background-color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: white;
             cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        #upload-button:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
         }
     </style>
 </head>
 <body>
-    <div id="controls">
-        <h1>Visualización de Topología</h1>
-        <select id="topology-select"></select>
-        <input type="file" id="topology-upload" accept="application/json" style="display: none;" />
-        <button id="upload-button">Subir Archivo</button>
+    <div id="navigation">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 text-center">
+                    <h1 class="mb-3">Simulador de topologías de red en google maps</h1>
+                    <div class="btn-group" role="group" aria-label="Navigation">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Scenario 01</a>
+                        <a href="{{ url_for('scenario02') }}" class="btn btn-secondary">Scenario 02</a>
+                        <a href="{{ url_for('scenario03') }}" class="btn btn-primary">Scenario 03</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="map"></div>
+    <!-- Upload Section Container -->
+    <div id="upload-section">
+        <h2>Gestión de Topologías</h2>
+        <div id="controls">
+            <h1>Visualización de Topología</h1>
+            <select id="topology-select"></select>
+            <input type="file" id="topology-upload" accept="application/json" style="display: none;" />
+            <button id="upload-button">Subir Archivo</button>
+        </div>
+    </div>
+
+    <!-- Map Section Container -->
+    <div id="map-section">
+        <div id="map-container">
+            <div id="zoom-hint">Click map to enable zoom, or hold Ctrl while scrolling</div>
+            <div id="map"></div>
+        </div>
+    </div>
 
     <script>
         let map;
@@ -66,8 +202,61 @@
         function inicializarMapa() {
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: -1.831239, lng: -78.183406 }, // Centro de Ecuador
-                zoom: 7
+                zoom: 7,
+                scrollwheel: false, // Initially disabled
+                gestureHandling: 'greedy' // Allow panning and zooming with touch/mouse controls
             });
+
+            // Implement explicit interaction-based zoom control
+            const mapContainer = document.getElementById('map-container');
+            const zoomHint = document.getElementById('zoom-hint');
+            let mapIsActive = false;
+            
+            // Show hint on hover
+            mapContainer.addEventListener('mouseenter', function() {
+                if (!mapIsActive) {
+                    zoomHint.style.display = 'block';
+                }
+            });
+            
+            mapContainer.addEventListener('mouseleave', function() {
+                zoomHint.style.display = 'none';
+                if (mapIsActive) {
+                    mapIsActive = false;
+                    mapContainer.classList.remove('active');
+                    map.setOptions({ scrollwheel: false });
+                }
+            });
+            
+            // Enable map interaction when user clicks on the map
+            mapContainer.addEventListener('mousedown', function() {
+                mapIsActive = true;
+                mapContainer.classList.add('active');
+                zoomHint.style.display = 'none';
+                map.setOptions({ scrollwheel: true });
+            });
+            
+            // Disable map scrolling when clicking outside the map
+            document.addEventListener('click', function(e) {
+                if (!mapContainer.contains(e.target)) {
+                    mapIsActive = false;
+                    mapContainer.classList.remove('active');
+                    map.setOptions({ scrollwheel: false });
+                }
+            });
+            
+            // Handle scroll events with explicit control
+            mapContainer.addEventListener('wheel', function(e) {
+                // Allow map zoom only if map is active OR Ctrl key is held
+                if (mapIsActive || e.ctrlKey) {
+                    map.setOptions({ scrollwheel: true });
+                    e.preventDefault(); // Prevent page scroll
+                    e.stopPropagation();
+                } else {
+                    map.setOptions({ scrollwheel: false });
+                    // Allow normal page scrolling - do nothing to let event bubble up
+                }
+            }, { passive: false });
 
             // Carga los nombres de las topologías y llena el selector
             fetch('/get_topology_names')
@@ -453,9 +642,4 @@
         async
         defer
     ></script>
-    <div class="container mt-5">
-        <h1>Simulador de topologías de red en google maps</h1>
-        <p>Bienvenido al escenario 03</p>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Regresar al escenario Principal</a>
-    </div>
 </body>

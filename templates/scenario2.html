@@ -22,6 +22,11 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">Simulador Topologías de red punto a punto</h1>
+        <div class="text-center mb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Scenario 01</a>
+            <a href="{{ url_for('scenario02') }}" class="btn btn-primary">Scenario 02</a>
+            <a href="{{ url_for('scenario03') }}" class="btn btn-secondary">Scenario 03</a>
+        </div>
         <p>Suba un archivo <code>.json</code> para visualizar la topología de red.</p>
         
         <div class="card p-4 mb-4">
@@ -42,7 +47,7 @@
 
         <div id="plotly-graph" class="mt-4"></div>
 
-        <a href="{{ url_for('index') }}" class="btn btn-primary mt-4">Regresar al escenario Principal</a>
+
     </div>
 
     {% if graph_json %}

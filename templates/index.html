@@ -354,7 +354,7 @@
                             <option value="4">4 Tramos</option>
                         </select>
                     </div>
-                    <button id="saveFiberSpans" class="btn btn-primary mt-2 w-100">Actualizar N° de Tramos de red</button>
+                    <button id="saveFiberSpans" class="btn btn-primary mt-2 w-100">Actualizar N° de Tramos de Fibra</button>
                 </div>
             </div>
         </div>
@@ -664,7 +664,7 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                 const paramLabels = {
                     length_stretch: "Longitud del tramo de Fibra",
                     loss_coef: "Coeficiente de pérdida",
-                    att_in: "Atenuación interna",
+                    att_in: "Pérdidas de entrada",
                     con_in: "Pérdida del conector de entrada",
                     con_out: "Pérdida del conector de salida"
                 };
@@ -774,7 +774,7 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
                     const fiberParamsConfig = {
                         'length_stretch': { label: 'Longitud del Tramo (length_stretch)', unit: ' (km)' }, // Re-added for modal editing
                         'loss_coef': { label: 'Coeficiente de Pérdida (loss_coef)', unit: ' (dB/km)' },
-                        'att_in': { label: 'Atenuación Interna (att_in)', unit: ' (dB)' },
+                        'att_in': { label: 'Pérdidas de entrada (att_in)', unit: ' (dB)' },
                         'con_in': { label: 'Pérdida Conector Entrada (con_in)', unit: ' (dB)' },
                         'con_out': { label: 'Pérdida Conector Salida (con_out)', unit: ' (dB)' }
                     };

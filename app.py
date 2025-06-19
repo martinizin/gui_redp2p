@@ -42,10 +42,8 @@ def scenario02():
     if request.method == 'POST':
         if 'file' not in request.files:
             return render_template('scenario2.html', error="No se encontró el archivo")
-        
         file = request.files['file']
-        result = process_scenario02_data(file)
-        
+        result = process_scenario02_data(file) 
         if 'error' in result:
             return render_template('scenario2.html', error=result['error'])
         else:
@@ -93,8 +91,7 @@ def calcular():
     }
 
     resultados = calcular_red(params_for_calc)
-    # `resultados` now includes 'plot_dbm_plotly' and 'plot_linear_plotly'
-    
+    # `resultados` now includes 'plot_dbm_plotly' and 'plot_linear_plotly'  
     return jsonify(resultados)  # Send all results, including Plotly data, back to frontend
 
 if __name__ == '__main__':
