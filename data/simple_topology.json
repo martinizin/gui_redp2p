@@ -1,0 +1,80 @@
+{
+  "network_name": "Simple P2P Network",
+  "elements": [
+    {
+      "uid": "Transmitter",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Origin",
+          "region": "",
+          "latitude": 0,
+          "longitude": 0
+        }
+      }
+    },
+    {
+      "uid": "Amplifier",
+      "type": "Edfa",
+      "type_variety": "std_medium_gain",
+      "operational": {
+        "gain_target": 20,
+        "tilt_target": 0,
+        "out_voa": 0
+      },
+      "metadata": {
+        "location": {
+          "region": "",
+          "latitude": 1,
+          "longitude": 0
+        }
+      }
+    },
+    {
+      "uid": "Fiber_Link",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "params": {
+        "length": 120,
+        "loss_coef": 0.2,
+        "length_units": "km",
+        "att_in": 0,
+        "con_in": 0.5,
+        "con_out": 0.5
+      },
+      "metadata": {
+        "location": {
+          "region": "",
+          "latitude": 2,
+          "longitude": 0
+        }
+      }
+    },
+    {
+      "uid": "Receiver",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "city": "Destination",
+          "region": "",
+          "latitude": 3,
+          "longitude": 0
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "Transmitter",
+      "to_node": "Amplifier"
+    },
+    {
+      "from_node": "Amplifier",
+      "to_node": "Fiber_Link"
+    },
+    {
+      "from_node": "Fiber_Link",
+      "to_node": "Receiver"
+    }
+  ]
+} 

@@ -2,8 +2,8 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
 from scenario01 import calcular_red, obtener_topologia_datos
-from scenario02 import process_scenario02_data
-from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file
+from scenario02 import process_scenario02_data, update_scenario02_parameters, calculate_scenario02
+from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters
 
 # Load environment variables
 load_dotenv()
@@ -47,7 +47,9 @@ def scenario02():
         if 'error' in result:
             return render_template('scenario2.html', error=result['error'])
         else:
-            return render_template('scenario2.html', graph_json=result['graph_json'])
+            return render_template('scenario2.html', 
+                                 graph_json=result['graph_json'],
+                                 enhanced_data=result.get('enhanced_data'))
 
     return render_template('scenario2.html')
 
@@ -75,6 +77,21 @@ def upload_topology_route():
     
     file = request.files['file']
     return upload_topology_file(file)
+
+@app.route('/update_network_parameters', methods=['POST'])
+def update_network_parameters_route():
+    """API endpoint to update network parameters."""
+    return update_network_parameters()
+
+@app.route('/update_scenario02_parameters', methods=['POST'])
+def update_scenario02_parameters_route():
+    """API endpoint to update scenario02 network parameters."""
+    return update_scenario02_parameters()
+
+@app.route('/calculate_scenario02', methods=['POST'])
+def calculate_scenario02_route():
+    """API endpoint to calculate scenario02 network."""
+    return calculate_scenario02()
 
 @app.route('/calcular', methods=['POST'])
 def calcular():
