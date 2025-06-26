@@ -2,8 +2,7 @@ import plotly.graph_objects as go
 import json
 import os
 import numpy as np
-from pathlib import Path
-from flask import render_template, jsonify, request
+from flask import jsonify, request
 
 # Load equipment configuration
 EQPT_CONFIG_PATH = 'versionamientos/eqpt_config.json'
@@ -119,16 +118,13 @@ def find_network_path(graph, source_uid, destination_uid):
     """
     if source_uid not in graph or destination_uid not in graph:
         return None
-    
     queue = [(source_uid, [source_uid])]
     visited = {source_uid}
-    
     while queue:
         current_uid, path = queue.pop(0)
         
         if current_uid == destination_uid:
             return path
-        
         for neighbor_uid in graph.get(current_uid, []):
             if neighbor_uid not in visited:
                 visited.add(neighbor_uid)
@@ -649,6 +645,25 @@ def format_osnr(v):
     """Format OSNR value for display"""
     return "∞" if np.isinf(v) else f"{v:.2f}"
 
+def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=None):
+    """
+    Calculate average OSNR in dB like the notebook's get_avg_osnr_db(si) function
+    Mimics: sig = np.array([np.sum(ch.power) for ch in si.carriers])
+            noise = si.ase + si.nli
+            return float(np.mean(lin2db(np.where(noise > 0, sig / noise, np.inf))))
+    """
+    if nli_noise_lin_per_channel is None:
+        nli_noise_lin_per_channel = 0.0
+    
+    total_noise_lin = ase_noise_lin_per_channel + nli_noise_lin_per_channel
+    
+    if total_noise_lin <= 0:
+        return float('inf')
+    
+    # Calculate OSNR per channel like the notebook
+    osnr_lin = signal_power_lin_per_channel / total_noise_lin
+    return lin2db(osnr_lin)
+
 def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
     """Calculate OSNR using parallel calculation method"""
     if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190:
@@ -771,14 +786,22 @@ def calculate_scenario02_network(params):
         nch = int(np.floor((f_max - f_min) / spacing)) + 1
         tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Power per channel
         
+        # Initialize spectral information (mimicking notebook's approach)
+        # freq = [f_min + spacing * i for i in range(nch)]
+        # signal = [dbm2watt(tx_power_dbm)] * nch
+        signal_power_lin_per_channel = dbm2watt(tx_power_dbm)  # Power per channel in linear
+        
+        # Initialize ASE for exact transmitter OSNR (like notebook: si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers]))
+        lin_osnr0 = 10**(tx_osnr / 10)
+        initial_ase_lin_per_channel = signal_power_lin_per_channel / lin_osnr0
+        
         # Initialize calculation variables (following notebook logic exactly)
-        # Manual ASE tracking for OSNR_parallel calculation (separate from display power)
-        current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small initial value like notebook
+        current_signal_power_lin_per_channel = signal_power_lin_per_channel
+        current_ase_noise_lin_per_channel = initial_ase_lin_per_channel
+        current_nli_noise_lin_per_channel = 0.0  # NLI starts at 0
+        current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small initial value for parallel calc
         current_distance = 0.0
         current_power_dbm = P_tot_dbm_input  # Display total power at transmitter
-        
-        # Initialize with transmitter OSNR (this will be maintained until first EDFA)
-        current_osnr_bw = tx_osnr
         
         # Results storage
         results = {
@@ -809,18 +832,12 @@ def calculate_scenario02_network(params):
             results['plot_data']['ase_power'].append(watt2dbm(ase_power_lin) if ase_power_lin > 0 else -150.0)
             results['plot_data']['osnr_bw'].append(osnr_bw if not np.isinf(osnr_bw) else 60.0)  # Cap for plotting
         
-        # Helper function to calculate OSNR from accumulated ASE (matching notebook approach)
-        def calculate_current_osnr_bw(signal_power_dbm_total, accumulated_ase_lin, nch):
-            """Calculate OSNR_bw using accumulated ASE noise like the notebook"""
-            if accumulated_ase_lin <= 0:
-                return float('inf')
-            
-            # Convert to per-channel signal power
-            signal_per_channel_dbm = signal_power_dbm_total - 10 * np.log10(nch)
-            signal_per_channel_lin = dbm2watt(signal_per_channel_dbm)
-            
-            # Calculate OSNR (signal per channel / ASE per channel)
-            return lin2db(signal_per_channel_lin / accumulated_ase_lin)
+        # Helper function to calculate OSNR using spectral information approach (matching notebook)
+        def calculate_current_osnr_bw():
+            """Calculate OSNR_bw using spectral information like notebook's get_avg_osnr_db(si)"""
+            return get_avg_osnr_db(current_signal_power_lin_per_channel, 
+                                 current_ase_noise_lin_per_channel, 
+                                 current_nli_noise_lin_per_channel)
         
         # Process each element in the ordered path
         for i, element in enumerate(ordered_elements):
@@ -833,15 +850,17 @@ def calculate_scenario02_network(params):
                 if element.get('uid') == source_transceiver.get('uid'):
                     # Source transceiver (transmitter) - following notebook logic exactly
                     # Site_A: p0 = P_tot_dbm_input, o0 = tx_osnr
-                    osnr_01nm_initial = tx_osnr + 10 * np.log10(baud_rate / B_n)
+                    current_osnr_bw = calculate_current_osnr_bw()  # Should equal tx_osnr due to initialization
+                    osnr_01nm_initial = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
                     osnr_parallel_initial = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
-                    add_stage_result(element_uid, current_distance, current_power_dbm, tx_osnr, 
+                    add_stage_result(element_uid, current_distance, current_power_dbm, current_osnr_bw, 
                                     osnr_01nm_initial, osnr_parallel_initial, current_total_ase_lin_for_parallel_calc)
                 
                 elif element.get('uid') == destination_transceiver.get('uid'):
                     # Destination transceiver (receiver) - final stage, no processing, just record
                     # Use the current OSNR calculated from the last stage
+                    current_osnr_bw = calculate_current_osnr_bw()
                     final_osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
                     final_osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
@@ -852,18 +871,29 @@ def calculate_scenario02_network(params):
                 # EDFA processing - using NF from parameters (can be modified via modal)
                 gain_db = params.get('gain_target', {}).get('value', 17.0)
                 noise_factor_db = params.get('nf0', {}).get('value', 6.0)  # Use actual NF from parameters
+                gain_lin = 10**(gain_db / 10)
                 
-                # Apply gain to total power (for display like notebook p1 = p0 + gain)
+                # Apply gain to signal power (like notebook: si = edfa(si))
+                current_signal_power_lin_per_channel *= gain_lin
+                
+                # Apply gain to ASE and add new ASE from EDFA (like notebook)
+                current_ase_noise_lin_per_channel *= gain_lin
+                # Add new ASE from this EDFA (like notebook's EDFA processing)
+                new_ase_lin_per_channel = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+                current_ase_noise_lin_per_channel += new_ase_lin_per_channel
+                
+                # Apply gain to NLI noise
+                current_nli_noise_lin_per_channel *= gain_lin
+                
+                # Update display power (for compatibility)
                 current_power_dbm += gain_db
                 
-                # Calculate ASE noise contribution from this EDFA (exactly like notebook)
-                # Manual ASE calculation for parallel OSNR: p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+                # Manual ASE calculation for parallel OSNR (separate tracking)
                 p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
-                # Update accumulated ASE: current_total_ase_lin_for_parallel_calc = (prev_ase * gain) + new_ase
-                current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
+                current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * gain_lin) + p_ase_edfa_lin_manual
                 
-                # Calculate OSNR_bw using accumulated ASE (matching notebook approach)
-                current_osnr_bw = calculate_current_osnr_bw(current_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
+                # Calculate OSNR_bw using spectral information (like notebook: o1 = get_avg_osnr_db(si))
+                current_osnr_bw = calculate_current_osnr_bw()
                 
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
                 osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
@@ -883,17 +913,23 @@ def calculate_scenario02_network(params):
                 total_loss_db = loss_coef * length_km + con_in + con_out + att_in
                 loss_lin = 10**(-total_loss_db / 10)
                 
-                # Apply loss to total signal power (for display)
+                # Apply loss to spectral information (like notebook: si = span(si))
+                current_signal_power_lin_per_channel *= loss_lin
+                # Apply loss to ASE and NLI (like notebook: si.ase = ase_before * loss_lin)
+                current_ase_noise_lin_per_channel *= loss_lin
+                current_nli_noise_lin_per_channel *= loss_lin
+                
+                # Update display power (for compatibility)
                 current_power_dbm -= total_loss_db
                 
-                # Apply loss to accumulated ASE noise (matching notebook: ase_after = ase_before * loss_lin)
+                # Apply loss to parallel calculation ASE tracking
                 current_total_ase_lin_for_parallel_calc *= loss_lin
                 
                 # Update distance (like notebook: current_distance += span.params.length / 1000)
                 current_distance += length_km
                 
-                # Calculate OSNR_bw using accumulated ASE after fiber loss
-                current_osnr_bw = calculate_current_osnr_bw(current_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
+                # Calculate OSNR_bw using spectral information (like notebook: o_s1 = get_avg_osnr_db(si))
+                current_osnr_bw = calculate_current_osnr_bw()
                     
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
                 osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
@@ -905,8 +941,8 @@ def calculate_scenario02_network(params):
         final_power_dbm = current_power_dbm
         link_successful = final_power_dbm >= sens
         
-        # Calculate final OSNR values using the same method as the calculation loop
-        final_osnr_bw = calculate_current_osnr_bw(final_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
+        # Calculate final OSNR values using spectral information (same method as calculation loop)
+        final_osnr_bw = calculate_current_osnr_bw()
         final_osnr_01nm = final_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(final_osnr_bw) else float('inf')
         
         results['final_results'] = {

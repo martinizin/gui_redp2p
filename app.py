@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 
 from scenario01 import calcular_red, obtener_topologia_datos
-from scenario02 import process_scenario02_data, update_scenario02_parameters, calculate_scenario02
+from scenario02 import calculate_scenario02, update_scenario02_parameters, process_scenario02_data
 from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters
 
 # Load environment variables
