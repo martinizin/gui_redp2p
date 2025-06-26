@@ -544,7 +544,7 @@ def get_source_transceiver_defaults():
 def get_destination_transceiver_defaults():
     """Get default parameters for destination transceivers (receivers)."""
     return {
-        'sens': {'value': 20.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
+        'sens': {'value': -30.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
     }
 
 def get_transceiver_defaults():
@@ -571,7 +571,7 @@ def get_edfa_defaults(edfa_config, operational):
         'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Plana Máxima - La ganancia máxima alcanzada por el amplificador under condiciones planas'},
         'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Mínima - La ganancia mínima alcanzable por el amplificador'},
         'p_max': {'value': edfa_config.get('p_max', 23), 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Máxima - La potencia de salida máxima proporcionada por el amplificador'},
-        'nf0': {'value': edfa_config.get('nf0', edfa_config.get('nf_min', 6)), 'unit': 'dB', 'editable': True, 'tooltip': 'Factor de Ruido - La figura de ruido del amplificador que afecta la relación señal-ruido'},
+        'nf0': {'value': edfa_config.get('nf_min', edfa_config.get('nf0', 6)), 'unit': 'dB', 'editable': True, 'tooltip': 'Factor de Ruido (NF) - La figura de ruido del amplificador que afecta la relación señal-ruido. Este valor puede ser modificado para coincidir con especificaciones del fabricante o condiciones operacionales específicas.'},
         'gain_target': {'value': operational.get('gain_target', 20), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Objetivo - La ganancia deseada a ser alcanzada por el amplificador basada en configuraciones operacionales'}
     }
 
@@ -741,11 +741,12 @@ def calculate_scenario02_network(params):
         # Extract parameters
         topology_data = params.get('topology_data', {})
         
-        # Default values from notebook
+        # Default values from notebook - exactly matching
         f_min, f_max = 191.3e12, 195.1e12
         spacing = 50e9
         roll_off = 0.15
         baud_rate = 32e9
+        B_n = 12.5e9  # Reference bandwidth
         QUANTUM_NOISE_FLOOR_DBM = -58.0
         
         # Get network topology
@@ -763,7 +764,6 @@ def calculate_scenario02_network(params):
         dest_params = destination_transceiver.get('parameters', {})
 
         tx_osnr = source_params.get('tx_osnr', {}).get('value', 40.0)
-        # Get total power (P_tot_dbm_input) from P_tot_dbm_input parameter - matching notebook variable names
         P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 50.0)
         sens = dest_params.get('sens', {}).get('value', 20.0)
         
@@ -772,11 +772,13 @@ def calculate_scenario02_network(params):
         tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Power per channel
         
         # Initialize calculation variables (following notebook logic exactly)
-        current_accumulated_ase_noise_lin = dbm2watt(-150.0)  # Very small initial value
+        # Manual ASE tracking for OSNR_parallel calculation (separate from display power)
+        current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small initial value like notebook
         current_distance = 0.0
-        # For display: Start with total power (like notebook p0 = P_tot_dbm_input)
-        # For calculations: Use power per channel (tx_power_dbm)
         current_power_dbm = P_tot_dbm_input  # Display total power at transmitter
+        
+        # Initialize with transmitter OSNR (this will be maintained until first EDFA)
+        current_osnr_bw = tx_osnr
         
         # Results storage
         results = {
@@ -792,7 +794,7 @@ def calculate_scenario02_network(params):
         }
         
         def add_stage_result(name, distance, power_dbm, osnr_bw, osnr_01nm, osnr_parallel, ase_power_lin):
-            """Add a stage result to the results"""
+            """Add a stage result to the results"""            
             results['stages'].append({
                 'name': name,
                 'distance': distance,
@@ -807,6 +809,19 @@ def calculate_scenario02_network(params):
             results['plot_data']['ase_power'].append(watt2dbm(ase_power_lin) if ase_power_lin > 0 else -150.0)
             results['plot_data']['osnr_bw'].append(osnr_bw if not np.isinf(osnr_bw) else 60.0)  # Cap for plotting
         
+        # Helper function to calculate OSNR from accumulated ASE (matching notebook approach)
+        def calculate_current_osnr_bw(signal_power_dbm_total, accumulated_ase_lin, nch):
+            """Calculate OSNR_bw using accumulated ASE noise like the notebook"""
+            if accumulated_ase_lin <= 0:
+                return float('inf')
+            
+            # Convert to per-channel signal power
+            signal_per_channel_dbm = signal_power_dbm_total - 10 * np.log10(nch)
+            signal_per_channel_lin = dbm2watt(signal_per_channel_dbm)
+            
+            # Calculate OSNR (signal per channel / ASE per channel)
+            return lin2db(signal_per_channel_lin / accumulated_ase_lin)
+        
         # Process each element in the ordered path
         for i, element in enumerate(ordered_elements):
             element_type = element.get('type', '')
@@ -816,63 +831,45 @@ def calculate_scenario02_network(params):
             if element_type == 'Transceiver':
                 # Transceiver processing (parameters already extracted)
                 if element.get('uid') == source_transceiver.get('uid'):
-                    # Source transceiver (transmitter) - following notebook logic
-                    osnr_01nm_initial = tx_osnr + 10 * np.log10(baud_rate / 12.5e9)
-                    osnr_parallel_initial = classical_osnr_parallel(current_power_dbm, watt2dbm(current_accumulated_ase_noise_lin))
+                    # Source transceiver (transmitter) - following notebook logic exactly
+                    # Site_A: p0 = P_tot_dbm_input, o0 = tx_osnr
+                    osnr_01nm_initial = tx_osnr + 10 * np.log10(baud_rate / B_n)
+                    osnr_parallel_initial = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
                     add_stage_result(element_uid, current_distance, current_power_dbm, tx_osnr, 
-                                    osnr_01nm_initial, osnr_parallel_initial, current_accumulated_ase_noise_lin)
+                                    osnr_01nm_initial, osnr_parallel_initial, current_total_ase_lin_for_parallel_calc)
                 
                 elif element.get('uid') == destination_transceiver.get('uid'):
                     # Destination transceiver (receiver) - final stage, no processing, just record
-                    # Calculate final OSNR using accumulated noise
-                    signal_per_channel_dbm = current_power_dbm - 10 * np.log10(nch)
-                    signal_per_channel_lin = dbm2watt(signal_per_channel_dbm)
+                    # Use the current OSNR calculated from the last stage
+                    final_osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
+                    final_osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
-                    if current_accumulated_ase_noise_lin > 0:
-                        final_osnr_bw = lin2db(signal_per_channel_lin / current_accumulated_ase_noise_lin)
-                    else:
-                        final_osnr_bw = float('inf')
-                        
-                    final_osnr_01nm = final_osnr_bw + 10 * np.log10(baud_rate / 12.5e9)
-                    final_osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_accumulated_ase_noise_lin))
-                    
-                    add_stage_result(element_uid, current_distance, current_power_dbm, final_osnr_bw, 
-                                    final_osnr_01nm, final_osnr_parallel, current_accumulated_ase_noise_lin)
+                    add_stage_result(element_uid, current_distance, current_power_dbm, current_osnr_bw, 
+                                    final_osnr_01nm, final_osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Edfa':
-                # EDFA processing - using corrected noise figure to match expected results
+                # EDFA processing - using NF from parameters (can be modified via modal)
                 gain_db = params.get('gain_target', {}).get('value', 17.0)
-                noise_factor_db_specified = params.get('nf0', {}).get('value', 6.0)
-                
-                # For matching the expected results from the images, we need to use a higher NF
-                # The expected results require NF ≈ 9.2 dB to produce the correct OSNR degradation
-                # This might be due to additional noise sources or different calculation methods
-                noise_factor_db = 9.5  # Original calculated NF that best matches expected results
+                noise_factor_db = params.get('nf0', {}).get('value', 6.0)  # Use actual NF from parameters
                 
                 # Apply gain to total power (for display like notebook p1 = p0 + gain)
                 current_power_dbm += gain_db
                 
                 # Calculate ASE noise contribution from this EDFA (exactly like notebook)
-                p_ase_edfa_lin = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
-                current_accumulated_ase_noise_lin = (current_accumulated_ase_noise_lin * 10**(gain_db / 10)) + p_ase_edfa_lin
+                # Manual ASE calculation for parallel OSNR: p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+                p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+                # Update accumulated ASE: current_total_ase_lin_for_parallel_calc = (prev_ase * gain) + new_ase
+                current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
                 
-                # OSNR calculation - use the properly calculated theoretical OSNR
-                # This matches the expected behavior where OSNR degrades with accumulated noise
-                signal_per_channel_dbm = current_power_dbm - 10 * np.log10(nch)
-                signal_per_channel_lin = dbm2watt(signal_per_channel_dbm)
+                # Calculate OSNR_bw using accumulated ASE (matching notebook approach)
+                current_osnr_bw = calculate_current_osnr_bw(current_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
                 
-                # Calculate the OSNR using accumulated noise (this is the correct approach)
-                if current_accumulated_ase_noise_lin > 0:
-                    osnr_bw = lin2db(signal_per_channel_lin / current_accumulated_ase_noise_lin)
-                else:
-                    osnr_bw = float('inf')
-                    
-                osnr_01nm = osnr_bw + 10 * np.log10(baud_rate / 12.5e9) if not np.isinf(osnr_bw) else float('inf')
-                osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_accumulated_ase_noise_lin))
+                osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
+                osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                 
-                add_stage_result(element_uid, current_distance, current_power_dbm, osnr_bw, 
-                               osnr_01nm, osnr_parallel, current_accumulated_ase_noise_lin)
+                add_stage_result(element_uid, current_distance, current_power_dbm, current_osnr_bw, 
+                               osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Fiber':
                 # Fiber processing - following notebook logic exactly
@@ -888,38 +885,37 @@ def calculate_scenario02_network(params):
                 
                 # Apply loss to total signal power (for display)
                 current_power_dbm -= total_loss_db
-                # Apply loss to accumulated ASE noise (per channel)
-                current_accumulated_ase_noise_lin *= loss_lin
                 
-                # Update distance (convert from meters to km like notebook)
+                # Apply loss to accumulated ASE noise (matching notebook: ase_after = ase_before * loss_lin)
+                current_total_ase_lin_for_parallel_calc *= loss_lin
+                
+                # Update distance (like notebook: current_distance += span.params.length / 1000)
                 current_distance += length_km
                 
-                # OSNR calculation after fiber - use accumulated noise for realistic degradation
-                signal_per_channel_dbm = current_power_dbm - 10 * np.log10(nch)
-                signal_per_channel_lin = dbm2watt(signal_per_channel_dbm)
-                
-                # Calculate OSNR using accumulated noise (correct approach)
-                if current_accumulated_ase_noise_lin > 0:
-                    osnr_bw = lin2db(signal_per_channel_lin / current_accumulated_ase_noise_lin)
-                else:
-                    osnr_bw = float('inf')
+                # Calculate OSNR_bw using accumulated ASE after fiber loss
+                current_osnr_bw = calculate_current_osnr_bw(current_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
                     
-                osnr_01nm = osnr_bw + 10 * np.log10(baud_rate / 12.5e9) if not np.isinf(osnr_bw) else float('inf')
-                osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_accumulated_ase_noise_lin))
+                osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
+                osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                 
-                add_stage_result(element_uid, current_distance, current_power_dbm, osnr_bw, 
-                               osnr_01nm, osnr_parallel, current_accumulated_ase_noise_lin)
+                add_stage_result(element_uid, current_distance, current_power_dbm, current_osnr_bw, 
+                               osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
         
-        # Final results
+        # Final results - matching notebook logic
         final_power_dbm = current_power_dbm
         link_successful = final_power_dbm >= sens
+        
+        # Calculate final OSNR values using the same method as the calculation loop
+        final_osnr_bw = calculate_current_osnr_bw(final_power_dbm, current_total_ase_lin_for_parallel_calc, nch)
+        final_osnr_01nm = final_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(final_osnr_bw) else float('inf')
+        
         results['final_results'] = {
             'final_power_dbm': final_power_dbm,
             'receiver_sensitivity_dbm': sens,
             'link_successful': link_successful,
             'power_margin_db': final_power_dbm - sens,
-            'final_osnr_bw': format_osnr(lin2db((dbm2watt(final_power_dbm - 10 * np.log10(nch))) / current_accumulated_ase_noise_lin) if current_accumulated_ase_noise_lin > 0 else float('inf')),
-            'final_osnr_01nm': format_osnr((lin2db((dbm2watt(final_power_dbm - 10 * np.log10(nch))) / current_accumulated_ase_noise_lin) if current_accumulated_ase_noise_lin > 0 else float('inf')) + 10 * np.log10(baud_rate / 12.5e9)),
+            'final_osnr_bw': format_osnr(final_osnr_bw),
+            'final_osnr_01nm': format_osnr(final_osnr_01nm),
             'total_distance_km': current_distance,
             'nch': nch,
             'tx_power_per_channel_dbm': tx_power_dbm,
@@ -935,7 +931,7 @@ def calculate_scenario02_network(params):
         return {'success': False, 'error': str(e)}
 
 def generate_scenario02_plots(plot_data):
-    """Generate Plotly plots for scenario02 results - three separate plots matching notebook styling"""
+    """Generate Plotly plots for scenario02 results - three separate plots with improved visualization"""
     
     # Prepare data for stepped plots (like in the notebook)
     plot_x_signal = []
@@ -952,7 +948,7 @@ def generate_scenario02_plots(plot_data):
         osnr_val = plot_data['osnr_bw'][i]
         
         if i > 0 and plot_data['distance'][i] == plot_data['distance'][i-1]:
-            # Add point with current distance and PREVIOUS values
+            # Add point with current distance and PREVIOUS values for step effect
             plot_x_signal.append(dist)
             plot_y_signal.append(plot_data['signal_power'][i-1])
             plot_x_ase.append(dist)
@@ -968,125 +964,182 @@ def generate_scenario02_plots(plot_data):
         plot_x_osnr.append(dist)
         plot_y_osnr.append(osnr_val)
     
-    # Calculate appropriate ranges for consistent scaling
+    # Calculate optimized ranges with proper padding for better visualization
     signal_min, signal_max = min(plot_y_signal), max(plot_y_signal)
     ase_min, ase_max = min(plot_y_ase), max(plot_y_ase)
     osnr_min, osnr_max = min(plot_y_osnr), max(plot_y_osnr)
+    distance_min, distance_max = min(plot_x_signal), max(plot_x_signal)
     
-    # Add 10% padding to ranges like matplotlib auto-scaling
-    signal_range_padding = (signal_max - signal_min) * 0.1
-    ase_range_padding = (ase_max - ase_min) * 0.1
-    osnr_range_padding = (osnr_max - osnr_min) * 0.1
+    # Add more generous padding (15%) to prevent lines from being too close to axes
+    signal_range = signal_max - signal_min
+    signal_padding = max(signal_range * 0.15, 2.0)  # Minimum 2 dB padding
     
-    # Plot 1: P_signal (dBm) - matching notebook Plot 1 styling
+    ase_range = ase_max - ase_min
+    ase_padding = max(ase_range * 0.15, 2.0)  # Minimum 2 dB padding
+    
+    osnr_range = osnr_max - osnr_min
+    osnr_padding = max(osnr_range * 0.15, 1.0)  # Minimum 1 dB padding
+    
+    distance_range = distance_max - distance_min
+    distance_padding = max(distance_range * 0.05, 5.0)  # Minimum 5 km padding
+    
+    # Plot 1: P_signal (dBm) vs Distance - optimized visualization
     signal_fig = go.Figure()
     signal_fig.add_trace(go.Scatter(
         x=plot_x_signal,
         y=plot_y_signal,
         mode='lines',
         name='P_signal (dBm)',
-        line=dict(color='blue', width=2)
+        line=dict(color='blue', width=3),  # Slightly thicker line for better visibility
+        hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>Potencia:</b> %{y:.2f} dBm<extra></extra>'
     ))
     signal_fig.update_layout(
-        title='Evolución de la potencia a lo largo del enlace óptico',
+        title=dict(
+            text='Evolución de la Potencia de Señal a lo largo del Enlace Óptico',
+            font=dict(size=14, color='black')
+        ),
         xaxis_title='Distancia (km)',
         yaxis_title='Potencia (dBm)',
-        legend=dict(x=0, y=1),
-        height=400,
+        legend=dict(
+            x=1.0,  # Upper right corner
+            y=1.0,
+            xanchor='right',
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='gray',
+            borderwidth=1
+        ),
+        height=450,
         showlegend=True,
         xaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
-            linewidth=1
+            linewidth=1,
+            range=[distance_min - distance_padding, distance_max + distance_padding],
+            tickformat='.1f'
         ),
         yaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
             linewidth=1,
-            range=[signal_min - signal_range_padding, signal_max + signal_range_padding]
+            range=[signal_min - signal_padding, signal_max + signal_padding],
+            tickformat='.1f'
         ),
         plot_bgcolor='white',
-        font=dict(size=12)
+        font=dict(size=12),
+        margin=dict(l=60, r=60, t=60, b=60)
     )
     
-    # Plot 2: P_ASE (dBm) - matching notebook Plot 2 styling
+    # Plot 2: P_ASE (dBm) vs Distance - optimized visualization
     ase_fig = go.Figure()
     ase_fig.add_trace(go.Scatter(
         x=plot_x_ase,
         y=plot_y_ase,
         mode='lines',
         name='P_ASE (dBm)',
-        line=dict(color='red', width=2)
+        line=dict(color='red', width=3),  # Slightly thicker line for better visibility
+        hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>Potencia ASE:</b> %{y:.2f} dBm<extra></extra>'
     ))
     ase_fig.update_layout(
-        title='Evolución de la potencia a lo largo del enlace óptico',
+        title=dict(
+            text='Evolución de la Potencia ASE a lo largo del Enlace Óptico',
+            font=dict(size=14, color='black')
+        ),
         xaxis_title='Distancia (km)',
         yaxis_title='Potencia (dBm)',
-        legend=dict(x=0, y=1),
-        height=400,
+        legend=dict(
+            x=1.0,  # Upper right corner
+            y=1.0,
+            xanchor='right',
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='gray',
+            borderwidth=1
+        ),
+        height=450,
         showlegend=True,
         xaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
-            linewidth=1
+            linewidth=1,
+            range=[distance_min - distance_padding, distance_max + distance_padding],
+            tickformat='.1f'
         ),
         yaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
             linewidth=1,
-            range=[ase_min - ase_range_padding, ase_max + ase_range_padding]
+            range=[ase_min - ase_padding, ase_max + ase_padding],
+            tickformat='.1f'
         ),
         plot_bgcolor='white',
-        font=dict(size=12)
+        font=dict(size=12),
+        margin=dict(l=60, r=60, t=60, b=60)
     )
     
-    # Plot 3: OSNR_bw (dB) - matching notebook Plot 3 styling
+    # Plot 3: OSNR_bw (dB) vs Distance - optimized visualization
     osnr_fig = go.Figure()
     osnr_fig.add_trace(go.Scatter(
         x=plot_x_osnr,
         y=plot_y_osnr,
         mode='lines',
         name='OSNR_bw (dB)',
-        line=dict(color='orange', width=2)
+        line=dict(color='orange', width=3),  # Slightly thicker line for better visibility
+        hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>OSNR:</b> %{y:.2f} dB<extra></extra>'
     ))
     osnr_fig.update_layout(
-        title='Evolución de OSNR a lo largo del enlace óptico',
-        xaxis_title='Span / Distancia (km)',
+        title=dict(
+            text='Evolución de OSNR a lo largo del Enlace Óptico',
+            font=dict(size=14, color='black')
+        ),
+        xaxis_title='Distancia (km)',
         yaxis_title='OSNR (dB)',
-        legend=dict(x=0, y=1),
-        height=400,
+        legend=dict(
+            x=1.0,  # Upper right corner
+            y=1.0,
+            xanchor='right',
+            yanchor='top',
+            bgcolor='rgba(255,255,255,0.8)',
+            bordercolor='gray',
+            borderwidth=1
+        ),
+        height=450,
         showlegend=True,
         xaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
-            linewidth=1
+            linewidth=1,
+            range=[distance_min - distance_padding, distance_max + distance_padding],
+            tickformat='.1f'
         ),
         yaxis=dict(
             showgrid=True, 
             gridwidth=1, 
             gridcolor='lightgray', 
-            zeroline=True,
+            zeroline=False,
             linecolor='black',
             linewidth=1,
-            range=[osnr_min - osnr_range_padding, osnr_max + osnr_range_padding]
+            range=[osnr_min - osnr_padding, osnr_max + osnr_padding],
+            tickformat='.1f'
         ),
         plot_bgcolor='white',
-        font=dict(size=12)
+        font=dict(size=12),
+        margin=dict(l=60, r=60, t=60, b=60)
     )
     
     return {
