@@ -14,7 +14,8 @@
         }
         /* Main layout containers */
         body {
-            padding-top: 80px; /* Space for fixed navigation */
+            padding-top: 70px; /* Space for fixed navigation */
+            font-size: 0.9rem;
         }
         #navigation {
             position: fixed;
@@ -23,15 +24,15 @@
             right: 0;
             background-color: white;
             z-index: 1000;
-            padding: 15px 0;
+            padding: 8px 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         /* Upload section container */
         #upload-section {
             background-color: white;
-            padding: 40px;
-            margin: 20px auto;
+            padding: 20px;
+            margin: 10px auto;
             max-width: 1400px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -39,8 +40,8 @@
         }
         #upload-section h2 {
             color: #343a40;
-            font-size: 1.5rem;
-            margin-bottom: 10px;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
             text-align: center;
             font-weight: 500;
         }
@@ -50,13 +51,13 @@
             justify-content: center;
             gap: 15px;
             flex-wrap: wrap;
-            padding: 15px;
+            padding: 10px;
             background-color: #f8f9fa;
             border-radius: 6px;
             border: 1px solid #dee2e6;
         }
         #controls h1 {
-            font-size: 1rem;
+            font-size: 0.9rem;
             margin: 0;
             color: #495057;
             font-weight: 500;
@@ -64,15 +65,14 @@
         
         /* Map section container */
         #map-section {
-            background-color: #f8f9fa;
-            padding: 10px 20px;
-            margin-top: 20px;
+            padding: 0;
+            margin-top: 0;
         }
         #map-container {
-            height: 75vh;
+            height: 50vh;
             width: 100%;
             max-width: 1400px;
-            min-height: 500px;
+            min-height: 380px;
             margin: 0 auto;
             position: relative;
             border: 3px solid #e0e0e0;
@@ -296,6 +296,161 @@
             visibility: visible;
             opacity: 1;
         }
+
+        /* Calculation Section Styles */
+        #calculation-section {
+            padding: 0 15px;
+            max-width: 1400px;
+            margin: 10px auto 10px auto; /* Further reduced margins */
+            background-color: transparent;
+            border-top: none;
+        }
+        .calculation-panel {
+            background-color: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+            height: 100%;
+        }
+        .panel-title {
+            font-size: 1rem;
+            color: #343a40;
+            margin-bottom: 12px;
+            font-weight: 500;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+        }
+        .form-row-flex {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+        .flex-grow {
+            flex-grow: 1;
+        }
+        .align-self-flex-end {
+            align-self: flex-end;
+        }
+        .sub-panel-title {
+            font-size: 0.95rem;
+            color: #6c757d;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .form-group {
+            margin-bottom: 0.5rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: .25rem;
+            font-weight: 500;
+            color: #495057;
+            font-size: 0.85rem;
+        }
+        .form-control, .custom-select, .btn {
+            padding: .275rem .65rem;
+            font-size: 0.9rem;
+            border-radius: .2rem;
+        }
+        .custom-select {
+            height: calc(1.5em + .55rem + 2px);
+        }
+        #calculate-route-button {
+            width: 100%;
+            padding: 0.4rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .radio-group {
+            padding-top: 0.25rem;
+        }
+        .form-check-label {
+            font-weight: 400;
+        }
+
+        /* Custom InfoWindow Styles */
+        .custom-infowindow {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 0;
+            max-width: 250px; /* Smaller width */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px; /* Smaller font */
+            color: #333;
+        }
+        .custom-infowindow-header {
+            font-size: 15px; /* Smaller font */
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+            padding: 8px 12px; /* Reduced padding */
+            background: #007bff;
+            border-bottom: 1px solid #0069d9;
+            border-radius: 8px 8px 0 0;
+        }
+        .custom-infowindow-content {
+            padding: 12px; /* Reduced padding */
+        }
+        .custom-infowindow-content p {
+            margin: 0 0 6px 0;
+            line-height: 1.5;
+        }
+        .custom-infowindow-content strong {
+            font-weight: 600;
+            color: #555;
+            min-width: 80px;
+            display: inline-block;
+        }
+        .custom-infowindow-content .param-group {
+            margin-top: 5px;
+            padding-left: 15px;
+            border-left: 3px solid #007bff;
+        }
+        .custom-infowindow-content .param-group p {
+            font-family: monospace;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+        .role-source {
+            color: #28a745;
+            font-weight: 700;
+        }
+        .role-destination {
+            color: #007bff;
+            font-weight: 700;
+        }
+
+        /* ----- Google Maps InfoWindow Customization ----- */
+        /* Hide the default white bubble and shadow */
+        .gm-style .gm-style-iw-c {
+            padding: 0 !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+        }
+        .gm-style .gm-style-iw-d {
+           overflow: hidden !important; /* Hide scrollbars */
+        }
+        /* Hide the default close button */
+        .gm-style .gm-style-iw-t button {
+            display: none !important;
+        }
+        /* Hide the default arrow */
+        .gm-style .gm-style-iw-t::after {
+            display: none;
+        }
+
+        #navigation .h1, #navigation h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem !important;
+        }
+        #navigation .btn-group .btn {
+            padding: .25rem .75rem;
+            font-size: .875rem;
+        }
     </style>
 </head>
 <body>
@@ -324,11 +479,73 @@
         </div>
     </div>
 
-    <!-- Map Section Container -->
-    <div id="map-section">
-        <div id="map-container">
-            <div id="zoom-hint">Click map to enable zoom, or hold Ctrl while scrolling</div>
-            <div id="map"></div>
+    <!-- Main Content Section: Map and Simulation Parameters -->
+    <div id="main-content-section" style="max-width: 1400px; margin: 5px auto; padding: 0 15px;">
+        <div class="row">
+            <!-- Map Column -->
+            <div class="col-lg-8">
+                <div id="map-section">
+                    <div id="map-container">
+                        <div id="zoom-hint">Click map to enable zoom, or hold Ctrl while scrolling</div>
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Simulation Parameters Column -->
+            <div class="col-lg-4">
+                <div class="calculation-panel" style="height: 100%;">
+                    <h3 class="panel-title">Parámetros de Simulación</h3>
+                    <div class="form-group">
+                        <label for="tx-osnr">Tx OSNR (dB)</label>
+                        <input type="number" id="tx-osnr" class="form-control" value="40.0" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="baud-rate">Tasa de Baudios (GBaud)</label>
+                        <input type="number" id="baud-rate" class="form-control" value="32" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-power">Potencia Tx (dBm)</label>
+                        <input type="number" id="tx-power" class="form-control" value="0.0" step="0.1">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Route Calculation Section -->
+    <div id="calculation-section">
+        <div class="calculation-panel">
+            <h3 class="panel-title">Cálculo de Ruta</h3>
+            <h5 class="sub-panel-title">Selección de Nodos</h5>
+            <div class="form-row-flex">
+                <div class="form-group flex-grow">
+                    <label for="source-node">Nodo Origen</label>
+                    <select id="source-node" class="form-control custom-select"></select>
+                </div>
+                <div class="form-group flex-grow">
+                    <label for="destination-node">Nodo Destino</label>
+                    <select id="destination-node" class="form-control custom-select"></select>
+                </div>
+            </div>
+            <div class="form-row-flex">
+                <div class="form-group">
+                    <label>Criterio de Cálculo</label>
+                    <div class="radio-group">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="criteria" id="criteria-distance" value="distance" checked>
+                            <label class="form-check-label" for="criteria-distance">Distancia</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="criteria" id="criteria-osnr" value="osnr">
+                            <label class="form-check-label" for="criteria-osnr">OSNR</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group align-self-flex-end">
+                    <button id="calculate-route-button" class="btn btn-primary">Calcular Ruta</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -349,13 +566,19 @@
 
     <script>
         let map;
-        let markers = [];
+        let markers = {};
+        let infoWindows = {};
         let polylines = [];
-        let openInfoWindow = null;
         let currentTopologyData = null;
-
+        let defaultNodeIcon;
+        
         // Inicializa el mapa
         function inicializarMapa() {
+            defaultNodeIcon = {
+                url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                scaledSize: new google.maps.Size(28, 28)
+            };
+            
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: -1.831239, lng: -78.183406 }, // Centro de Ecuador
                 zoom: 7,
@@ -437,6 +660,9 @@
                 cargarTopologia(e.target.value);
             });
 
+            document.getElementById('source-node').addEventListener('change', () => highlightSelectedNodes());
+            document.getElementById('destination-node').addEventListener('change', () => highlightSelectedNodes());
+
             const uploadButton = document.getElementById('upload-button');
             const fileInput = document.getElementById('topology-upload');
 
@@ -493,8 +719,34 @@
                 .then(data => {
                     currentTopologyData = data;
                     dibujarTopologiaEnMapa(data);
+                    populateTransceiverDropdowns(data);
                 })
                 .catch(error => console.error('Error cargando la topología:', error));
+        }
+
+        function populateTransceiverDropdowns(data) {
+            const sourceSelect = document.getElementById('source-node');
+            const destinationSelect = document.getElementById('destination-node');
+
+            sourceSelect.innerHTML = '<option value="">Seleccione nodo origen</option>';
+            destinationSelect.innerHTML = '<option value="">Seleccione nodo destino</option>';
+
+            const transceivers = (data.elements || []).filter(el => el.type === 'Transceiver');
+
+            if (transceivers.length === 0) {
+                const option = '<option value="" disabled>No se encontraron transceivers</option>';
+                sourceSelect.innerHTML = option;
+                destinationSelect.innerHTML = option;
+                return;
+            }
+
+            transceivers.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.uid;
+                option.textContent = t.uid;
+                sourceSelect.appendChild(option.cloneNode(true));
+                destinationSelect.appendChild(option);
+            });
         }
 
         function dibujarTopologiaEnMapa(data) {
@@ -552,19 +804,33 @@
                 const marker = new google.maps.Marker({
                     position: { lat: node.latitude, lng: node.longitude },
                     map: map,
-                    title: node.title
+                    title: node.title,
+                    icon: defaultNodeIcon
                 });
-                markers.push(marker);
+                markers[node.id] = marker;
 
                 const infoWindow = new google.maps.InfoWindow({
                     content: crearContenidoInfoNodo(node)
                 });
+                infoWindows[node.id] = infoWindow;
+
+                marker.addListener('mouseover', () => {
+                    const sourceId = document.getElementById('source-node').value;
+                    const destinationId = document.getElementById('destination-node').value;
+                    let role = null;
+                    if (node.id === sourceId) role = "Nodo Origen";
+                    if (node.id === destinationId) role = "Nodo Destino";
+                    
+                    const content = crearContenidoInfoNodo(node, role);
+                    infoWindow.setContent(content);
+                    infoWindow.open(map, marker);
+                });
+
+                marker.addListener('mouseout', () => {
+                    infoWindow.close();
+                });
 
                 marker.addListener("click", () => {
-                    if (openInfoWindow) openInfoWindow.close();
-                    infoWindow.open(map, marker);
-                    openInfoWindow = infoWindow;
-                    
                     // Show parameters panel if element has parameters
                     if (currentTopologyData && currentTopologyData.elements) {
                         const element = currentTopologyData.elements.find(e => normalizarIdNodo(e.uid) === node.id);
@@ -648,21 +914,22 @@
         }
 
         function crearContenidodelEdfa(edfa) {
-            const style = 'style="margin: 0; padding: 2px 5px; font-family: monospace; font-size: 12px;"';
-            const opStyle = 'style="margin: 0; padding: 2px 5px 2px 20px; font-family: monospace; font-size: 12px;"';
-
-            let content = `<div style="background-color: #CD5C5C; color: white; padding: 5px; border-radius: 3px;">`;
-            content += `<p ${style}>(${edfa.coordinates.lat.toFixed(6)}°, ${edfa.coordinates.lng.toFixed(6)}°)</p>`;
-            content += `<p ${style}>uid: ${edfa.uid}</p>`;
-            content += `<p ${style}>type: ${edfa.type}</p>`;
-            content += `<p ${style}>type_variety: ${edfa.type_variety}</p>`;
-            content += `<p ${style}>operational:</p>`;
-            content += `<p ${opStyle}>gain_target: ${edfa.operational.gain_target.toFixed(1)}</p>`;
-            content += `<p ${opStyle}>delta_p: ${edfa.operational.delta_p.toFixed(1)}</p>`;
-            content += `<p ${opStyle}>tilt_target: ${edfa.operational.tilt_target}</p>`;
-            content += `<p ${opStyle}>out_voa: ${edfa.operational.out_voa}</p>`;
-            content += `</div>`;
-
+            let content = `
+                <div class="custom-infowindow">
+                    <h3 class="custom-infowindow-header">Amplificador (EDFA)</h3>
+                    <div class="custom-infowindow-content">
+                        <p><strong>UID:</strong> ${edfa.uid}</p>
+                        <p><strong>Variedad:</strong> ${edfa.type_variety}</p>
+                        <p><strong>Coords:</strong> ${edfa.coordinates.lat.toFixed(5)}°, ${edfa.coordinates.lng.toFixed(5)}°</p>
+                        <p><strong>Operacional:</strong></p>
+                        <div class="param-group">
+                            <p>Gain Target: ${edfa.operational.gain_target.toFixed(1)} dB</p>
+                            <p>Delta P: ${edfa.operational.delta_p.toFixed(1)} dB</p>
+                            <p>Tilt Target: ${edfa.operational.tilt_target}</p>
+                            <p>Out VOA: ${edfa.operational.out_voa}</p>
+                        </div>
+                    </div>
+                </div>`;
             return content;
         }
 
@@ -696,6 +963,7 @@
                 const infoWindow = new google.maps.InfoWindow({
                     content: crearContenidodelEdfa(edfaData)
                 });
+                infoWindows[edfaData.uid] = infoWindow;
 
                 const ampMarker = new google.maps.Marker({
                     position: ampPosition,
@@ -703,7 +971,7 @@
                     title: `Amplificador en el enlace ${startNode.title} a ${endNode.title}`,
                     icon: {
                         path: 'M -5,0 0,-8 5,0 0,8 Z',
-                        scale: 1.5,
+                        scale: 1,
                         fillColor: '#FF4500',
                         fillOpacity: 1,
                         strokeWeight: 1,
@@ -711,11 +979,14 @@
                     }
                 });
                 
-                ampMarker.addListener("click", () => {
-                    if (openInfoWindow) openInfoWindow.close();
+                ampMarker.addListener('mouseover', () => {
                     infoWindow.open(map, ampMarker);
-                    openInfoWindow = infoWindow;
-                    
+                });
+                ampMarker.addListener('mouseout', () => {
+                    infoWindow.close();
+                });
+
+                ampMarker.addListener("click", () => {
                     // Create a temporary element for the amplifier with default EDFA parameters
                     const tempEdfaElement = {
                         uid: edfaData.uid,
@@ -733,7 +1004,7 @@
                     showElementParameters(tempEdfaElement);
                 });
 
-                markers.push(ampMarker);
+                markers[edfaData.uid] = ampMarker;
             }
         }
 
@@ -762,23 +1033,22 @@
                 content: crearContenidoInfoEnlace(style, startNode, endNode, distance)
             });
 
-            line.addListener("click", (event) => {
-                if (openInfoWindow) openInfoWindow.close();
-                infoWindow.setPosition(event.latLng || obtenerPuntoMedio(path[0], path[1]));
+            line.addListener('mouseover', (event) => {
+                infoWindow.setPosition(event.latLng);
                 infoWindow.open(map);
-                openInfoWindow = infoWindow;
+            });
+            line.addListener('mouseout', () => {
+                infoWindow.close();
             });
         }
         
         function limpiarMapa() {
-            markers.forEach(marker => marker.setMap(null));
+            Object.values(markers).forEach(marker => marker.setMap(null));
             polylines.forEach(line => line.setMap(null));
-            markers = [];
+            Object.values(infoWindows).forEach(iw => iw.close());
+            markers = {};
             polylines = [];
-            if (openInfoWindow) {
-                openInfoWindow.close();
-                openInfoWindow = null;
-            }
+            infoWindows = {};
         }
         
         function obtenerPuntoMedio(p1, p2) {
@@ -798,21 +1068,37 @@
             return 2 * R * Math.asin(Math.sqrt(a));
         }
 
-        function crearContenidoInfoNodo(node) {
-            let content = `<div><h3>${node.title}</h3>`;
-            if (node.city) content += `<p><strong>Ciudad:</strong> ${node.city}</p>`;
-            content += `<p><strong>Latitud:</strong> ${node.latitude.toFixed(4)}</p>`;
-            content += `<p><strong>Longitud:</strong> ${node.longitude.toFixed(4)}</p>`;
-            if (node.type) content += `<p><strong>Tipo:</strong> ${node.type}</p>`;
-            return content + "</div>";
+        function crearContenidoInfoNodo(node, role = null) {
+            let roleHtml = '';
+            if (role) {
+                const roleClass = role === 'Nodo Origen' ? 'role-source' : 'role-destination';
+                roleHtml = `<p><strong>Rol:</strong> <span class="${roleClass}">${role}</span></p>`;
+            }
+
+            let content = `
+                <div class="custom-infowindow">
+                    <h3 class="custom-infowindow-header">${node.title}</h3>
+                    <div class="custom-infowindow-content">
+                        ${roleHtml}
+                        <p><strong>Ciudad:</strong> ${node.city || 'N/A'}</p>
+                        <p><strong>Tipo:</strong> ${node.type}</p>
+                        <p><strong>Latitud:</strong> ${node.latitude.toFixed(4)}°</p>
+                        <p><strong>Longitud:</strong> ${node.longitude.toFixed(4)}°</p>
+                    </div>
+                </div>`;
+            return content;
         }
 
         function crearContenidoInfoEnlace(linkData, startNode, endNode, distance) {
-            return `<div>
-                <h3>Enlace</h3>
-                <p>De: ${startNode.title}<br>A: ${endNode.title}</p>
-                <p><strong>Distancia:</strong> ${distance.toFixed(2)} km</p>
-            </div>`;
+            return `
+                <div class="custom-infowindow">
+                    <h3 class="custom-infowindow-header">Enlace de Fibra</h3>
+                    <div class="custom-infowindow-content">
+                        <p><strong>Desde:</strong> ${startNode.title}</p>
+                        <p><strong>Hasta:</strong> ${endNode.title}</p>
+                        <p><strong>Distancia:</strong> ${distance.toFixed(2)} km</p>
+                    </div>
+                </div>`;
         }
 
         function normalizarIdNodo(id) {
@@ -900,6 +1186,46 @@
                 console.error('Error:', error);
                 alert('Error updating parameter');
             });
+        }
+
+        function highlightSelectedNodes() {
+            // Reset all markers to default
+            for (const key in markers) {
+                if (Object.prototype.hasOwnProperty.call(markers, key)) {
+                    if (!key.startsWith('Edfa')) {
+                         markers[key].setIcon(defaultNodeIcon);
+                    }
+                }
+            }
+
+            const sourceId = document.getElementById('source-node').value;
+            const destinationId = document.getElementById('destination-node').value;
+
+            const sourceIcon = {
+                url: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                scaledSize: new google.maps.Size(32, 32)
+            };
+
+            const destinationIcon = {
+                url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                scaledSize: new google.maps.Size(32, 32)
+            };
+
+            if (sourceId && markers[sourceId]) {
+                markers[sourceId].setIcon(sourceIcon);
+            }
+
+            if (destinationId && markers[destinationId]) {
+                if (destinationId === sourceId) {
+                    // Maybe a different icon if source and destination are the same
+                    markers[destinationId].setIcon({
+                        url: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png',
+                        scaledSize: new google.maps.Size(32, 32)
+                    });
+                } else {
+                    markers[destinationId].setIcon(destinationIcon);
+                }
+            }
         }
     </script>
     
