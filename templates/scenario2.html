@@ -70,6 +70,11 @@
 
         <div id="plotly-graph" class="mt-4"></div>
 
+        <!-- Hidden data storage for JavaScript -->
+        {% if enhanced_data %}
+        <div id="enhanced-data" style="display: none;">{{ enhanced_data | tojson | safe }}</div>
+        {% endif %}
+
         <!-- Calculate Button - Only shown when topology is loaded -->
         {% if graph_json %}
         <div id="calculateSection" class="mt-4 text-center">
@@ -92,10 +97,15 @@
                     <!-- Final Results Summary -->
                     <div id="finalResultsSummary" class="mb-4"></div>
                     
-                    <!-- Plots -->
+                    <!-- Plots - Three separate plots matching notebook -->
                     <div class="row">
                         <div class="col-12">
-                            <div id="powerPlot" style="height: 400px;"></div>
+                            <div id="signalPlot" style="height: 400px;"></div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div id="asePlot" style="height: 400px;"></div>
                         </div>
                     </div>
                     <div class="row mt-3">
@@ -138,18 +148,26 @@
         var enhancedData = null;
         var selectedElement = null;
         
-        try {
-            {% if enhanced_data %}
-            enhancedData = {{ enhanced_data | tojson | safe }};
-            {% endif %}
-        } catch(e) {
-            console.log('No enhanced data available');
+        // Load enhanced data from hidden div
+        var enhancedDataDiv = document.getElementById('enhanced-data');
+        if (enhancedDataDiv) {
+            try {
+                enhancedData = JSON.parse(enhancedDataDiv.textContent);
+            } catch(e) {
+                console.log('Error parsing enhanced data:', e);
+            }
         }
         
         // Modal Functions for Parameter Editing
         function openElementModal(element) {
             if (!element || !element.parameters) {
                 console.log('No hay parámetros disponibles para este elemento');
+                return;
+            }
+
+            // Don't open modal for Fiber elements (they should only show tooltip)
+            if (element.type === 'Fiber') {
+                console.log('Los elementos de fibra solo muestran tooltip, no modal');
                 return;
             }
 
@@ -167,29 +185,29 @@
             modalTitle.textContent = titleText;
             modalParameters.innerHTML = '';
             
-            // Generate parameter input fields
+            // Generate parameter input fields only for editable parameters
             for (const [paramName, paramData] of Object.entries(element.parameters)) {
-                const isEditable = paramData.editable;
-                const paramDiv = document.createElement('div');
-                paramDiv.className = 'mb-3';
-                
-                paramDiv.innerHTML = `
-                    <label for="modal_${paramName}" class="form-label" title="${paramData.tooltip}">
-                        ${paramName.replace(/_/g, ' ').toUpperCase()} (${paramData.unit})
-                        <i class="text-muted" style="font-size: 0.8em;">ℹ️</i>
-                    </label>
-                    <input type="number" 
-                           class="form-control ${!isEditable ? 'bg-light' : ''}" 
-                           id="modal_${paramName}" 
-                           name="${paramName}"
-                           value="${paramData.value}" 
-                           step="0.1" 
-                           ${!isEditable ? 'readonly' : ''}
-                           title="${paramData.tooltip}">
-                    <div class="form-text">${paramData.tooltip}</div>
-                `;
-                
-                modalParameters.appendChild(paramDiv);
+                if (paramData.editable) {  // Only show editable parameters in modal
+                    const paramDiv = document.createElement('div');
+                    paramDiv.className = 'mb-3';
+                    
+                    paramDiv.innerHTML = `
+                        <label for="modal_${paramName}" class="form-label" title="${paramData.tooltip}">
+                            ${paramName.replace(/_/g, ' ').toUpperCase()} (${paramData.unit})
+                            <i class="text-muted" style="font-size: 0.8em;">ℹ️</i>
+                        </label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="modal_${paramName}" 
+                               name="${paramName}"
+                               value="${paramData.value}" 
+                               step="0.01" 
+                               title="${paramData.tooltip}">
+                        <div class="form-text">${paramData.tooltip}</div>
+                    `;
+                    
+                    modalParameters.appendChild(paramDiv);
+                }
             }
             
             // Show the modal
@@ -200,16 +218,56 @@
         function generateElementTooltip(element) {
             if (!element) return '';
 
-            let tooltip_html = `<b>uid:</b> ${element.uid || 'N/A'}<br>` +
-                               `<b>type:</b> ${element.type || 'N/A'}<br>` +
-                               `<b>type_variety:</b> ${element.type_variety || 'N/A'}<br>`;
-            
-            if (element.parameters) {
+            const uid = element.uid || 'N/A';
+            const element_type = element.type || 'N/A';
+            const type_variety = element.type_variety || 'N/A';
+
+            let tooltip_html = `<b>uid:</b> ${uid}<br>` +
+                               `<b>type:</b> ${element_type}<br>` +
+                               `<b>type_variety:</b> ${type_variety}<br>`;
+
+            // Handle EDFA tooltips with enhanced parameters structure
+            if (element_type === 'Edfa' && element.parameters) {
+                tooltip_html += "<hr><b>Operational Params:</b><br>";
+                if (element.parameters.gain_target) {
+                    tooltip_html += `&nbsp;&nbsp;gain_target: ${element.parameters.gain_target.value} dB<br>`;
+                }
+                tooltip_html += "<hr><b>Equipment Specs:</b><br>";
+                if (element.parameters.gain_flatmax) {
+                    tooltip_html += `&nbsp;&nbsp;gain_flatmax: ${element.parameters.gain_flatmax.value} dB<br>`;
+                }
+                if (element.parameters.gain_min) {
+                    tooltip_html += `&nbsp;&nbsp;gain_min: ${element.parameters.gain_min.value} dB<br>`;
+                }
+                if (element.parameters.p_max) {
+                    tooltip_html += `&nbsp;&nbsp;p_max: ${element.parameters.p_max.value} dBm<br>`;
+                }
+                if (element.parameters.nf0) {
+                    tooltip_html += `&nbsp;&nbsp;nf0: ${element.parameters.nf0.value} dB<br>`;
+                }
+            }
+            // Handle Transceiver tooltips with enhanced parameters structure
+            else if (element_type === 'Transceiver' && element.parameters) {
+                tooltip_html += "<b>params:</b><br>";
+                for (const [key, data] of Object.entries(element.parameters)) {
+                    tooltip_html += `&nbsp;&nbsp;${key}: ${data.value} ${data.unit}<br>`;
+                }
+            }
+            // Handle Fiber tooltips with enhanced parameters structure
+            else if (element_type === 'Fiber' && element.parameters) {
                 tooltip_html += "<b>params:</b><br>";
                 for (const [key, data] of Object.entries(element.parameters)) {
                     tooltip_html += `&nbsp;&nbsp;${key}: ${data.value}<br>`;
                 }
             }
+            // Fallback for original structure
+            else if (element.params) {
+                tooltip_html += "<b>params:</b><br>";
+                for (const [k, v] of Object.entries(element.params)) {
+                    tooltip_html += `&nbsp;&nbsp;${k}: ${v}<br>`;
+                }
+            }
+            
             return tooltip_html;
         }
 
@@ -270,10 +328,13 @@
             // Display final results summary
             displayFinalResultsSummary(results.final_results);
             
-            // Display plots
+            // Display plots - Three separate plots matching notebook
             if (results.plots) {
-                if (results.plots.power_plot) {
-                    Plotly.newPlot('powerPlot', results.plots.power_plot.data, results.plots.power_plot.layout, {responsive: true});
+                if (results.plots.signal_plot) {
+                    Plotly.newPlot('signalPlot', results.plots.signal_plot.data, results.plots.signal_plot.layout, {responsive: true});
+                }
+                if (results.plots.ase_plot) {
+                    Plotly.newPlot('asePlot', results.plots.ase_plot.data, results.plots.ase_plot.layout, {responsive: true});
                 }
                 if (results.plots.osnr_plot) {
                     Plotly.newPlot('osnrPlot', results.plots.osnr_plot.data, results.plots.osnr_plot.layout, {responsive: true});
@@ -294,24 +355,21 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Etapa</th>
-                                <th>Distancia (km)</th>
-                                <th>Potencia (dBm)</th>
-                                <th>OSNR_bw (dB)</th>
-                                <th>OSNR@0.1nm (dB)</th>
-                                <th>OSNR_paralelo (dB)</th>
+                                <th>Potencia [dBm]</th>
+                                <th>OSNR_bw [dB]</th>
+                                <th>OSNR_teórico [dB]</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
             
             stages.forEach(stage => {
+                const powerStr = stage.power_dbm.toFixed(2) === "-0.00" ? "0.00" : stage.power_dbm.toFixed(2);
                 tableHtml += `
                     <tr>
                         <td><strong>${stage.name}</strong></td>
-                        <td>${stage.distance.toFixed(3)}</td>
-                        <td>${stage.power_dbm.toFixed(2)}</td>
+                        <td>${powerStr}</td>
                         <td>${stage.osnr_bw}</td>
-                        <td>${stage.osnr_01nm}</td>
                         <td>${stage.osnr_parallel}</td>
                     </tr>
                 `;
@@ -341,12 +399,14 @@
                         <div class="col-md-6">
                             <small><strong>Potencia Final:</strong> ${finalResults.final_power_dbm.toFixed(2)} dBm</small><br>
                             <small><strong>Sensibilidad del Receptor:</strong> ${finalResults.receiver_sensitivity_dbm.toFixed(2)} dBm</small><br>
-                            <small><strong>Margen de Potencia:</strong> ${finalResults.power_margin_db.toFixed(2)} dB</small>
+                            <small><strong>Margen de Potencia:</strong> ${finalResults.power_margin_db.toFixed(2)} dB</small><br>
+                            <small><strong>Número de Canales:</strong> ${finalResults.nch || 'N/A'}</small>
                         </div>
                         <div class="col-md-6">
                             <small><strong>OSNR Final (bw):</strong> ${finalResults.final_osnr_bw} dB</small><br>
                             <small><strong>OSNR Final (0.1nm):</strong> ${finalResults.final_osnr_01nm} dB</small><br>
-                            <small><strong>Distancia Total:</strong> ${finalResults.total_distance_km.toFixed(1)} km</small>
+                            <small><strong>Distancia Total:</strong> ${finalResults.total_distance_km.toFixed(1)} km</small><br>
+                            <small><strong>Potencia por Canal:</strong> ${finalResults.tx_power_per_channel_dbm ? finalResults.tx_power_per_channel_dbm.toFixed(2) + ' dBm' : 'N/A'}</small>
                         </div>
                     </div>
                 </div>
@@ -380,20 +440,30 @@
                 const trace = traces[i];
                 let elementIndex = -1;
 
-                // For nodes, 'text' holds the UID
+                // For horizontal plots: 'text' holds the UID
                 if (trace.text && Array.isArray(trace.text)) {
                    elementIndex = trace.text.indexOf(selectedElement.uid);
                 }
                 
+                // For map plots: check if this is a node trace with lat/lon data
+                if (elementIndex === -1 && trace.lat && trace.lon && trace.text && Array.isArray(trace.text)) {
+                    elementIndex = trace.text.indexOf(selectedElement.uid);
+                }
+                
                 // For fiber chains, the UID is encoded in the hovertext
                 if (elementIndex === -1 && trace.hovertext && Array.isArray(trace.hovertext)) {
-                    elementIndex = trace.hovertext.findIndex(text => text.includes(`<b>uid:</b> ${selectedElement.uid}<br>`));
+                    elementIndex = trace.hovertext.findIndex(text => 
+                        text && text.includes(`<b>uid:</b> ${selectedElement.uid}<br>`)
+                    );
                 }
 
-                if (elementIndex !== -1) {
-                    const update = { 'hovertext': [] };
-                    update.hovertext[elementIndex] = newTooltip;
-                    Plotly.restyle(graphDiv, update, i);
+                if (elementIndex !== -1 && trace.hovertext && Array.isArray(trace.hovertext)) {
+                    // Create a copy of the current hovertext array
+                    const newHovertext = [...trace.hovertext];
+                    newHovertext[elementIndex] = newTooltip;
+                    
+                    // Update the entire hovertext array
+                    Plotly.restyle(graphDiv, { 'hovertext': [newHovertext] }, i);
                     break; 
                 }
             }
