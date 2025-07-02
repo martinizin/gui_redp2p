@@ -1,0 +1,15 @@
+<style>
+  /* Scoped navigation button styles for consistency across pages */
+  .scenario-nav-group .btn {
+      padding: 0.5rem 1rem !important;   /* Uniform size */
+      font-size: 1rem !important;        /* Uniform text */
+  }
+</style>
+
+<nav class="scenario-nav d-flex justify-content-center my-3">
+    <div class="btn-group scenario-nav-group" role="group" aria-label="Scenario Navigation">
+        <a href="{{ url_for('index') }}" class="btn {% if request.endpoint == 'index' %}btn-primary{% else %}btn-secondary{% endif %}">Escenario 01</a>
+        <a href="{{ url_for('scenario02') }}" class="btn {% if request.endpoint == 'scenario02' %}btn-primary{% else %}btn-secondary{% endif %}">Escenario 02</a>
+        <a href="{{ url_for('scenario03') }}" class="btn {% if request.endpoint == 'scenario03' %}btn-primary{% else %}btn-secondary{% endif %}">Escenario 03</a>
+    </div>
+</nav> 

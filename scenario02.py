@@ -4,7 +4,7 @@ import os
 import numpy as np
 from flask import jsonify, request
 
-# Load equipment configuration
+# Cargar configuración de equipos
 EQPT_CONFIG_PATH = 'versionamientos/eqpt_config.json'
 edfa_equipment_data = {}
 if os.path.exists(EQPT_CONFIG_PATH):
@@ -17,7 +17,7 @@ else:
     print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_PATH}")
 
 def get_element_tooltip_text(element, edfa_specs):
-    """Generates a formatted HTML string for an element's tooltip."""
+    """Genera una cadena HTML formateada para el tooltip de un elemento."""
     uid = element.get('uid', 'N/A')
     element_type = element.get('type', 'N/A')
     type_variety = element.get('type_variety', 'N/A')
@@ -26,7 +26,7 @@ def get_element_tooltip_text(element, edfa_specs):
                     f"<b>type:</b> {element_type}<br>"
                     f"<b>type_variety:</b> {type_variety}<br>")
 
-    # Add specific operational parameters for EDFAs
+    # Agregar parámetros operacionales específicos para EDFAs
     if element_type == 'Edfa':
         op = element.get('operational', {})
         spec = edfa_specs.get(type_variety, {})
@@ -40,7 +40,7 @@ def get_element_tooltip_text(element, edfa_specs):
         tooltip_html += f"&nbsp;&nbsp;p_max: {spec.get('p_max', 'N/A')} dBm<br>"
         tooltip_html += f"&nbsp;&nbsp;nf0: {spec.get('nf0', 5)} dB<br>"
 
-    # Add all 'params' for any element that has them (e.g., Fiber)
+    # Agregar todos los 'params' para cualquier elemento que los tenga (ej., Fiber)
     if 'params' in element:
         params = element.get('params', {})
         tooltip_html += "<b>params:</b><br>"
@@ -49,15 +49,15 @@ def get_element_tooltip_text(element, edfa_specs):
     return tooltip_html
 
 def get_fiber_chain_tooltip_text(fiber_chain, edfa_specs):
-    """Generates a formatted HTML string for a fiber chain's tooltip."""
+    """Genera una cadena HTML formateada para el tooltip de una cadena de fibras."""
     if not fiber_chain:
         return ""
     
     if len(fiber_chain) == 1:
-        # Single fiber, use existing tooltip
+        # Fibra única, usar tooltip existente
         return get_element_tooltip_text(fiber_chain[0], edfa_specs)
     
-    # Multiple fibers in chain
+    # Múltiples fibras en cadena
     tooltip_html = f"<b>Fiber Chain ({len(fiber_chain)} spans):</b><br>"
     total_length = 0
     
@@ -100,8 +100,8 @@ def get_node_styles_and_tooltips(nodes_to_plot, edfa_specs):
 
 def build_topology_graph(elements, connections):
     """
-    Build a graph representation of the network topology for pathfinding.
-    Returns a dictionary mapping element UIDs to their neighbors.
+    Construir una representación gráfica de la topología de red para búsqueda de rutas.
+    Devuelve un diccionario que mapea los UIDs de elementos a sus vecinos.
     """
     traversable_graph = {e['uid']: [] for e in elements}
     for conn in connections:
@@ -114,7 +114,7 @@ def build_topology_graph(elements, connections):
 
 def find_network_path(graph, source_uid, destination_uid):
     """
-    Find the path from source to destination transceiver using BFS.
+    Encontrar la ruta desde el origen hasta el transceptor de destino usando BFS.
     """
     if source_uid not in graph or destination_uid not in graph:
         return None
@@ -133,7 +133,7 @@ def find_network_path(graph, source_uid, destination_uid):
 
 def find_path_for_layout(elements, connections):
     """
-    Determines the linear sequence of 'real' nodes (non-fibers) for horizontal layout.
+    Determina la secuencia lineal de nodos 'reales' (no fibras) para diseño horizontal.
     """
     graph, elements_by_uid = build_topology_graph(elements, connections)
     source_uid, dest_uid = identify_source_destination_transceivers(elements)
@@ -149,7 +149,7 @@ def find_path_for_layout(elements, connections):
     return [uid for uid in path_with_fibers if elements_by_uid[uid].get('type') != 'Fiber']
 
 def process_scenario02_data(file):
-    """Processes the uploaded JSON file and returns the network visualization data."""
+    """Procesa el archivo JSON cargado y devuelve los datos de visualización de red."""
     if file.filename == '':
         return {'error': "No se seleccionó ningún archivo"}
 
@@ -162,7 +162,7 @@ def process_scenario02_data(file):
         connections = data.get('connections', [])
         fig = go.Figure()
 
-        # Enhance elements with parameters
+        # Mejorar elementos con parámetros
         enhanced_elements = enhance_elements_with_parameters(elements)
         enhanced_data = data.copy()
         enhanced_data['elements'] = enhanced_elements
@@ -172,27 +172,27 @@ def process_scenario02_data(file):
         real_node_uids = {uid for uid, el in elements_by_uid.items() if el.get('type') != 'Fiber'}
         fiber_elements_by_uid = {uid: el for uid, el in elements_by_uid.items() if el.get('type') == 'Fiber'}
         
-        # Build connections map
+        # Construir mapa de conexiones
         connections_map = {}
         for conn in connections:
             from_n, to_n = conn['from_node'], conn['to_node']
             connections_map.setdefault(from_n, []).append(to_n)
         
-        # Enhanced connection processing to handle fiber chains
+        # Procesamiento mejorado de conexiones para manejar cadenas de fibras
         processed_connections = []
         processed_edge_tuples = set()
         
         def find_fiber_chain_end(start_fiber_uid, visited=None):
             """
-            Recursively find the end of a fiber chain.
-            Returns (end_node_uid, fiber_chain) where end_node_uid is a real node
-            and fiber_chain is the list of fiber elements in the chain.
+            Encontrar recursivamente el final de una cadena de fibras.
+            Devuelve (end_node_uid, fiber_chain) donde end_node_uid es un nodo real
+            y fiber_chain es la lista de elementos de fibra en la cadena.
             """
             if visited is None:
                 visited = set()
             
             if start_fiber_uid in visited:
-                return None, []  # Circular reference
+                return None, []  # Referencia circular
             
             visited.add(start_fiber_uid)
             fiber_chain = [fiber_elements_by_uid[start_fiber_uid]]
@@ -202,41 +202,41 @@ def process_scenario02_data(file):
             
             for next_uid in connections_map[start_fiber_uid]:
                 if next_uid in real_node_uids:
-                    # Found real node at end of chain
+                    # Encontró nodo real al final de la cadena
                     return next_uid, fiber_chain
                 elif next_uid in fiber_elements_by_uid:
-                    # Continue following fiber chain
+                    # Continuar siguiendo la cadena de fibras
                     end_node, remaining_chain = find_fiber_chain_end(next_uid, visited.copy())
                     if end_node:
                         return end_node, fiber_chain + remaining_chain
             
             return None, fiber_chain
         
-        # Process connections from real nodes
+        # Procesar conexiones desde nodos reales
         for from_uid in real_node_uids:
             if from_uid not in connections_map: 
                 continue
                 
             for target_uid in connections_map[from_uid]:
                 if target_uid in fiber_elements_by_uid:
-                    # Found fiber, trace the chain to find end node
+                    # Encontró fibra, rastrear la cadena para encontrar el nodo final
                     end_node_uid, fiber_chain = find_fiber_chain_end(target_uid)
                     
                     if end_node_uid and end_node_uid in real_node_uids:
                         edge_tuple = tuple(sorted((from_uid, end_node_uid)))
                         if edge_tuple not in processed_edge_tuples:
-                            # Use the first fiber in the chain for visualization
+                            # Usar la primera fibra de la cadena para visualización
                             primary_fiber = fiber_chain[0] if fiber_chain else None
                             processed_connections.append({
                                 'from_node': from_uid, 
                                 'to_node': end_node_uid,
                                 'fiber_element': primary_fiber,
-                                'fiber_chain': fiber_chain  # Store full chain for tooltip
+                                'fiber_chain': fiber_chain  # Almacenar cadena completa para tooltip
                             })
                             processed_edge_tuples.add(edge_tuple)
                             
                 elif target_uid in real_node_uids:
-                    # Direct connection to real node (no fiber)
+                    # Conexión directa a nodo real (sin fibra)
                     edge_tuple = tuple(sorted((from_uid, target_uid)))
                     if edge_tuple not in processed_edge_tuples:
                         processed_connections.append({
@@ -249,14 +249,17 @@ def process_scenario02_data(file):
         
         nodes_to_plot = [el for el in elements if el['uid'] in real_node_uids]
         
-        # Determine plot type based on coordinates in 'metadata'
+        # Determinar tipo de gráfico basado en coordenadas en 'metadata'
         has_coordinates = False
         plot_nodes = [node for node in nodes_to_plot if node.get('type') != 'Fiber']
         if plot_nodes:
             has_coordinates = all(
                 isinstance(node.get('metadata'), dict) and
                 'latitude' in node['metadata'] and
-                'longitude' in node['metadata']
+                'longitude' in node['metadata'] and
+                isinstance(node['metadata']['latitude'], (int, float)) and
+                isinstance(node['metadata']['longitude'], (int, float)) and
+                not (node['metadata']['latitude'] == 0 and node['metadata']['longitude'] == 0)  # Evitar coordenadas (0,0) que pueden ser placeholders
                 for node in plot_nodes
             )
 
@@ -274,29 +277,38 @@ def process_scenario02_data(file):
         return {'error': f"Error al procesar el archivo: {e}"}
 
 def _create_map_plot(nodes_to_plot, processed_connections, data):
-    """Creates a map-based plot for the network topology."""
+    """Crea un gráfico basado en mapa para la topología de red."""
     fig = go.Figure()
 
     node_hover_texts, node_symbols, node_colors = get_node_styles_and_tooltips(nodes_to_plot, edfa_equipment_data)
     
     nodes_by_uid = {node['uid']: node for node in nodes_to_plot}
     
-    # Draw connections (lines) between nodes
+    # Dibujar conexiones (líneas) entre nodos - forzar líneas rectas
     for conn in processed_connections:
         from_uid, to_uid = conn['from_node'], conn['to_node']
         if from_uid in nodes_by_uid and to_uid in nodes_by_uid:
             from_node, to_node = nodes_by_uid[from_uid], nodes_by_uid[to_uid]
             
+            # Crear líneas rectas agregando puntos intermedios para evitar curvatura
+            from_lat, from_lon = from_node['metadata']['latitude'], from_node['metadata']['longitude']
+            to_lat, to_lon = to_node['metadata']['latitude'], to_node['metadata']['longitude']
+            
+            # Generar puntos intermedios para línea recta
+            num_points = 20  # Número de puntos intermedios
+            lats = [from_lat + (to_lat - from_lat) * i / (num_points - 1) for i in range(num_points)]
+            lons = [from_lon + (to_lon - from_lon) * i / (num_points - 1) for i in range(num_points)]
+            
             fig.add_trace(go.Scattermapbox(
                 mode="lines",
-                lon=[from_node['metadata']['longitude'], to_node['metadata']['longitude']],
-                lat=[from_node['metadata']['latitude'], to_node['metadata']['latitude']],
+                lon=lons,
+                lat=lats,
                 hoverinfo='none',
-                line=dict(width=2, color='gray'),
+                line=dict(width=3, color='#FF0000'),  # Línea roja más gruesa para mejor visibilidad
                 showlegend=False
             ))
 
-    # Add invisible markers at midpoints for fiber tooltips
+    # Agregar marcadores invisibles en puntos medios para tooltips de fibras
     fiber_hover_lons, fiber_hover_lats, fiber_hover_texts = [], [], []
     for conn in processed_connections:
         if conn.get('fiber_chain'):
@@ -312,44 +324,138 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
             mode='markers',
             lon=fiber_hover_lons,
             lat=fiber_hover_lats,
-            marker=dict(size=20, color='rgba(0,0,0,0)'), # Invisible markers
+            marker=dict(size=25, color='rgba(0,0,0,0)'), # Marcadores invisibles más grandes para mejor hover
             hovertext=fiber_hover_texts,
             hovertemplate='%{hovertext}<extra></extra>',
             showlegend=False,
             name="Fibers"
         ))
 
-    # Add the main network node markers and labels
-    node_lats = [node['metadata']['latitude'] for node in nodes_to_plot]
-    node_lons = [node['metadata']['longitude'] for node in nodes_to_plot]
-    node_uids = [node['uid'] for node in nodes_to_plot]
+    # Agregación de los marcadores y etiquetas de nodos principales de la red
+    # Para mapbox, necesitamos manejar diferentes tipos de nodos por separado
+    # ya que mapbox no soporta todos los símbolos de plotly regular
+    
+    # Separar nodos por tipo para diferentes representaciones
+    transceivers = []
+    edfas = []
+    other_nodes = []
+    
+    for i, node in enumerate(nodes_to_plot):
+        node_info = {
+            'lat': node['metadata']['latitude'],
+            'lon': node['metadata']['longitude'],
+            'uid': node['uid'],
+            'hover': node_hover_texts[i],
+            'color': node_colors[i]
+        }
+        
+        if node.get('type') == 'Transceiver':
+            transceivers.append(node_info)
+        elif node.get('type') == 'Edfa':
+            edfas.append(node_info)
+        else:
+            other_nodes.append(node_info)
+    
+    # Agregar transceivers con símbolo de círculo más grande y distintivo
+    if transceivers:
+        fig.add_trace(go.Scattermapbox(
+            mode="markers+text",
+            lon=[t['lon'] for t in transceivers],
+            lat=[t['lat'] for t in transceivers],
+            text=[t['uid'] for t in transceivers],
+            hovertext=[t['hover'] for t in transceivers],
+            hovertemplate='%{hovertext}<extra></extra>',
+            marker=dict(
+                size=12,  # Tamaño reducido para transceivers
+                color=[t['color'] for t in transceivers],
+                symbol='circle'  # Círculo para transceivers
+            ),
+            textposition='bottom right',
+            textfont=dict(size=12, color='black'),
+            showlegend=False,
+            name="Transceivers"
+        ))
+    
+    # Agregar EDFAs con símbolo circular pequeño y rojo
+    if edfas:
+        fig.add_trace(go.Scattermapbox(
+            mode="markers+text",
+            lon=[e['lon'] for e in edfas],
+            lat=[e['lat'] for e in edfas],
+            text=[e['uid'] for e in edfas],  # Usar UID simple
+            hovertext=[e['hover'] for e in edfas],
+            hovertemplate='%{hovertext}<extra></extra>',
+            marker=dict(
+                size=8,  # Más pequeño que TX/RX (18) pero visible
+                color='#FF0000',  # Rojo fijo para todos los EDFAs
+                symbol='circle'  # Círculo como TX/RX pero más pequeño
+            ),
+            textposition='bottom right',
+            textfont=dict(size=10, color='red', family='Arial'),  # Texto rojo más pequeño
+            showlegend=False,
+            name="EDFAs"
+        ))
+    
+    # Agregar otros nodos con símbolo por defecto
+    if other_nodes:
+        fig.add_trace(go.Scattermapbox(
+            mode="markers+text",
+            lon=[o['lon'] for o in other_nodes],
+            lat=[o['lat'] for o in other_nodes],
+            text=[o['uid'] for o in other_nodes],
+            hovertext=[o['hover'] for o in other_nodes],
+            hovertemplate='%{hovertext}<extra></extra>',
+            marker=dict(
+                size=20,
+                color=[o['color'] for o in other_nodes],
+                symbol='circle'
+            ),
+            textposition='bottom right',
+            textfont=dict(size=11, color='black'),
+            showlegend=False,
+            name="Other Nodes"
+        ))
 
-    fig.add_trace(go.Scattermapbox(
-        mode="markers+text",
-        lon=node_lons,
-        lat=node_lats,
-        text=node_uids,
-        hovertext=node_hover_texts,
-        hovertemplate='%{hovertext}<extra></extra>',
-        marker=dict(size=20, symbol=node_symbols, color=node_colors),
-        textposition='bottom right',
-        textfont=dict(size=11),
-        showlegend=False,
-        name="Nodes"
-    ))
-
-    # Configure map layout
-    center_lat = np.mean(node_lats) if node_lats else 0
-    center_lon = np.mean(node_lons) if node_lons else 0
+    # Configurar diseño del mapa
+    # Recolectar todas las coordenadas para cálculos de centro y zoom
+    all_lats = []
+    all_lons = []
+    for node in nodes_to_plot:
+        if 'metadata' in node and 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+            all_lats.append(node['metadata']['latitude'])
+            all_lons.append(node['metadata']['longitude'])
+    
+    center_lat = np.mean(all_lats) if all_lats else 0
+    center_lon = np.mean(all_lons) if all_lons else 0
+    
+    # Calcular zoom apropiado para topología punto a punto
+    zoom_level = 5  # Zoom por defecto
+    if len(all_lats) == 2:  # Topología punto a punto
+        # Calcular distancia entre puntos para ajustar zoom
+        lat_diff = abs(max(all_lats) - min(all_lats))
+        lon_diff = abs(max(all_lons) - min(all_lons))
+        max_diff = max(lat_diff, lon_diff)
+        
+        # Ajustar zoom basado en la distancia
+        if max_diff < 0.1:  # Muy cerca
+            zoom_level = 12
+        elif max_diff < 0.5:  # Cercano
+            zoom_level = 10
+        elif max_diff < 2:  # Moderado
+            zoom_level = 8
+        elif max_diff < 5:  # Lejano
+            zoom_level = 6
+        else:  # Muy lejano
+            zoom_level = 4
     
     fig.update_layout(
-        title_text=data.get('network_name', 'Topología de Red'),
+        title_text=data.get('network_name', 'Topología de Red Punto a Punto' if len(all_lats) == 2 else 'Topología de Red'),
         showlegend=False,
         hovermode='closest',
         mapbox=dict(
             style="open-street-map",
             center=dict(lat=center_lat, lon=center_lon),
-            zoom=5
+            zoom=zoom_level
         ),
         margin={"r":0,"t":40,"l":0,"b":0}
     )
@@ -357,33 +463,33 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
     return fig
 
 def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
-    """Creates a horizontal 2D plot for the network topology."""
+    """Crea un gráfico 2D horizontal para la topología de red."""
     fig = go.Figure()
 
-    # Determine the horizontal order of nodes from the full element list
+    # Determinar el orden horizontal de nodos desde la lista completa de elementos
     all_elements = data.get('elements', [])
     all_connections = data.get('connections', [])
     ordered_node_uids = find_path_for_layout(all_elements, all_connections)
     
-    # Create a lookup for the original node objects that are being plotted
+    # Crear una búsqueda para los objetos de nodo originales que se están graficando
     nodes_by_uid = {node['uid']: node for node in nodes_to_plot}
     
-    # Filter and order the nodes that will actually be plotted
+    # Filtrar y ordenar los nodos que realmente serán graficados
     ordered_nodes_to_plot = [nodes_by_uid[uid] for uid in ordered_node_uids if uid in nodes_by_uid]
     
-    if not ordered_nodes_to_plot: # Fallback if path finding fails or returns empty
+    if not ordered_nodes_to_plot: # Respaldo si la búsqueda de ruta falla o devuelve vacío
         ordered_nodes_to_plot = sorted(nodes_to_plot, key=lambda x: x['uid'])
         ordered_node_uids = [node['uid'] for node in ordered_nodes_to_plot]
 
     node_hover_texts, node_symbols, node_colors = get_node_styles_and_tooltips(ordered_nodes_to_plot, edfa_equipment_data)
     
-    # Assign horizontal coordinates
+    # Asignar coordenadas horizontales
     node_positions = {uid: {'x': i * 100, 'y': 100} for i, uid in enumerate(ordered_node_uids)}
 
-    # Prepare lists for fiber span hover points
+    # Preparar listas para puntos de hover de span de fibra
     hover_x, hover_y, d2_hover_texts = [], [], []
 
-    # Draw connections (lines) between nodes
+    # Dibujar conexiones (líneas) entre nodos
     for conn in processed_connections:
         from_uid, to_uid = conn['from_node'], conn['to_node']
         if from_uid in node_positions and to_uid in node_positions:
@@ -396,13 +502,13 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
                 hoverinfo='none', showlegend=False
             ))
 
-            # Add an invisible marker at the midpoint for the fiber tooltip
+            # Agregar un marcador invisible en el punto medio para el tooltip de fibra
             if conn.get('fiber_chain'):
                 hover_x.append((from_pos['x'] + to_pos['x']) / 2)
                 hover_y.append(from_pos['y'])
                 d2_hover_texts.append(get_fiber_chain_tooltip_text(conn['fiber_chain'], edfa_equipment_data))
 
-    # Add the invisible fiber hover points
+    # Agregar los puntos de hover invisibles de fibra
     if d2_hover_texts:
         fig.add_trace(go.Scatter(
             x=hover_x, y=hover_y, mode='markers',
@@ -412,7 +518,7 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
             showlegend=False
         ))
 
-    # Add the main network node markers and labels
+    # Agregación de los marcadores y etiquetas de nodos principales de la red
     node_x = [node_positions[el['uid']]['x'] for el in ordered_nodes_to_plot]
     node_y = [node_positions[el['uid']]['y'] for el in ordered_nodes_to_plot]
     node_text_on_graph = [el['uid'] for el in ordered_nodes_to_plot]
@@ -429,8 +535,11 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
         showlegend=False
     ))
     
+    # Detectar si es topología punto a punto para ajustar título
+    is_point_to_point = len(ordered_nodes_to_plot) == 2
+    
     fig.update_layout(
-        title_text=data.get('network_name', 'Topología de Red'),
+        title_text=data.get('network_name', 'Topología de Red Punto a Punto' if is_point_to_point else 'Topología de Red'),
         showlegend=False, 
         xaxis=dict(visible=False, range=[-50, len(ordered_nodes_to_plot) * 100 - 50]),
         yaxis=dict(visible=False, range=[0, 200]),
@@ -442,16 +551,16 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
     return fig
 
 def enhance_elements_with_parameters(elements):
-    """Enhance elements with parameter information for editing."""
+    """Mejorar elementos con información de parámetros para edición."""
     enhanced_elements = []
     
-    # Identify source and destination transceivers
+    # Identificar transceptores de origen y destino
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     source_transceiver = None
     destination_transceiver = None
     
     if len(transceivers) >= 2:
-        # Identify source and destination based on topology connections
+        # Identificar origen y destino basado en conexiones de topología
         source_transceiver, destination_transceiver = identify_source_destination_transceivers(elements)
     
     for element in elements:
@@ -459,7 +568,7 @@ def enhance_elements_with_parameters(elements):
         element_type = element.get('type', '')
         
         if element_type == 'Transceiver':
-            # Determine if this is source or destination transceiver
+            # Determinar si este es transceptor de origen o destino
             if element.get('uid') == source_transceiver:
                 enhanced_element['parameters'] = get_source_transceiver_defaults()
                 enhanced_element['role'] = 'source'
@@ -467,17 +576,17 @@ def enhance_elements_with_parameters(elements):
                 enhanced_element['parameters'] = get_destination_transceiver_defaults()
                 enhanced_element['role'] = 'destination'
             else:
-                # Fallback for other transceivers
+                # Respaldo para otros transceptores
                 enhanced_element['parameters'] = get_source_transceiver_defaults()
                 enhanced_element['role'] = 'source'
             
         elif element_type == 'Fiber':
-            # Fiber parameters from existing params
+            # Parámetros de fibra desde params existentes
             existing_params = element.get('params', {})
             enhanced_element['parameters'] = get_fiber_defaults(existing_params)
             
         elif element_type == 'Edfa':
-            # Get EDFA parameters from equipment config
+            # Obtener parámetros EDFA desde configuración de equipos
             type_variety = element.get('type_variety', 'std_medium_gain')
             edfa_config = find_edfa_config(type_variety)
             operational = element.get('operational', {})
@@ -489,15 +598,15 @@ def enhance_elements_with_parameters(elements):
 
 def identify_source_destination_transceivers(elements):
     """
-    Identify source and destination transceivers based on network topology.
-    Returns (source_uid, destination_uid)
+    Identificar transceptores de origen y destino basado en topología de red.
+    Devuelve (source_uid, destination_uid)
     """
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     
     if len(transceivers) < 2:
         return None, None
     
-    # Try to identify based on common naming patterns first
+    # Intentar identificar basado en patrones de nomenclatura comunes primero
     source_candidates = []
     dest_candidates = []
     
@@ -508,11 +617,11 @@ def identify_source_destination_transceivers(elements):
         elif any(pattern in uid for pattern in ['site_b', 'rx', 'receive', 'dest', 'destination', 'b']):
             dest_candidates.append(t.get('uid'))
     
-    # Use naming patterns if available
+    # Usar patrones de nomenclatura si están disponibles
     if source_candidates and dest_candidates:
         return source_candidates[0], dest_candidates[0]
     
-    # If only one candidate for source or destination, use it
+    # Si solo un candidato para origen o destino, usarlo
     if source_candidates and len(transceivers) >= 2:
         other_transceivers = [t for t in transceivers if t.get('uid') not in source_candidates]
         if other_transceivers:
@@ -523,7 +632,7 @@ def identify_source_destination_transceivers(elements):
         if other_transceivers:
             return other_transceivers[0].get('uid'), dest_candidates[0]
     
-    # Fallback to first and last transceivers (alphabetically sorted)
+    # Respaldo a primer y último transceptores (ordenados alfabéticamente)
     transceivers_sorted = sorted(transceivers, key=lambda x: x.get('uid', ''))
     if len(transceivers_sorted) >= 2:
         return transceivers_sorted[0].get('uid'), transceivers_sorted[-1].get('uid')
@@ -531,20 +640,20 @@ def identify_source_destination_transceivers(elements):
     return None, None
 
 def get_source_transceiver_defaults():
-    """Get default parameters for source transceivers (transmitters)."""
+    """Obtener parámetros por defecto para transceptores de origen (transmisores)."""
     return {
         'P_tot_dbm_input': {'value': 50.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Total del Transmisor (P_tot_dbm_input) - Potencia total de salida del transmisor que será dividida entre todos los canales'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - OSNR inicial del transmisor usado para los cálculos'}
     }
 
 def get_destination_transceiver_defaults():
-    """Get default parameters for destination transceivers (receivers)."""
+    """Obtener parámetros por defecto para transceptores de destino (receptores)."""
     return {
         'sens': {'value': -30.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
     }
 
 def get_transceiver_defaults():
-    """Get default parameters for transceivers (legacy function for compatibility)."""
+    """Obtener parámetros por defecto para transceptores (función heredada para compatibilidad)."""
     return {
         'p_rb': {'value': -17.86, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia de Señal Recibida - Modifique este valor para ajustar la potencia de señal'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
@@ -552,7 +661,7 @@ def get_transceiver_defaults():
     }
 
 def get_fiber_defaults(existing_params):
-    """Get parameters for fiber elements."""
+    """Obtener parámetros para elementos de fibra."""
     return {
         'loss_coef': {'value': existing_params.get('loss_coef', 0.2), 'unit': 'dB/km', 'editable': False, 'tooltip': 'Coeficiente de Pérdida de Fibra - El coeficiente que representa la tasa de pérdida de la fibra'},
         'length_km': {'value': existing_params.get('length', 80), 'unit': 'km', 'editable': False, 'tooltip': 'Longitud de Fibra (km) - La longitud total de la sección de fibra en kilómetros'},
@@ -562,7 +671,7 @@ def get_fiber_defaults(existing_params):
     }
 
 def get_edfa_defaults(edfa_config, operational):
-    """Get parameters for EDFA elements."""
+    """Obtener parámetros para elementos EDFA."""
     return {
         'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Plana Máxima - La ganancia máxima alcanzada por el amplificador under condiciones planas'},
         'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Mínima - La ganancia mínima alcanzable por el amplificador'},
@@ -572,23 +681,23 @@ def get_edfa_defaults(edfa_config, operational):
     }
 
 def find_edfa_config(type_variety):
-    """Find EDFA configuration by type_variety."""
+    """Encontrar configuración EDFA por type_variety."""
     config = edfa_equipment_data.get(type_variety, {})
     if not config:
-        # Return default if not found
+        # Devolver valores por defecto si no se encuentra
         return {'gain_flatmax': 26, 'gain_min': 15, 'p_max': 23, 'nf_min': 6}
     return config
 
 def update_scenario02_parameters():
-    """Update network parameters for scenario02 elements."""
+    """Actualizar parámetros de red para elementos de scenario02."""
     try:
         data = request.get_json()
         element_uid = data.get('element_uid')
         parameter_name = data.get('parameter_name')
         new_value = data.get('new_value')
         
-        # Here you would typically save the updated parameters to a database or session
-        # For now, we'll just return success
+        # Aquí normalmente guardarías los parámetros actualizados en una base de datos o sesión
+        # Por ahora, solo devolvemos éxito
         return jsonify({
             'success': True,
             'message': f'Parameter {parameter_name} updated for element {element_uid}',
@@ -600,12 +709,12 @@ def update_scenario02_parameters():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 def calculate_scenario02():
-    """Calculate scenario02 network based on uploaded topology and user parameters."""
+    """Calcular red scenario02 basado en topología cargada y parámetros del usuario."""
     try:
         data = request.get_json()
         topology_data = data.get('topology_data', {})
         
-        # Run the calculation
+        # Ejecutar el cálculo
         calculation_params = {
             'topology_data': topology_data,
         }
@@ -620,35 +729,35 @@ def calculate_scenario02():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400 
 
-# Calculation functions from the notebook
+# Funciones de cálculo del notebook
 def dbm2watt(dbm):
-    """Convert dBm to Watts"""
+    """Convertir dBm a Watts"""
     return 10 ** ((dbm - 30) / 10)
 
 def watt2dbm(watt):
-    """Convert Watts to dBm"""
+    """Convertir Watts a dBm"""
     if watt <= 0:
         return -float('inf')
     return 30 + 10 * np.log10(watt)
 
 def lin2db(lin):
-    """Convert linear to dB"""
+    """Convertir lineal a dB"""
     if lin <= 0:
         return -float('inf')
     return 10 * np.log10(lin)
 
 def db2lin(db):
-    """Convert dB to linear"""
+    """Convertir dB a lineal"""
     return 10 ** (db / 10)
 
 def format_osnr(v):
-    """Format OSNR value for display"""
+    """Formatear valor OSNR para visualización"""
     return "∞" if np.isinf(v) else f"{v:.2f}"
 
 def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=None):
     """
-    Calculate average OSNR in dB like the notebook's get_avg_osnr_db(si) function
-    Mimics: sig = np.array([np.sum(ch.power) for ch in si.carriers])
+    Calcular OSNR promedio en dB como la función get_avg_osnr_db(si) del notebook
+    Imita: sig = np.array([np.sum(ch.power) for ch in si.carriers])
             noise = si.ase + si.nli
             return float(np.mean(lin2db(np.where(noise > 0, sig / noise, np.inf))))
     """
@@ -660,12 +769,12 @@ def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli
     if total_noise_lin <= 0:
         return float('inf')
     
-    # Calculate OSNR per channel like the notebook
+    # Calcular OSNR por canal como el notebook
     osnr_lin = signal_power_lin_per_channel / total_noise_lin
     return lin2db(osnr_lin)
 
 def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
-    """Calculate OSNR using parallel calculation method"""
+    """Calcular OSNR usando método de cálculo paralelo"""
     if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190:
         return float('inf')
     
@@ -679,10 +788,10 @@ def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
 
 def validate_topology_requirements(elements, connections):
     """
-    Validate that the topology meets minimum requirements:
-    - At least 2 transceivers
-    - At least 1 EDFA
-    - At least 1 Fiber span
+    Validar que la topología cumpla con los requisitos mínimos:
+    - Al menos 2 transceptores
+    - Para topologías punto a punto (exactamente 2 transceivers): permite conexión directa
+    - Para topologías complejas (más de 2 transceivers): requiere al menos 1 EDFA y 1 span de Fibra
     """
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     edfas = [e for e in elements if e.get('type') == 'Edfa']
@@ -691,39 +800,50 @@ def validate_topology_requirements(elements, connections):
     errors = []
     if len(transceivers) < 2:
         errors.append(f"Se requieren al menos 2 transceivers, encontrados: {len(transceivers)}")
-    if len(edfas) < 1:
-        errors.append(f"Se requiere al menos 1 EDFA, encontrados: {len(edfas)}")
-    if len(fibers) < 1:
-        errors.append(f"Se requiere al menos 1 span de fibra, encontrados: {len(fibers)}")
+        return errors
+    
+    # Verificar si es topología punto a punto (exactamente 2 transceivers)
+    is_point_to_point = len(transceivers) == 2
+    
+    if is_point_to_point:
+        # Para punto a punto, permitir conexión directa o con elementos intermedios
+        # No requerir obligatoriamente EDFAs o Fibras
+        pass
+    else:
+        # Para topologías complejas, mantener requisitos originales
+        if len(edfas) < 1:
+            errors.append(f"Para topologías complejas se requiere al menos 1 EDFA, encontrados: {len(edfas)}")
+        if len(fibers) < 1:
+            errors.append(f"Para topologías complejas se requiere al menos 1 span de fibra, encontrados: {len(fibers)}")
     
     return errors
 
 def order_elements_by_topology(elements, connections):
     """
-    Order network elements based on the actual topology connections.
-    Returns ordered list of elements from source to destination.
+    Ordenar elementos de red basado en las conexiones de topología reales.
+    Devuelve lista ordenada de elementos desde origen hasta destino.
     """
-    # Validate minimum requirements
+    # Validar requisitos mínimos
     validation_errors = validate_topology_requirements(elements, connections)
     if validation_errors:
         raise ValueError("Topología no válida: " + "; ".join(validation_errors))
     
-    # Build topology graph
+    # Construir grafo de topología
     graph, elements_by_uid = build_topology_graph(elements, connections)
     
-    # Identify source and destination transceivers
+    # Identificar transceptores de origen y destino
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     source_transceiver = None
     destination_transceiver = None
     
-    # Find transceivers with roles
+    # Encontrar transceptores con roles
     for t in transceivers:
         if t.get('role') == 'source':
             source_transceiver = t
         elif t.get('role') == 'destination':
             destination_transceiver = t
     
-    # Fallback identification if roles not set
+    # Identificación de respaldo si los roles no están establecidos
     if not source_transceiver or not destination_transceiver:
         source_uid, dest_uid = identify_source_destination_transceivers(elements)
         source_transceiver = elements_by_uid.get(source_uid)
@@ -732,13 +852,13 @@ def order_elements_by_topology(elements, connections):
     if not source_transceiver or not destination_transceiver:
         raise ValueError("No se pudieron identificar los transceivers de origen y destino")
     
-    # Find path through network
+    # Encontrar ruta a través de la red
     path = find_network_path(graph, source_transceiver['uid'], destination_transceiver['uid'])
     
     if not path:
         raise ValueError(f"No se encontró una ruta válida entre {source_transceiver['uid']} y {destination_transceiver['uid']}")
     
-    # Convert path to ordered elements
+    # Convertir ruta a elementos ordenados
     ordered_elements = []
     for uid in path:
         if uid in elements_by_uid:
@@ -748,33 +868,33 @@ def order_elements_by_topology(elements, connections):
 
 def calculate_scenario02_network(params):
     """
-    Main calculation function based on the notebook logic.
-    Expects params with:
-    - topology_data: Enhanced topology data with elements
+    Función de cálculo principal basada en la lógica del notebook.
+    Espera params con:
+    - topology_data: Datos de topología mejorados con elementos
     """
     try:
-        # Extract parameters
+        # Extraer parámetros
         topology_data = params.get('topology_data', {})
         
-        # Default values from notebook - exactly matching
+        # Valores por defecto del notebook - coincidiendo exactamente
         f_min, f_max = 191.3e12, 195.1e12
         spacing = 50e9
         roll_off = 0.15
         baud_rate = 32e9
-        B_n = 12.5e9  # Reference bandwidth
+        B_n = 12.5e9  # Ancho de banda de referencia
         QUANTUM_NOISE_FLOOR_DBM = -58.0
         
-        # Get network topology
+        # Obtener topología de red
         elements = topology_data.get('elements', [])
         connections = topology_data.get('connections', [])
         
-        # Order elements by following actual topology connections
+        # Ordenar elementos siguiendo las conexiones de topología reales
         try:
             ordered_elements, source_transceiver, destination_transceiver = order_elements_by_topology(elements, connections)
         except ValueError as e:
             return {'success': False, 'error': str(e)}
 
-        # Extract parameters from the identified transceivers' 'parameters' dict
+        # Extraer parámetros del diccionario 'parameters' de los transceptores identificados
         source_params = source_transceiver.get('parameters', {})
         dest_params = destination_transceiver.get('parameters', {})
 
@@ -782,28 +902,28 @@ def calculate_scenario02_network(params):
         P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 50.0)
         sens = dest_params.get('sens', {}).get('value', 20.0)
         
-        # Calculate number of channels and power per channel (exactly like in notebook)
+        # Calcular número de canales y potencia por canal (exactamente como en notebook)
         nch = int(np.floor((f_max - f_min) / spacing)) + 1
-        tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Power per channel
+        tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Potencia por canal
         
-        # Initialize spectral information (mimicking notebook's approach)
+        # Inicializar información espectral (imitando el enfoque del notebook)
         # freq = [f_min + spacing * i for i in range(nch)]
         # signal = [dbm2watt(tx_power_dbm)] * nch
-        signal_power_lin_per_channel = dbm2watt(tx_power_dbm)  # Power per channel in linear
+        signal_power_lin_per_channel = dbm2watt(tx_power_dbm)  # Potencia por canal en lineal
         
-        # Initialize ASE for exact transmitter OSNR (like notebook: si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers]))
+        # Inicializar ASE para OSNR exacto del transmisor (como notebook: si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers]))
         lin_osnr0 = 10**(tx_osnr / 10)
         initial_ase_lin_per_channel = signal_power_lin_per_channel / lin_osnr0
         
-        # Initialize calculation variables (following notebook logic exactly)
+        # Inicializar variables de cálculo (siguiendo la lógica del notebook exactamente)
         current_signal_power_lin_per_channel = signal_power_lin_per_channel
         current_ase_noise_lin_per_channel = initial_ase_lin_per_channel
-        current_nli_noise_lin_per_channel = 0.0  # NLI starts at 0
-        current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small initial value for parallel calc
+        current_nli_noise_lin_per_channel = 0.0  # NLI comienza en 0
+        current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Valor inicial muy pequeño para cálculo paralelo
         current_distance = 0.0
-        current_power_dbm = P_tot_dbm_input  # Display total power at transmitter
+        current_power_dbm = P_tot_dbm_input  # Mostrar potencia total en transmisor
         
-        # Results storage
+        # Almacenamiento de resultados
         results = {
             'stages': [],
             'plot_data': {
@@ -817,7 +937,7 @@ def calculate_scenario02_network(params):
         }
         
         def add_stage_result(name, distance, power_dbm, osnr_bw, osnr_01nm, osnr_parallel, ase_power_lin):
-            """Add a stage result to the results"""            
+            """Agregar resultado de una etapa a los resultados"""            
             results['stages'].append({
                 'name': name,
                 'distance': distance,
@@ -830,27 +950,31 @@ def calculate_scenario02_network(params):
             results['plot_data']['distance'].append(distance)
             results['plot_data']['signal_power'].append(power_dbm)
             results['plot_data']['ase_power'].append(watt2dbm(ase_power_lin) if ase_power_lin > 0 else -150.0)
-            results['plot_data']['osnr_bw'].append(osnr_bw if not np.isinf(osnr_bw) else 60.0)  # Cap for plotting
+            results['plot_data']['osnr_bw'].append(osnr_bw if not np.isinf(osnr_bw) else 60.0)  # Límite para graficado
         
-        # Helper function to calculate OSNR using spectral information approach (matching notebook)
+        # Función auxiliar para calcular OSNR usando enfoque de información espectral (coincidiendo con notebook)
         def calculate_current_osnr_bw():
-            """Calculate OSNR_bw using spectral information like notebook's get_avg_osnr_db(si)"""
+            """Calcular OSNR_bw usando información espectral como get_avg_osnr_db(si) del notebook"""
             return get_avg_osnr_db(current_signal_power_lin_per_channel, 
                                  current_ase_noise_lin_per_channel, 
                                  current_nli_noise_lin_per_channel)
         
-        # Process each element in the ordered path
+        # Detectar si es topología punto a punto (solo 2 transceivers)
+        transceivers_in_path = [el for el in ordered_elements if el.get('type') == 'Transceiver']
+        is_point_to_point_direct = len(transceivers_in_path) == 2 and len(ordered_elements) == 2
+        
+        # Procesar cada elemento en la ruta ordenada
         for i, element in enumerate(ordered_elements):
             element_type = element.get('type', '')
             element_uid = element.get('uid', f'Element_{i}')
-            params = element.get('parameters', {}) # Get editable parameters
+            params = element.get('parameters', {}) # Obtener parámetros editables
             
             if element_type == 'Transceiver':
-                # Transceiver processing (parameters already extracted)
+                # Procesamiento de transceptor (parámetros ya extraídos)
                 if element.get('uid') == source_transceiver.get('uid'):
-                    # Source transceiver (transmitter) - following notebook logic exactly
+                    # Transceptor de origen (transmisor) - siguiendo la lógica del notebook exactamente
                     # Site_A: p0 = P_tot_dbm_input, o0 = tx_osnr
-                    current_osnr_bw = calculate_current_osnr_bw()  # Should equal tx_osnr due to initialization
+                    current_osnr_bw = calculate_current_osnr_bw()  # Debería igualar tx_osnr debido a la inicialización
                     osnr_01nm_initial = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
                     osnr_parallel_initial = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
@@ -858,8 +982,21 @@ def calculate_scenario02_network(params):
                                     osnr_01nm_initial, osnr_parallel_initial, current_total_ase_lin_for_parallel_calc)
                 
                 elif element.get('uid') == destination_transceiver.get('uid'):
-                    # Destination transceiver (receiver) - final stage, no processing, just record
-                    # Use the current OSNR calculated from the last stage
+                    # Transceptor de destino (receptor) - etapa final, no procesamiento, solo registrar
+                    # Para conexión directa punto a punto, aplicar pérdida mínima de conexión
+                    if is_point_to_point_direct:
+                        # Aplicar pérdida mínima de conexión directa (conectores, etc.)
+                        connection_loss_db = 1.0  # Pérdida típica de conectores
+                        connection_loss_lin = 10**(-connection_loss_db / 10)
+                        
+                        # Aplicar pérdida a la señal
+                        current_signal_power_lin_per_channel *= connection_loss_lin
+                        current_ase_noise_lin_per_channel *= connection_loss_lin
+                        current_nli_noise_lin_per_channel *= connection_loss_lin
+                        current_power_dbm -= connection_loss_db
+                        current_total_ase_lin_for_parallel_calc *= connection_loss_lin
+                    
+                    # Usar el OSNR actual calculado desde la última etapa
                     current_osnr_bw = calculate_current_osnr_bw()
                     final_osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
                     final_osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
@@ -868,31 +1005,31 @@ def calculate_scenario02_network(params):
                                     final_osnr_01nm, final_osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Edfa':
-                # EDFA processing - using NF from parameters (can be modified via modal)
+                # Procesamiento EDFA - usando NF de parámetros (puede ser modificado vía modal)
                 gain_db = params.get('gain_target', {}).get('value', 17.0)
-                noise_factor_db = params.get('nf0', {}).get('value', 6.0)  # Use actual NF from parameters
+                noise_factor_db = params.get('nf0', {}).get('value', 6.0)  # Usar NF real de parámetros
                 gain_lin = 10**(gain_db / 10)
                 
-                # Apply gain to signal power (like notebook: si = edfa(si))
+                # Aplicar ganancia a potencia de señal (como notebook: si = edfa(si))
                 current_signal_power_lin_per_channel *= gain_lin
                 
-                # Apply gain to ASE and add new ASE from EDFA (like notebook)
+                # Aplicar ganancia a ASE y agregar nuevo ASE del EDFA (como notebook)
                 current_ase_noise_lin_per_channel *= gain_lin
-                # Add new ASE from this EDFA (like notebook's EDFA processing)
+                # Agregar nuevo ASE de este EDFA (como procesamiento EDFA del notebook)
                 new_ase_lin_per_channel = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
                 current_ase_noise_lin_per_channel += new_ase_lin_per_channel
                 
-                # Apply gain to NLI noise
+                # Aplicar ganancia al ruido NLI
                 current_nli_noise_lin_per_channel *= gain_lin
                 
-                # Update display power (for compatibility)
+                # Actualizar potencia de visualización (para compatibilidad)
                 current_power_dbm += gain_db
                 
-                # Manual ASE calculation for parallel OSNR (separate tracking)
+                # Cálculo manual de ASE para OSNR paralelo (seguimiento separado)
                 p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
                 current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * gain_lin) + p_ase_edfa_lin_manual
                 
-                # Calculate OSNR_bw using spectral information (like notebook: o1 = get_avg_osnr_db(si))
+                # Calcular OSNR_bw usando información espectral (como notebook: o1 = get_avg_osnr_db(si))
                 current_osnr_bw = calculate_current_osnr_bw()
                 
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
@@ -902,33 +1039,33 @@ def calculate_scenario02_network(params):
                                osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Fiber':
-                # Fiber processing - following notebook logic exactly
+                # Procesamiento de fibra - siguiendo la lógica del notebook exactamente
                 length_km = params.get('length_km', {}).get('value', 80.0)
                 loss_coef = params.get('loss_coef', {}).get('value', 0.2)
                 con_in = params.get('con_in', {}).get('value', 0.5)
                 con_out = params.get('con_out', {}).get('value', 0.5)
                 att_in = params.get('att_in', {}).get('value', 0.0)
                 
-                # Calculate total loss (exactly like notebook)
+                # Calcular pérdida total (exactamente como notebook)
                 total_loss_db = loss_coef * length_km + con_in + con_out + att_in
                 loss_lin = 10**(-total_loss_db / 10)
                 
-                # Apply loss to spectral information (like notebook: si = span(si))
+                # Aplicar pérdida a información espectral (como notebook: si = span(si))
                 current_signal_power_lin_per_channel *= loss_lin
-                # Apply loss to ASE and NLI (like notebook: si.ase = ase_before * loss_lin)
+                # Aplicar pérdida a ASE y NLI (como notebook: si.ase = ase_before * loss_lin)
                 current_ase_noise_lin_per_channel *= loss_lin
                 current_nli_noise_lin_per_channel *= loss_lin
                 
-                # Update display power (for compatibility)
+                # Actualizar potencia de visualización (para compatibilidad)
                 current_power_dbm -= total_loss_db
                 
-                # Apply loss to parallel calculation ASE tracking
+                # Aplicar pérdida al seguimiento de ASE de cálculo paralelo
                 current_total_ase_lin_for_parallel_calc *= loss_lin
                 
-                # Update distance (like notebook: current_distance += span.params.length / 1000)
+                # Actualizar distancia (como notebook: current_distance += span.params.length / 1000)
                 current_distance += length_km
                 
-                # Calculate OSNR_bw using spectral information (like notebook: o_s1 = get_avg_osnr_db(si))
+                # Calcular OSNR_bw usando información espectral (como notebook: o_s1 = get_avg_osnr_db(si))
                 current_osnr_bw = calculate_current_osnr_bw()
                     
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
@@ -937,11 +1074,11 @@ def calculate_scenario02_network(params):
                 add_stage_result(element_uid, current_distance, current_power_dbm, current_osnr_bw, 
                                osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
         
-        # Final results - matching notebook logic
+        # Resultados finales - coincidiendo con la lógica del notebook
         final_power_dbm = current_power_dbm
         link_successful = final_power_dbm >= sens
         
-        # Calculate final OSNR values using spectral information (same method as calculation loop)
+        # Calcular valores OSNR finales usando información espectral (mismo método que el bucle de cálculo)
         final_osnr_bw = calculate_current_osnr_bw()
         final_osnr_01nm = final_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(final_osnr_bw) else float('inf')
         
@@ -958,7 +1095,7 @@ def calculate_scenario02_network(params):
             'message': f"{'¡Éxito!' if link_successful else 'Advertencia:'} La potencia de la señal recibida ({final_power_dbm:.2f} dBm) es {'mayor o igual que' if link_successful else 'menor que'} la sensibilidad del receptor ({sens:.2f} dBm)."
         }
         
-        # Generate plots
+        # Generar gráficos
         results['plots'] = generate_scenario02_plots(results['plot_data'])
         
         return results
@@ -967,9 +1104,9 @@ def calculate_scenario02_network(params):
         return {'success': False, 'error': str(e)}
 
 def generate_scenario02_plots(plot_data):
-    """Generate Plotly plots for scenario02 results - three separate plots with improved visualization"""
+    """Generar gráficos Plotly para resultados de scenario02 - tres gráficos separados con visualización mejorada"""
     
-    # Prepare data for stepped plots (like in the notebook)
+    # Preparar datos para gráficos escalonados (como en el notebook)
     plot_x_signal = []
     plot_y_signal = []
     plot_x_ase = []
@@ -984,7 +1121,7 @@ def generate_scenario02_plots(plot_data):
         osnr_val = plot_data['osnr_bw'][i]
         
         if i > 0 and plot_data['distance'][i] == plot_data['distance'][i-1]:
-            # Add point with current distance and PREVIOUS values for step effect
+            # Agregar punto con distancia actual y valores ANTERIORES para efecto de escalón
             plot_x_signal.append(dist)
             plot_y_signal.append(plot_data['signal_power'][i-1])
             plot_x_ase.append(dist)
@@ -992,7 +1129,7 @@ def generate_scenario02_plots(plot_data):
             plot_x_osnr.append(dist)
             plot_y_osnr.append(plot_data['osnr_bw'][i-1])
         
-        # Add current point
+        # Agregar punto actual
         plot_x_signal.append(dist)
         plot_y_signal.append(sig_pwr)
         plot_x_ase.append(dist)
@@ -1000,33 +1137,33 @@ def generate_scenario02_plots(plot_data):
         plot_x_osnr.append(dist)
         plot_y_osnr.append(osnr_val)
     
-    # Calculate optimized ranges with proper padding for better visualization
+    # Calcular rangos optimizados con padding apropiado para mejor visualización
     signal_min, signal_max = min(plot_y_signal), max(plot_y_signal)
     ase_min, ase_max = min(plot_y_ase), max(plot_y_ase)
     osnr_min, osnr_max = min(plot_y_osnr), max(plot_y_osnr)
     distance_min, distance_max = min(plot_x_signal), max(plot_x_signal)
     
-    # Add more generous padding (15%) to prevent lines from being too close to axes
+    # Agregar padding más generoso (15%) para evitar que las líneas estén muy cerca de los ejes
     signal_range = signal_max - signal_min
-    signal_padding = max(signal_range * 0.15, 2.0)  # Minimum 2 dB padding
+    signal_padding = max(signal_range * 0.15, 2.0)  # Mínimo 2 dB de padding
     
     ase_range = ase_max - ase_min
-    ase_padding = max(ase_range * 0.15, 2.0)  # Minimum 2 dB padding
+    ase_padding = max(ase_range * 0.15, 2.0)  # Mínimo 2 dB de padding
     
     osnr_range = osnr_max - osnr_min
-    osnr_padding = max(osnr_range * 0.15, 1.0)  # Minimum 1 dB padding
+    osnr_padding = max(osnr_range * 0.15, 1.0)  # Mínimo 1 dB de padding
     
     distance_range = distance_max - distance_min
-    distance_padding = max(distance_range * 0.05, 5.0)  # Minimum 5 km padding
+    distance_padding = max(distance_range * 0.05, 5.0)  # Mínimo 5 km de padding
     
-    # Plot 1: P_signal (dBm) vs Distance - optimized visualization
+    # Gráfico 1: P_signal (dBm) vs Distancia - visualización optimizada
     signal_fig = go.Figure()
     signal_fig.add_trace(go.Scatter(
         x=plot_x_signal,
         y=plot_y_signal,
         mode='lines',
         name='P_signal (dBm)',
-        line=dict(color='blue', width=3),  # Slightly thicker line for better visibility
+        line=dict(color='blue', width=3),  # Línea ligeramente más gruesa para mejor visibilidad
         hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>Potencia:</b> %{y:.2f} dBm<extra></extra>'
     ))
     signal_fig.update_layout(
@@ -1037,7 +1174,7 @@ def generate_scenario02_plots(plot_data):
         xaxis_title='Distancia (km)',
         yaxis_title='Potencia (dBm)',
         legend=dict(
-            x=1.0,  # Upper right corner
+            x=1.0,  # Esquina superior derecha
             y=1.0,
             xanchor='right',
             yanchor='top',
@@ -1072,14 +1209,14 @@ def generate_scenario02_plots(plot_data):
         margin=dict(l=60, r=60, t=60, b=60)
     )
     
-    # Plot 2: P_ASE (dBm) vs Distance - optimized visualization
+    # Gráfico 2: P_ASE (dBm) vs Distancia - visualización optimizada
     ase_fig = go.Figure()
     ase_fig.add_trace(go.Scatter(
         x=plot_x_ase,
         y=plot_y_ase,
         mode='lines',
         name='P_ASE (dBm)',
-        line=dict(color='red', width=3),  # Slightly thicker line for better visibility
+        line=dict(color='red', width=3),  # Línea ligeramente más gruesa para mejor visibilidad
         hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>Potencia ASE:</b> %{y:.2f} dBm<extra></extra>'
     ))
     ase_fig.update_layout(
@@ -1090,7 +1227,7 @@ def generate_scenario02_plots(plot_data):
         xaxis_title='Distancia (km)',
         yaxis_title='Potencia (dBm)',
         legend=dict(
-            x=1.0,  # Upper right corner
+            x=1.0,  # Esquina superior derecha
             y=1.0,
             xanchor='right',
             yanchor='top',
@@ -1125,14 +1262,14 @@ def generate_scenario02_plots(plot_data):
         margin=dict(l=60, r=60, t=60, b=60)
     )
     
-    # Plot 3: OSNR_bw (dB) vs Distance - optimized visualization
+    # Gráfico 3: OSNR_bw (dB) vs Distancia - usando escalado automático como en el notebook
     osnr_fig = go.Figure()
     osnr_fig.add_trace(go.Scatter(
         x=plot_x_osnr,
         y=plot_y_osnr,
         mode='lines',
         name='OSNR_bw (dB)',
-        line=dict(color='orange', width=3),  # Slightly thicker line for better visibility
+        line=dict(color='orange', width=3),  # Línea ligeramente más gruesa para mejor visibilidad
         hovertemplate='<b>Distancia:</b> %{x:.1f} km<br><b>OSNR:</b> %{y:.2f} dB<extra></extra>'
     ))
     osnr_fig.update_layout(
@@ -1140,10 +1277,10 @@ def generate_scenario02_plots(plot_data):
             text='Evolución de OSNR a lo largo del Enlace Óptico',
             font=dict(size=14, color='black')
         ),
-        xaxis_title='Distancia (km)',
+        xaxis_title='Span / Distancia (km)',  # Coincidiendo con el notebook
         yaxis_title='OSNR (dB)',
         legend=dict(
-            x=1.0,  # Upper right corner
+            x=1.0,  # Esquina superior derecha
             y=1.0,
             xanchor='right',
             yanchor='top',
@@ -1170,7 +1307,8 @@ def generate_scenario02_plots(plot_data):
             zeroline=False,
             linecolor='black',
             linewidth=1,
-            range=[osnr_min - osnr_padding, osnr_max + osnr_padding],
+            # Usar escalado automático como en el notebook (sin rango fijo)
+            autorange=True,
             tickformat='.1f'
         ),
         plot_bgcolor='white',

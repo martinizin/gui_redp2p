@@ -20,7 +20,7 @@
             height: 70vh;
         }
         
-        /* Modal styling to match existing design */
+        /* Estilo de modal para coincidir con el diseño existente */
         .modal-content {
             border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0,0,0,.5);
@@ -45,11 +45,7 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">Simulador Topologías de red punto a punto</h1>
-        <div class="text-center mb-4">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary">Escenario 01</a>
-            <a href="{{ url_for('scenario02') }}" class="btn btn-primary">Escenario 02</a>
-            <a href="{{ url_for('scenario03') }}" class="btn btn-secondary">Escenario 03</a>
-        </div>
+        {% include 'scenario_nav.html' %}
         <p>Suba un archivo <code>.json</code> para visualizar la topología de red.</p>
         
         <div class="card p-4 mb-4">
@@ -70,12 +66,12 @@
 
         <div id="plotly-graph" class="mt-4"></div>
 
-        <!-- Hidden data storage for JavaScript -->
+        <!-- Almacenamiento de datos oculto para JavaScript -->
         {% if enhanced_data %}
         <div id="enhanced-data" style="display: none;">{{ enhanced_data | tojson | safe }}</div>
         {% endif %}
 
-        <!-- Calculate Button - Only shown when topology is loaded -->
+        <!-- Botón de Cálculo - Solo se muestra cuando la topología está cargada -->
         {% if graph_json %}
         <div id="calculateSection" class="mt-4 text-center">
             <button id="calculateBtn" class="btn btn-success btn-lg">
@@ -84,20 +80,20 @@
         </div>
         {% endif %}
 
-        <!-- Results Section -->
+        <!-- Sección de Resultados -->
         <div id="resultsSection" class="mt-4" style="display: none;">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Resultados del Cálculo</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Results Table -->
+                    <!-- Tabla de Resultados -->
                     <div id="resultsTable" class="mb-4"></div>
                     
-                    <!-- Final Results Summary -->
+                    <!-- Resumen de Resultados Finales -->
                     <div id="finalResultsSummary" class="mb-4"></div>
                     
-                    <!-- Plots - Three separate plots matching notebook -->
+                    <!-- Gráficas - Tres gráficas separadas que coinciden con el notebook -->
                     <div class="row">
                         <div class="col-12">
                             <div id="signalPlot" style="height: 400px;"></div>
@@ -119,7 +115,7 @@
 
     </div>
 
-    <!-- Modal for Parameter Editing -->
+    <!-- Modal para Edición de Parámetros -->
     <div class="modal fade" id="editElementModal" tabindex="-1" aria-labelledby="editElementModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -148,7 +144,7 @@
         var enhancedData = null;
         var selectedElement = null;
         
-        // Load enhanced data from hidden div
+        // Carga datos mejorados desde div oculto
         var enhancedDataDiv = document.getElementById('enhanced-data');
         if (enhancedDataDiv) {
             try {
@@ -158,14 +154,22 @@
             }
         }
         
-        // Modal Functions for Parameter Editing
+        // Función auxiliar para embellecer nombres de parámetros
+        function formatParameterLabel(paramName) {
+            if (paramName.toLowerCase() === 'nf0') {
+                return 'NF';
+            }
+            return paramName.replace(/_/g, ' ').toUpperCase();
+        }
+
+        // Funciones de modal para edición de parámetros
         function openElementModal(element) {
             if (!element || !element.parameters) {
                 console.log('No hay parámetros disponibles para este elemento');
                 return;
             }
 
-            // Don't open modal for Fiber elements (they should only show tooltip)
+            // No abre modal para elementos de fibra (solo deben mostrar tooltip)
             if (element.type === 'Fiber') {
                 console.log('Los elementos de fibra solo muestran tooltip, no modal');
                 return;
@@ -175,7 +179,7 @@
             const modalTitle = document.getElementById('editElementModalLabel');
             const modalParameters = document.getElementById('modalParameters');
             
-            // Create a more descriptive title for transceivers
+            // Crea un título más descriptivo para transceptores
             let titleText = `Editar ${element.type}: ${element.uid}`;
             if (element.type === 'Transceiver' && element.role) {
                 const roleText = element.role === 'source' ? 'Transmisor' : 'Receptor';
@@ -185,15 +189,15 @@
             modalTitle.textContent = titleText;
             modalParameters.innerHTML = '';
             
-            // Generate parameter input fields only for editable parameters
+            // Genera campos de entrada de parámetros solo para parámetros editables
             for (const [paramName, paramData] of Object.entries(element.parameters)) {
-                if (paramData.editable) {  // Only show editable parameters in modal
+                if (paramData.editable) {  // Solo muestra parámetros editables en el modal
                     const paramDiv = document.createElement('div');
                     paramDiv.className = 'mb-3';
                     
                     paramDiv.innerHTML = `
                         <label for="modal_${paramName}" class="form-label" title="${paramData.tooltip}">
-                            ${paramName.replace(/_/g, ' ').toUpperCase()} (${paramData.unit})
+                            ${formatParameterLabel(paramName)} (${paramData.unit})
                             <i class="text-muted" style="font-size: 0.8em;">ℹ️</i>
                         </label>
                         <input type="number" 
@@ -210,7 +214,7 @@
                 }
             }
             
-            // Show the modal
+            // Muestra el modal
             const modal = new bootstrap.Modal(document.getElementById('editElementModal'));
             modal.show();
         }
@@ -226,7 +230,7 @@
                                `<b>type:</b> ${element_type}<br>` +
                                `<b>type_variety:</b> ${type_variety}<br>`;
 
-            // Handle EDFA tooltips with enhanced parameters structure
+            // Maneja tooltips de EDFA con estructura de parámetros mejorada
             if (element_type === 'Edfa' && element.parameters) {
                 tooltip_html += "<hr><b>Operational Params:</b><br>";
                 if (element.parameters.gain_target) {
@@ -246,21 +250,21 @@
                     tooltip_html += `&nbsp;&nbsp;nf0: ${element.parameters.nf0.value} dB<br>`;
                 }
             }
-            // Handle Transceiver tooltips with enhanced parameters structure
+            // Maneja tooltips de Transceptor con estructura de parámetros mejorada
             else if (element_type === 'Transceiver' && element.parameters) {
                 tooltip_html += "<b>params:</b><br>";
                 for (const [key, data] of Object.entries(element.parameters)) {
                     tooltip_html += `&nbsp;&nbsp;${key}: ${data.value} ${data.unit}<br>`;
                 }
             }
-            // Handle Fiber tooltips with enhanced parameters structure
+            // Maneja tooltips de Fibra con estructura de parámetros mejorada
             else if (element_type === 'Fiber' && element.parameters) {
                 tooltip_html += "<b>params:</b><br>";
                 for (const [key, data] of Object.entries(element.parameters)) {
                     tooltip_html += `&nbsp;&nbsp;${key}: ${data.value}<br>`;
                 }
             }
-            // Fallback for original structure
+            // Respaldo para estructura original
             else if (element.params) {
                 tooltip_html += "<b>params:</b><br>";
                 for (const [k, v] of Object.entries(element.params)) {
@@ -271,7 +275,7 @@
             return tooltip_html;
         }
 
-        // Calculate button functionality
+        // Funcionalidad del botón de cálculo
         document.getElementById('calculateBtn')?.addEventListener('click', function() {
             calculateNetwork();
         });
@@ -282,13 +286,13 @@
                 return;
             }
             
-            // Show loading state
+            // Muestra estado de carga
             const calculateBtn = document.getElementById('calculateBtn');
             const originalText = calculateBtn.innerHTML;
             calculateBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Calculando...';
             calculateBtn.disabled = true;
             
-            // Send calculation request
+            // Envía solicitud de cálculo
             fetch('/calculate_scenario02', {
                 method: 'POST',
                 headers: {
@@ -318,17 +322,17 @@
         }
 
         function displayResults(results) {
-            // Show results section
+            // Muestra sección de resultados
             const resultsSection = document.getElementById('resultsSection');
             resultsSection.style.display = 'block';
             
-            // Display results table
+            // Muestra tabla de resultados
             displayResultsTable(results.stages);
             
-            // Display final results summary
+            // Muestra resumen de resultados finales
             displayFinalResultsSummary(results.final_results);
             
-            // Display plots - Three separate plots matching notebook
+            // Muestra gráficas - Tres gráficas separadas que coinciden con el notebook
             if (results.plots) {
                 if (results.plots.signal_plot) {
                     Plotly.newPlot('signalPlot', results.plots.signal_plot.data, results.plots.signal_plot.layout, {responsive: true});
@@ -341,7 +345,7 @@
                 }
             }
             
-            // Scroll to results
+            // Se desplaza a los resultados
             resultsSection.scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -415,14 +419,14 @@
             summaryContainer.innerHTML = summaryHtml;
         }
 
-        // Save changes from modal
+        // Guarda cambios del modal
         document.getElementById('saveElementChanges').addEventListener('click', function() {
             if (!selectedElement) return;
             
             const form = document.getElementById('editElementForm');
             const inputs = form.querySelectorAll('input[type="number"]');
             
-            // Update local data from form inputs
+            // Actualiza datos locales desde entradas del formulario
             inputs.forEach(input => {
                 const paramName = input.name;
                 const newValue = parseFloat(input.value);
@@ -431,26 +435,26 @@
                 }
             });
 
-            // Regenerate tooltip and update the graph
+            // Regenera tooltip y actualiza la gráfica
             const newTooltip = generateElementTooltip(selectedElement);
             
-            // Find the element in the plot and update its hovertext
+            // Encuentra el elemento en la gráfica y actualiza su hovertext
             const traces = graphDiv.data;
             for (let i = 0; i < traces.length; i++) {
                 const trace = traces[i];
                 let elementIndex = -1;
 
-                // For horizontal plots: 'text' holds the UID
+                // Para gráficas horizontales: 'text' contiene el UID
                 if (trace.text && Array.isArray(trace.text)) {
                    elementIndex = trace.text.indexOf(selectedElement.uid);
                 }
                 
-                // For map plots: check if this is a node trace with lat/lon data
+                // Para gráficas de mapa: verifica si es una traza de nodo con datos lat/lon
                 if (elementIndex === -1 && trace.lat && trace.lon && trace.text && Array.isArray(trace.text)) {
                     elementIndex = trace.text.indexOf(selectedElement.uid);
                 }
                 
-                // For fiber chains, the UID is encoded in the hovertext
+                // Para cadenas de fibra, el UID está codificado en el hovertext
                 if (elementIndex === -1 && trace.hovertext && Array.isArray(trace.hovertext)) {
                     elementIndex = trace.hovertext.findIndex(text => 
                         text && text.includes(`<b>uid:</b> ${selectedElement.uid}<br>`)
@@ -458,22 +462,22 @@
                 }
 
                 if (elementIndex !== -1 && trace.hovertext && Array.isArray(trace.hovertext)) {
-                    // Create a copy of the current hovertext array
+                    // Crea una copia del array actual de hovertext
                     const newHovertext = [...trace.hovertext];
                     newHovertext[elementIndex] = newTooltip;
                     
-                    // Update the entire hovertext array
+                    // Actualiza todo el array de hovertext
                     Plotly.restyle(graphDiv, { 'hovertext': [newHovertext] }, i);
                     break; 
                 }
             }
 
-            // Close the modal
+            // Cierra el modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('editElementModal'));
             modal.hide();
         });
 
-        // Remove the old parameters panel functions and replace with modal
+        // Elimina las funciones del panel de parámetros antiguo y reemplaza con modal
         function showElementParameters(elementUid) {
             if (!enhancedData || !enhancedData.elements) return;
             
@@ -486,17 +490,17 @@
         if (graphData) {
             Plotly.newPlot(graphDiv, graphData.data, graphData.layout, {responsive: true});
             
-            // Add click event listener to plotly graph
+            // Añade detector de eventos de clic a la gráfica de plotly
             graphDiv.on('plotly_click', function(data) {
                 if (data.points && data.points.length > 0) {
                     const point = data.points[0];
-                    // For scatter plots, try to get the element UID from the text or hovertext
+                    // Para gráficas de dispersión, intenta obtener el UID del elemento desde text o hovertext
                     let elementUid = null;
                     
                     if (point.text && typeof point.text === 'string') {
                         elementUid = point.text;
                     } else if (point.hovertext && typeof point.hovertext === 'string') {
-                        // Extract UID from hovertext (assuming it's in the format "<b>uid:</b> elementUid<br>...")
+                        // Extrae UID del hovertext (asumiendo que está en el formato "<b>uid:</b> elementUid<br>...")
                         const uidMatch = point.hovertext.match(/<b>uid:<\/b>\s*([^<]+)/);
                         if (uidMatch) {
                             elementUid = uidMatch[1].trim();

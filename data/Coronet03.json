@@ -1,0 +1,136 @@
+{
+    "elements": [
+      {
+        "uid": "trx Quito",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Quito", "region": "Ecuador", "latitude": -0.1807, "longitude": -78.4678 } }
+      },
+      {
+        "uid": "trx Guayaquil",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Guayaquil", "region": "Ecuador", "latitude": -2.17, "longitude": -79.9221 } }
+      },
+      {
+        "uid": "trx Cuenca",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Cuenca", "region": "Ecuador", "latitude": -2.9006, "longitude": -79.004 } }
+      },
+      {
+        "uid": "trx Manta",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Manta", "region": "Ecuador", "latitude": -0.94937, "longitude": -80.7313 } }
+      },
+      {
+        "uid": "trx Ambato",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Ambato", "region": "Ecuador", "latitude": -1.2587, "longitude": -78.6354 } }
+      },
+      {
+        "uid": "trx Loja",
+        "type": "Transceiver",
+        "metadata": { "location": { "city": "Loja", "region": "Ecuador", "latitude": -4.0044, "longitude": -79.2042 } }
+      },
+      {
+        "uid": "fiber (Quito → Guayaquil)",
+        "type": "Fiber", "type_variety": "SSMF",
+        "metadata": { "location": { "latitude": -1.17535, "longitude": -79.195 } },
+        "params": { "length": 240, "length_units": "km", "loss_coef": 0.22, "att_in": 0, "con_in": 0.5, "con_out": 0.5 }
+      },
+      {
+        "uid": "fiber (Guayaquil → Cuenca)",
+        "type": "Fiber", "type_variety": "SSMF",
+        "metadata": { "location": { "latitude": -2.5353, "longitude": -79.46305 } },
+        "params": { "length": 18, "length_units": "km", "loss_coef": 0.22, "att_in": 0, "con_in": 0.5, "con_out": 0.5 }
+      },
+      {
+        "uid": "fiber (Cuenca → Ambato)",
+        "type": "Fiber", "type_variety": "SSMF",
+        "metadata": { "location": { "latitude": -2.08, "longitude": -78.8197 } },
+        "params": { "length": 450, "length_units": "km", "loss_coef": 0.22, "att_in": 0, "con_in": 0.5, "con_out": 0.5 }
+      },
+      {
+        "uid": "fiber (Ambato → Loja)",
+        "type": "Fiber", "type_variety": "SSMF",
+        "metadata": { "location": { "latitude": -2.63155, "longitude": -79.0198 } },
+        "params": { "length": 10, "length_units": "km", "loss_coef": 0.22, "att_in": 0, "con_in": 0.5, "con_out": 0.5 }
+      },
+      {
+        "uid": "fiber (Loja → Manta)",
+        "type": "Fiber", "type_variety": "SSMF",
+        "metadata": { "location": { "latitude": -2.09255, "longitude": -78.486 } },
+        "params": { "length": 599, "length_units": "km", "loss_coef": 0.22, "att_in": 0, "con_in": 0.5, "con_out": 0.5 }
+      },
+      {
+        "uid": "Edfa1", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "city": "Quito", "region": "Ecuador", "latitude": -0.1807, "longitude": -78.4678 } }
+      },
+      {
+        "uid": "Edfa2", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "latitude": -1.17535, "longitude": -79.195 } }
+      },
+      {
+        "uid": "Edfa3", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "city": "Guayaquil", "region": "Ecuador", "latitude": -2.17, "longitude": -79.9221 } }
+      },
+      {
+        "uid": "Edfa4", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "latitude": -2.5353, "longitude": -79.46305 } }
+      },
+      {
+        "uid": "Edfa5", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "city": "Cuenca", "region": "Ecuador", "latitude": -2.9006, "longitude": -79.004 } }
+      },
+      {
+        "uid": "Edfa6", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "latitude": -2.08, "longitude": -78.8197 } }
+      },
+      {
+        "uid": "Edfa7", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "city": "Ambato", "region": "Ecuador", "latitude": -1.2587, "longitude": -78.6354 } }
+      },
+      {
+        "uid": "Edfa8", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "latitude": -2.63155, "longitude": -79.0198 } }
+      },
+      {
+        "uid": "Edfa9", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "city": "Loja", "region": "Ecuador", "latitude": -4.0044, "longitude": -79.2042 } }
+      },
+      {
+        "uid": "Edfa10", "type": "Edfa", "type_variety": "std_fixed_gain",
+        "operational": { "gain_target": 20, "tilt_target": 0 },
+        "metadata": { "location": { "latitude": -2.09255, "longitude": -78.486 } }
+      }
+    ],
+    "connections": [
+      { "from_node": "trx Quito", "to_node": "Edfa1" },
+      { "from_node": "Edfa1", "to_node": "fiber (Quito → Guayaquil)" },
+      { "from_node": "fiber (Quito → Guayaquil)", "to_node": "Edfa2" },
+      { "from_node": "Edfa2", "to_node": "trx Guayaquil" },
+      { "from_node": "trx Guayaquil", "to_node": "Edfa3" },
+      { "from_node": "Edfa3", "to_node": "fiber (Guayaquil → Cuenca)" },
+      { "from_node": "fiber (Guayaquil → Cuenca)", "to_node": "Edfa4" },
+      { "from_node": "Edfa4", "to_node": "trx Cuenca" },
+      { "from_node": "trx Cuenca", "to_node": "Edfa5" },
+      { "from_node": "Edfa5", "to_node": "fiber (Cuenca → Ambato)" },
+      { "from_node": "fiber (Cuenca → Ambato)", "to_node": "Edfa6" },
+      { "from_node": "Edfa6", "to_node": "trx Ambato" },
+      { "from_node": "trx Ambato", "to_node": "Edfa7" },
+      { "from_node": "Edfa7", "to_node": "fiber (Ambato → Loja)" },
+      { "from_node": "fiber (Ambato → Loja)", "to_node": "Edfa8" },
+      { "from_node": "Edfa8", "to_node": "trx Loja" },
+      { "from_node": "trx Loja", "to_node": "Edfa9" },
+      { "from_node": "Edfa9", "to_node": "fiber (Loja → Manta)" },
+      { "from_node": "fiber (Loja → Manta)", "to_node": "Edfa10" },
+      { "from_node": "Edfa10", "to_node": "trx Manta" }
+    ]
+  }

@@ -3,20 +3,31 @@ import json
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
+# Cargar variables de entorno
 load_dotenv()
 
-# Configuration
+# Configuración
 TOPOLOGY_DIR = os.getenv('TOPOLOGY_DIR', 'data')
 EQPT_CONFIG_FILE = os.path.join(TOPOLOGY_DIR, 'eqpt_config.json')
 
+# Cargar configuración de equipos (similar a scenario02.py)
+edfa_equipment_data = {}
+if os.path.exists(EQPT_CONFIG_FILE):
+    with open(EQPT_CONFIG_FILE, 'r', encoding='utf-8') as f:
+        full_eqpt_config = json.load(f)
+        if 'Edfa' in full_eqpt_config:
+            for edfa_spec in full_eqpt_config['Edfa']:
+                edfa_equipment_data[edfa_spec['type_variety']] = edfa_spec
+else:
+    print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_FILE}")
+
 def handle_scenario03():
-    """Handles the logic for scenario 3."""
+    """Maneja la lógica para el escenario 3."""
     maps_api_key = os.getenv('MAPS_API_KEY')
     return render_template('scenario3.html', maps_api_key=maps_api_key)
 
 def get_topology_names():
-    """Returns list of available topology files."""
+    """Devuelve lista de archivos de topología disponibles."""
     try:
         files = [f for f in os.listdir(TOPOLOGY_DIR) if f.endswith('.json') and f != 'eqpt_config.json']
         return jsonify(files)
@@ -24,7 +35,7 @@ def get_topology_names():
         return jsonify([])
 
 def get_topology_data(filename=None):
-    """Returns topology data from specified file with enhanced parameter information."""
+    """Devuelve datos de topología del archivo especificado con información de parámetros mejorada."""
     if filename is None:
         filename = request.args.get('filename', 'CORONET_Global_Topology.json')
     
@@ -33,11 +44,14 @@ def get_topology_data(filename=None):
         with open(filepath, 'r', encoding='utf-8') as f:
             topology_data = json.load(f)
         
-        # Load equipment configuration
+        # Cargar configuración de equipos
         eqpt_config = load_equipment_config()
         
-        # Enhance topology data with parameter information
+        # Mejorar datos de topología con información de parámetros
         enhanced_data = enhance_topology_with_params(topology_data, eqpt_config)
+        
+        # Incluir configuración de equipos en la respuesta (como scenario02.py)
+        enhanced_data['eqpt_config'] = eqpt_config
         
         return jsonify(enhanced_data)
     except FileNotFoundError:
@@ -46,7 +60,7 @@ def get_topology_data(filename=None):
         return jsonify({'error': f'Invalid JSON in file {filename}'}), 400
 
 def load_equipment_config():
-    """Load equipment configuration from eqpt_config.json."""
+    """Cargar configuración de equipos desde eqpt_config.json."""
     try:
         with open(EQPT_CONFIG_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -56,25 +70,25 @@ def load_equipment_config():
         return {}
 
 def enhance_topology_with_params(topology_data, eqpt_config):
-    """Enhance topology data with parameter information from equipment config."""
+    """Mejorar datos de topología con información de parámetros desde configuración de equipos."""
     enhanced_data = topology_data.copy()
     
-    # Add default parameters for different element types
+    # Agregar parámetros por defecto para diferentes tipos de elementos
     for element in enhanced_data.get('elements', []):
         element_type = element.get('type', '')
         
         if element_type == 'Transceiver':
-            # Add default transceiver parameters
+            # Agregar parámetros por defecto del transceptor
             element['parameters'] = get_transceiver_defaults()
             
         elif element_type == 'Fiber':
-            # Fiber parameters are already in the topology, just ensure they exist
+            # Los parámetros de fibra ya están en la topología, solo asegurar que existan
             if 'params' not in element:
                 element['params'] = {}
             element['parameters'] = get_fiber_defaults(element.get('params', {}))
             
         elif element_type == 'Edfa':
-            # Get EDFA parameters from equipment config
+            # Obtener parámetros EDFA desde configuración de equipos
             type_variety = element.get('type_variety', 'std_medium_gain')
             edfa_config = find_edfa_config(eqpt_config, type_variety)
             operational = element.get('operational', {})
@@ -83,52 +97,57 @@ def enhance_topology_with_params(topology_data, eqpt_config):
     return enhanced_data
 
 def get_transceiver_defaults():
-    """Get default parameters for transceivers."""
+    """Obtener parámetros por defecto para transceptores."""
     return {
-        'p_rb': {'value': -20.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Received Signal Strength - Modify this value to adjust the signal strength'},
-        'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'Transmission OSNR - Modify the OSNR value to optimize signal quality'},
-        'sens': {'value': -25.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Receiver Sensitivity - The sensitivity level of the receiver to incoming signals'}
+        'p_rb': {'value': -20.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Fuerza de Señal Recibida - Modifique este valor para ajustar la fuerza de la señal'},
+        'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
+        'sens': {'value': -25.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - El nivel de sensibilidad del receptor a las señales entrantes'}
     }
 
 def get_fiber_defaults(existing_params):
-    """Get parameters for fiber elements."""
+    """Obtener parámetros para elementos de fibra."""
     return {
-        'loss_coef': {'value': existing_params.get('loss_coef', 0.2), 'unit': 'dB/km', 'editable': False, 'tooltip': 'Fiber Loss Coefficient - The coefficient representing fiber loss rate'},
-        'length_km': {'value': existing_params.get('length', 80), 'unit': 'km', 'editable': False, 'tooltip': 'Fiber Length (km) - The total length of the fiber section in kilometers'},
-        'con_in': {'value': existing_params.get('con_in', 0.5), 'unit': 'dB', 'editable': False, 'tooltip': 'Input Connector - The type of connector used at the input of the fiber'},
-        'con_out': {'value': existing_params.get('con_out', 0.5), 'unit': 'dB', 'editable': False, 'tooltip': 'Output Connector - The type of connector used at the output of the fiber'},
-        'att_in': {'value': existing_params.get('att_in', 0.0), 'unit': 'dB', 'editable': False, 'tooltip': 'Input Losses - Losses encountered at the fiber input side'}
+        'loss_coef': {'value': existing_params.get('loss_coef', 0.2), 'unit': 'dB/km', 'editable': False, 'tooltip': 'Coeficiente de Pérdida de Fibra - El coeficiente que representa la tasa de pérdida de la fibra'},
+        'length_km': {'value': existing_params.get('length', 80), 'unit': 'km', 'editable': False, 'tooltip': 'Longitud de Fibra (km) - La longitud total de la sección de fibra en kilómetros'},
+        'con_in': {'value': existing_params.get('con_in', 0.5), 'unit': 'dB', 'editable': False, 'tooltip': 'Conector de Entrada - El tipo de conector usado en la entrada de la fibra'},
+        'con_out': {'value': existing_params.get('con_out', 0.5), 'unit': 'dB', 'editable': False, 'tooltip': 'Conector de Salida - El tipo de conector usado en la salida de la fibra'},
+        'att_in': {'value': existing_params.get('att_in', 0.0), 'unit': 'dB', 'editable': False, 'tooltip': 'Pérdidas de Entrada - Pérdidas encontradas en el lado de entrada de la fibra'}
     }
 
 def get_edfa_defaults(edfa_config, operational):
-    """Get parameters for EDFA elements."""
+    """Obtener parámetros para elementos EDFA (usando lógica similar a scenario02.py)."""
     return {
-        'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Maximum Flat Gain - The maximum gain achieved by the amplifier under flat conditions'},
-        'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Minimum Gain - The minimum gain achievable by the amplifier'},
-        'p_max': {'value': edfa_config.get('p_max', 23), 'unit': 'dBm', 'editable': True, 'tooltip': 'Maximum Power - The maximum output power provided by the amplifier'},
-        'nf0': {'value': edfa_config.get('nf0', edfa_config.get('nf_min', 6)), 'unit': 'dB', 'editable': True, 'tooltip': 'Noise Factor - The noise figure of the amplifier affecting signal-to-noise ratio'},
-        'gain_target': {'value': operational.get('gain_target', 20), 'unit': 'dB', 'editable': False, 'tooltip': 'Target Gain - The desired gain to be achieved by the amplifier based on operational settings'}
+        'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Plana Máxima - La ganancia máxima alcanzada por el amplificador bajo condiciones planas'},
+        'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Mínima - La ganancia mínima alcanzable por el amplificador'},
+        'p_max': {'value': edfa_config.get('p_max', 23), 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Máxima - La potencia de salida máxima proporcionada por el amplificador'},
+        'nf0': {'value': edfa_config.get('nf0', edfa_config.get('nf_min', 6)), 'unit': 'dB', 'editable': True, 'tooltip': 'Factor de Ruido - La figura de ruido del amplificador que afecta la relación señal-ruido'},
+        'gain_target': {'value': operational.get('gain_target', 20), 'unit': 'dB', 'editable': False, 'tooltip': 'Ganancia Objetivo - La ganancia deseada a ser alcanzada por el amplificador basada en configuraciones operacionales'}
     }
 
 def find_edfa_config(eqpt_config, type_variety):
-    """Find EDFA configuration by type_variety."""
+    """Encontrar configuración EDFA por type_variety (usando lógica similar a scenario02.py)."""
+    # Primero intentar con el diccionario global cargado
+    if type_variety in edfa_equipment_data:
+        return edfa_equipment_data[type_variety]
+    
+    # Respaldo: buscar en eqpt_config pasado como parámetro
     edfa_configs = eqpt_config.get('Edfa', [])
     for config in edfa_configs:
         if config.get('type_variety') == type_variety:
             return config
-    # Return default if not found
+    # Devolver valores por defecto si no se encuentra
     return {'gain_flatmax': 26, 'gain_min': 15, 'p_max': 23, 'nf_min': 6}
 
 def update_network_parameters():
-    """Update network parameters for elements."""
+    """Actualizar parámetros de red para elementos."""
     try:
         data = request.get_json()
         element_uid = data.get('element_uid')
         parameter_name = data.get('parameter_name')
         new_value = data.get('new_value')
         
-        # Here you would typically save the updated parameters to a database
-        # For now, we'll just return success
+        # Aquí normalmente guardarías los parámetros actualizados en una base de datos
+        # Por ahora, solo devolvemos éxito
         return jsonify({
             'success': True,
             'message': f'Parameter {parameter_name} updated for element {element_uid}',
@@ -140,7 +159,7 @@ def update_network_parameters():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 def upload_topology_file(file):
-    """Handles topology file upload."""
+    """Maneja la carga de archivos de topología."""
     if not file:
         return jsonify({'error': 'No hay archivo en la solicitud'}), 400
     
@@ -151,7 +170,7 @@ def upload_topology_file(file):
         filename = file.filename
         filepath = os.path.join(TOPOLOGY_DIR, filename)
         
-        # Ensure directory exists
+        # Asegurar que el directorio existe
         os.makedirs(TOPOLOGY_DIR, exist_ok=True)
         
         try:

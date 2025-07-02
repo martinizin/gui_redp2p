@@ -1,0 +1,111 @@
+{
+  "network_name": "Enlace Punto a Punto con EDFA - Quito a Guayaquil",
+  "elements": [
+    {
+      "uid": "TX_Quito",
+      "type": "Transceiver",
+      "type_variety": "standard_transceiver",
+      "metadata": {
+        "latitude": -0.1807,
+        "longitude": -78.4678,
+        "location": "Quito, Ecuador"
+      }
+    },
+    {
+      "uid": "Edfa_1",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 17,
+        "tilt_target": 0,
+        "out_voa": 0
+      },
+      "metadata": {
+        "latitude": -0.6,
+        "longitude": -78.45,
+        "location": "Intermedio 1, Ecuador"
+      }
+    },
+    {
+      "uid": "Fiber_Span_1",
+      "type": "Fiber",
+      "type_variety": "standard_fiber",
+      "params": {
+        "length": 100,
+        "loss_coef": 0.1,
+        "con_in": 0.3,
+        "con_out": 0.2,
+        "att_in": 0.0
+      },
+      "metadata": {
+        "latitude": -1.1,
+        "longitude": -78.4,
+        "location": "Fibra entre EDFA 1 y EDFA 2, Ecuador"
+      }
+    },
+    {
+      "uid": "Edfa_2",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 17,
+        "tilt_target": 0,
+        "out_voa": 0
+      },
+      "metadata": {
+        "latitude": -1.6,
+        "longitude": -78.35,
+        "location": "Intermedio 2, Ecuador"
+      }
+    },
+    {
+      "uid": "Fiber_Span_2",
+      "type": "Fiber",
+      "type_variety": "standard_fiber",
+      "params": {
+        "length": 150,
+        "loss_coef": 0.1,
+        "con_in": 0.3,
+        "con_out": 0.2,
+        "att_in": 0.0
+      },
+      "metadata": {
+        "latitude": -2.1,
+        "longitude": -78.3,
+        "location": "Fibra entre EDFA 2 y RX Guayaquil, Ecuador"
+      }
+    },
+    {
+      "uid": "RX_Guayaquil",
+      "type": "Transceiver",
+      "type_variety": "standard_transceiver",
+      "metadata": {
+        "latitude": -2.1700,
+        "longitude": -79.9220,
+        "location": "Guayaquil, Ecuador"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "TX_Quito",
+      "to_node": "Edfa_1"
+    },
+    {
+      "from_node": "Edfa_1",
+      "to_node": "Fiber_Span_1"
+    },
+    {
+      "from_node": "Fiber_Span_1",
+      "to_node": "Edfa_2"
+    },
+    {
+      "from_node": "Edfa_2",
+      "to_node": "Fiber_Span_2"
+    },
+    {
+      "from_node": "Fiber_Span_2",
+      "to_node": "RX_Guayaquil"
+    }
+  ]
+}

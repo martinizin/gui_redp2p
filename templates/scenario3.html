@@ -1,6 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,9 +9,9 @@
             margin: 0;
             padding: 0;
         }
-        /* Main layout containers */
+        /* Contenedores de diseño principal */
         body {
-            padding-top: 70px; /* Space for fixed navigation */
+            padding-top: 110px; /* Espacio para navegación fija incluyendo menú */
             font-size: 0.9rem;
         }
         #navigation {
@@ -28,7 +25,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
-        /* Upload section container */
+        /* Contenedor de sección de carga */
         #upload-section {
             background-color: white;
             padding: 20px;
@@ -63,7 +60,7 @@
             font-weight: 500;
         }
         
-        /* Map section container */
+        /* Contenedor de sección de mapa */
         #map-section {
             padding: 0;
             margin-top: 0;
@@ -83,10 +80,10 @@
             background-color: white;
         }
         
-        /* Responsive adjustments */
+        /* Ajustes responsivos */
         @media (max-width: 768px) {
             body {
-                padding-top: 90px; /* More space for mobile navigation */
+                padding-top: 90px; /* Más espacio para navegación móvil */
             }
             #upload-section {
                 margin: 5px;
@@ -157,7 +154,7 @@
             box-shadow: 0 2px 4px rgba(0,123,255,0.3);
         }
         
-        /* Parameters Panel Styles */
+        /* Estilos del panel de parámetros */
         #parameters-panel {
             position: fixed;
             right: -400px;
@@ -260,7 +257,7 @@
             color: #343a40;
         }
         
-        /* Tooltip Styles */
+        /* Estilos de tooltip */
         .tooltip {
             position: relative;
             display: inline-block;
@@ -297,11 +294,11 @@
             opacity: 1;
         }
 
-        /* Calculation Section Styles */
+        /* Estilos de sección de cálculo */
         #calculation-section {
             padding: 0 15px;
             max-width: 1400px;
-            margin: 10px auto 10px auto; /* Further reduced margins */
+            margin: 10px auto 10px auto; /* Márgenes aún más reducidos */
             background-color: transparent;
             border-top: none;
         }
@@ -371,29 +368,30 @@
             font-weight: 400;
         }
 
-        /* Custom InfoWindow Styles */
+        /* Estilos de InfoWindow personalizado */
         .custom-infowindow {
             background: #ffffff;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             padding: 0;
-            max-width: 250px; /* Smaller width */
+            max-width: 350px; /* Ancho aumentado para parámetros EDFA */
+            min-width: 280px; /* Ancho mínimo */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 13px; /* Smaller font */
+            font-size: 14px; /* Fuente ligeramente más grande */
             color: #333;
         }
         .custom-infowindow-header {
-            font-size: 15px; /* Smaller font */
+            font-size: 15px; /* Fuente más pequeña */
             font-weight: 600;
             color: #ffffff;
             margin: 0;
-            padding: 8px 12px; /* Reduced padding */
+            padding: 8px 12px; /* Relleno reducido */
             background: #007bff;
             border-bottom: 1px solid #0069d9;
             border-radius: 8px 8px 0 0;
         }
         .custom-infowindow-content {
-            padding: 12px; /* Reduced padding */
+            padding: 12px; /* Relleno reducido */
         }
         .custom-infowindow-content p {
             margin: 0 0 6px 0;
@@ -424,21 +422,21 @@
             font-weight: 700;
         }
 
-        /* ----- Google Maps InfoWindow Customization ----- */
-        /* Hide the default white bubble and shadow */
+        /* ----- Personalización de InfoWindow de Google Maps ----- */
+        /* Oculta la burbuja blanca y sombra por defecto */
         .gm-style .gm-style-iw-c {
             padding: 0 !important;
             background-color: transparent !important;
             box-shadow: none !important;
         }
         .gm-style .gm-style-iw-d {
-           overflow: hidden !important; /* Hide scrollbars */
+           overflow: hidden !important; /* Oculta barras de desplazamiento */
         }
-        /* Hide the default close button */
+        /* Oculta el botón de cerrar por defecto */
         .gm-style .gm-style-iw-t button {
             display: none !important;
         }
-        /* Hide the default arrow */
+        /* Oculta la flecha por defecto */
         .gm-style .gm-style-iw-t::after {
             display: none;
         }
@@ -451,6 +449,17 @@
             padding: .25rem .75rem;
             font-size: .875rem;
         }
+        #navigation .scenario-nav {
+            margin-bottom: 0 !important; /* Prevent extra space pushing content up */
+        }
+
+        /* Asegura que el mapa coincida con la altura del panel derecho */
+        .col-lg-8, .col-lg-4, #map-section {
+            height: 100%;
+        }
+        #map-container, #map {
+            height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -459,11 +468,7 @@
             <div class="row">
                 <div class="col-12 text-center">
                     <h1 class="mb-3">Simulador de topologías de red en google maps</h1>
-                    <div class="btn-group" role="group" aria-label="Navigation">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Scenario 01</a>
-                        <a href="{{ url_for('scenario02') }}" class="btn btn-secondary">Scenario 02</a>
-                        <a href="{{ url_for('scenario03') }}" class="btn btn-primary">Scenario 03</a>
-                    </div>
+                    {% include 'scenario_nav.html' %}
                 </div>
             </div>
         </div>
@@ -497,16 +502,35 @@
                 <div class="calculation-panel" style="height: 100%;">
                     <h3 class="panel-title">Parámetros de Simulación</h3>
                     <div class="form-group">
-                        <label for="tx-osnr">Tx OSNR (dB)</label>
-                        <input type="number" id="tx-osnr" class="form-control" value="40.0" step="0.1">
+                        <label for="tx-osnr">f_min</label>
+                        <input type="number" id="tx-osnr" class="form-control" value="191.4e12" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="baud-rate">Tasa de Baudios (GBaud)</label>
-                        <input type="number" id="baud-rate" class="form-control" value="32" step="1">
+                        <label for="baud-rate">f_max</label>
+                        <input type="number" id="baud-rate" class="form-control" value="195.1e12" step="1">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">Potencia Tx (dBm)</label>
-                        <input type="number" id="tx-power" class="form-control" value="0.0" step="0.1">
+                        <label for="tx-power">Spacing</label>
+                        <input type="number" id="tx-power" class="form-control" value="50.e9" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-power">roll_off</label>
+                        <input type="number" id="tx-power" class="form-control" value="0.15" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-power">tx_osnr</label>
+                        <input type="number" id="tx-power" class="form-control" value="40" step="0.1">
+                    </div> <div class="form-group">
+                        <label for="tx-power">tx_power_dbm</label>
+                        <input type="number" id="tx-power" class="form-control" value="1" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-power">baud_rate</label>
+                        <input type="number" id="tx-power" class="form-control" value="32e9" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-power">delta_pbd</label>
+                        <input type="number" id="tx-power" class="form-control" value="0" step="0.1">
                     </div>
                 </div>
             </div>
@@ -572,6 +596,11 @@
         let currentTopologyData = null;
         let defaultNodeIcon;
         
+        // Función global para cerrar todas las ventanas de información y prevenir superposición
+        function closeAllInfoWindows() {
+            Object.values(infoWindows).forEach(iw => iw.close());
+        }
+        
         // Inicializa el mapa
         function inicializarMapa() {
             defaultNodeIcon = {
@@ -582,16 +611,16 @@
             map = new google.maps.Map(document.getElementById('map'), {
                 center: { lat: -1.831239, lng: -78.183406 }, // Centro de Ecuador
                 zoom: 7,
-                scrollwheel: false, // Initially disabled
-                gestureHandling: 'greedy' // Allow panning and zooming with touch/mouse controls
+                scrollwheel: false, // Inicialmente deshabilitado
+                gestureHandling: 'greedy' // Permite panorámica y zoom con controles táctiles/ratón
             });
 
-            // Implement explicit interaction-based zoom control
+            // Implementa control de zoom explícito basado en interacción
             const mapContainer = document.getElementById('map-container');
             const zoomHint = document.getElementById('zoom-hint');
             let mapIsActive = false;
             
-            // Show hint on hover
+            // Muestra pista al pasar el ratón
             mapContainer.addEventListener('mouseenter', function() {
                 if (!mapIsActive) {
                     zoomHint.style.display = 'block';
@@ -607,7 +636,7 @@
                 }
             });
             
-            // Enable map interaction when user clicks on the map
+            // Habilita interacción del mapa cuando el usuario hace clic en el mapa
             mapContainer.addEventListener('mousedown', function() {
                 mapIsActive = true;
                 mapContainer.classList.add('active');
@@ -615,7 +644,7 @@
                 map.setOptions({ scrollwheel: true });
             });
             
-            // Disable map scrolling when clicking outside the map
+            // Deshabilita desplazamiento del mapa al hacer clic fuera del mapa
             document.addEventListener('click', function(e) {
                 if (!mapContainer.contains(e.target)) {
                     mapIsActive = false;
@@ -624,16 +653,16 @@
                 }
             });
             
-            // Handle scroll events with explicit control
+            // Maneja eventos de desplazamiento con control explícito
             mapContainer.addEventListener('wheel', function(e) {
-                // Allow map zoom only if map is active OR Ctrl key is held
+                // Permite zoom del mapa solo si el mapa está activo O se mantiene presionada la tecla Ctrl
                 if (mapIsActive || e.ctrlKey) {
                     map.setOptions({ scrollwheel: true });
-                    e.preventDefault(); // Prevent page scroll
+                    e.preventDefault(); // Previene desplazamiento de página
                     e.stopPropagation();
                 } else {
                     map.setOptions({ scrollwheel: false });
-                    // Allow normal page scrolling - do nothing to let event bubble up
+                    // Permite desplazamiento normal de página - no hace nada para dejar que el evento burbujee
                 }
             }, { passive: false });
 
@@ -767,6 +796,8 @@
                 const nodeId = normalizarIdNodo(el.uid);
                 const location = extraerUbicacion(el);
                 
+                console.log('Processing element:', el.uid, 'Type:', el.type, 'Location:', location);
+                
                 if (location && location.lat && location.lng) {
                     nodesMap[nodeId] = {
                         id: nodeId,
@@ -777,8 +808,10 @@
                         city: location.city || el.metadata?.location?.city,
                         raw: el
                     };
+                    console.log('Added node to map:', nodeId, 'Type:', el.type);
                 }
             });
+            console.log('Final nodesMap:', nodesMap);
             return nodesMap;
         }
 
@@ -799,22 +832,105 @@
             return null;
         }
 
+        /* Genera tooltip específico para EDFA (usando lógica de scenario02.py) */
+        function crearTooltipEdfa(edfaElement) {
+            console.log('Creating EDFA tooltip for element:', edfaElement);
+            
+            if (!edfaElement) {
+                console.log('No EDFA element provided');
+                return '';
+            }
+            
+            const uid = edfaElement.uid || 'N/A';
+            const type = edfaElement.type || 'Edfa';
+            const typeVar = edfaElement.type_variety || 'N/A';
+            
+            console.log('EDFA basic info - UID:', uid, 'Type:', type, 'Type Variety:', typeVar);
+            
+            // gain_target desde operacional (topología)
+            let gainTarget = 'N/A';
+            if (edfaElement.operational && edfaElement.operational.gain_target !== undefined) {
+                gainTarget = edfaElement.operational.gain_target;
+                console.log('Found gain_target in operational:', gainTarget);
+            } else if (edfaElement.parameters && edfaElement.parameters.gain_target) {
+                gainTarget = edfaElement.parameters.gain_target.value ?? edfaElement.parameters.gain_target;
+                console.log('Found gain_target in parameters:', gainTarget);
+            } else {
+                console.log('No gain_target found. Operational:', edfaElement.operational, 'Parameters:', edfaElement.parameters);
+            }
+
+            // NF desde configuración de equipos (como enfoque de scenario02.py)
+            let nfVal = 'N/A';
+            if (edfaElement.parameters && edfaElement.parameters.nf0 !== undefined) {
+                nfVal = edfaElement.parameters.nf0.value ?? edfaElement.parameters.nf0;
+                console.log('Found nf0 in element parameters:', nfVal);
+            } else if (edfaElement.type_variety && currentTopologyData && currentTopologyData.eqpt_config) {
+                // Busca en configuración de equipos (misma lógica que scenario02.py)
+                const edfaConfigs = currentTopologyData.eqpt_config.Edfa || [];
+                console.log('Looking for type_variety in equipment config:', edfaElement.type_variety, 'Available configs:', edfaConfigs);
+                const cfg = edfaConfigs.find(c => c.type_variety === edfaElement.type_variety);
+                if (cfg) {
+                    nfVal = cfg.nf0 !== undefined ? cfg.nf0 : (cfg.nf_min !== undefined ? cfg.nf_min : 'N/A');
+                    console.log('Found NF in equipment config:', nfVal, 'Config:', cfg);
+                } else {
+                    console.log('No matching equipment config found for type_variety:', edfaElement.type_variety);
+                }
+            } else {
+                console.log('Cannot find NF - missing data. Type variety:', edfaElement.type_variety, 'Has topology data:', !!currentTopologyData, 'Has eqpt_config:', !!(currentTopologyData && currentTopologyData.eqpt_config));
+            }
+
+            const tooltipHTML = `
+                <div class="custom-infowindow">
+                    <h3 class="custom-infowindow-header">EDFA</h3>
+                    <div class="custom-infowindow-content">
+                        <p><strong>UID:</strong> ${uid}</p>
+                        <p><strong>Type:</strong> ${type}</p>
+                        <p><strong>Type Variety:</strong> ${typeVar}</p>
+                        <p><strong>gain_target:</strong> ${gainTarget} dB</p>
+                        <p><strong>NF:</strong> ${nfVal} dB</p>
+                    </div>
+                </div>`;
+            
+            console.log('Generated EDFA tooltip HTML:', tooltipHTML);
+            return tooltipHTML;
+        }
+
         function dibujarNodos(nodesMap) {
             Object.values(nodesMap).forEach(node => {
+                // Elige icono basado en el tipo de elemento
+                let iconMarker = defaultNodeIcon;
+                if (node.raw && node.raw.type === 'Edfa') {
+                    iconMarker = {
+                        path: 'M -5,0 0,-8 5,0 0,8 Z',
+                        scale: 1,
+                        fillColor: '#FF4500',
+                        fillOpacity: 1,
+                        strokeWeight: 1,
+                        strokeColor: '#8B0000'
+                    };
+                }
+
                 const marker = new google.maps.Marker({
                     position: { lat: node.latitude, lng: node.longitude },
                     map: map,
                     title: node.title,
-                    icon: defaultNodeIcon
+                    icon: iconMarker
                 });
                 markers[node.id] = marker;
 
+                // Genera contenido de tooltip (detección EDFA ahora manejada dentro de crearContenidoInfoNodo)
+                let tooltipContent = crearContenidoInfoNodo(node);
+                
+                console.log('Node:', node.id, 'Type:', node.type, 'Raw type:', node.raw?.type);
+                
                 const infoWindow = new google.maps.InfoWindow({
-                    content: crearContenidoInfoNodo(node)
+                    content: tooltipContent
                 });
                 infoWindows[node.id] = infoWindow;
 
                 marker.addListener('mouseover', () => {
+                    closeAllInfoWindows();
+                    
                     const sourceId = document.getElementById('source-node').value;
                     const destinationId = document.getElementById('destination-node').value;
                     let role = null;
@@ -830,15 +946,8 @@
                     infoWindow.close();
                 });
 
-                marker.addListener("click", () => {
-                    // Show parameters panel if element has parameters
-                    if (currentTopologyData && currentTopologyData.elements) {
-                        const element = currentTopologyData.elements.find(e => normalizarIdNodo(e.uid) === node.id);
-                        if (element && element.parameters) {
-                            showElementParameters(element);
-                        }
-                    }
-                });
+                // Clic deshabilitado – panel de parámetros removido según nuevos requerimientos
+                marker.addListener("click", () => {});
             });
         }
 
@@ -886,23 +995,23 @@
 
                             let totalLength = 0;
                             let hasFiber = false;
+                            let fiberElement = null;
 
                             for (const nodeId of newPath) {
                                 const element = elementsMap.get(nodeId);
                                 if (element && (element.type === 'Fiber' || element.type === 'fibre')) {
                                     hasFiber = true;
+                                    fiberElement = element; // Store fiber element for tooltip
                                     if (element.params && element.params.length) {
                                         totalLength += element.params.length;
                                     }
                                 }
                             }
 
-                            dibujarConexion(startNode, endNode, { color: hasFiber ? "#FF0000" : "#007bff", weight: 3 });
+                            dibujarConexion(startNode, endNode, { color: "#FF0000", weight: 3 }, fiberElement);
                             drawnLinks.add(linkKey);
 
-                            if (hasFiber && totalLength > 0) {
-                                colocarAmplificadores(startNode, endNode, totalLength);
-                            }
+                            // Removed automatic EDFA insertion along fibers
                         } else {
                             visitedInSearch.add(neighborId);
                             const newPath = [...path, neighborId];
@@ -913,102 +1022,7 @@
             }
         }
 
-        function crearContenidodelEdfa(edfa) {
-            let content = `
-                <div class="custom-infowindow">
-                    <h3 class="custom-infowindow-header">Amplificador (EDFA)</h3>
-                    <div class="custom-infowindow-content">
-                        <p><strong>UID:</strong> ${edfa.uid}</p>
-                        <p><strong>Variedad:</strong> ${edfa.type_variety}</p>
-                        <p><strong>Coords:</strong> ${edfa.coordinates.lat.toFixed(5)}°, ${edfa.coordinates.lng.toFixed(5)}°</p>
-                        <p><strong>Operacional:</strong></p>
-                        <div class="param-group">
-                            <p>Gain Target: ${edfa.operational.gain_target.toFixed(1)} dB</p>
-                            <p>Delta P: ${edfa.operational.delta_p.toFixed(1)} dB</p>
-                            <p>Tilt Target: ${edfa.operational.tilt_target}</p>
-                            <p>Out VOA: ${edfa.operational.out_voa}</p>
-                        </div>
-                    </div>
-                </div>`;
-            return content;
-        }
-
-        function colocarAmplificadores(startNode, endNode, length) {
-            const numAmps = Math.floor(length / 150);
-            if (numAmps <= 0) return;
-
-            const startPoint = new google.maps.LatLng(startNode.latitude, startNode.longitude);
-            const endPoint = new google.maps.LatLng(endNode.latitude, endNode.longitude);
-
-            for (let i = 1; i <= numAmps; i++) {
-                const fraction = i / (numAmps + 1);
-                const ampPosition = google.maps.geometry.spherical.interpolate(startPoint, endPoint, fraction);
-
-                const edfaData = {
-                    uid: `Edfa_fiber(${startNode.title} → ${endNode.title})_(${i}/${numAmps})`,
-                    type: 'Edfa',
-                    type_variety: 'std_medium_gain',
-                    operational: {
-                        gain_target: 23.0,
-                        delta_p: 1.0,
-                        tilt_target: 0,
-                        out_voa: 0
-                    },
-                    coordinates: {
-                        lat: ampPosition.lat(),
-                        lng: ampPosition.lng()
-                    }
-                };
-                
-                const infoWindow = new google.maps.InfoWindow({
-                    content: crearContenidodelEdfa(edfaData)
-                });
-                infoWindows[edfaData.uid] = infoWindow;
-
-                const ampMarker = new google.maps.Marker({
-                    position: ampPosition,
-                    map: map,
-                    title: `Amplificador en el enlace ${startNode.title} a ${endNode.title}`,
-                    icon: {
-                        path: 'M -5,0 0,-8 5,0 0,8 Z',
-                        scale: 1,
-                        fillColor: '#FF4500',
-                        fillOpacity: 1,
-                        strokeWeight: 1,
-                        strokeColor: '#8B0000'
-                    }
-                });
-                
-                ampMarker.addListener('mouseover', () => {
-                    infoWindow.open(map, ampMarker);
-                });
-                ampMarker.addListener('mouseout', () => {
-                    infoWindow.close();
-                });
-
-                ampMarker.addListener("click", () => {
-                    // Create a temporary element for the amplifier with default EDFA parameters
-                    const tempEdfaElement = {
-                        uid: edfaData.uid,
-                        type: 'Edfa',
-                        type_variety: edfaData.type_variety,
-                        operational: edfaData.operational,
-                        parameters: {
-                            'gain_flatmax': {'value': 26, 'unit': 'dB', 'editable': true, 'tooltip': 'Maximum Flat Gain - The maximum gain achieved by the amplifier under flat conditions'},
-                            'gain_min': {'value': 15, 'unit': 'dB', 'editable': true, 'tooltip': 'Minimum Gain - The minimum gain achievable by the amplifier'},
-                            'p_max': {'value': 23, 'unit': 'dBm', 'editable': true, 'tooltip': 'Maximum Power - The maximum output power provided by the amplifier'},
-                            'nf0': {'value': 6, 'unit': 'dB', 'editable': true, 'tooltip': 'Noise Factor - The noise figure of the amplifier affecting signal-to-noise ratio'},
-                            'gain_target': {'value': edfaData.operational.gain_target, 'unit': 'dB', 'editable': false, 'tooltip': 'Target Gain - The desired gain to be achieved by the amplifier based on operational settings'}
-                        }
-                    };
-                    showElementParameters(tempEdfaElement);
-                });
-
-                markers[edfaData.uid] = ampMarker;
-            }
-        }
-
-        function dibujarConexion(startNode, endNode, style) {
+        function dibujarConexion(startNode, endNode, style, fiberElement = null) {
             const path = [
                 { lat: startNode.latitude, lng: startNode.longitude },
                 { lat: endNode.latitude, lng: endNode.longitude }
@@ -1030,10 +1044,12 @@
             );
 
             const infoWindow = new google.maps.InfoWindow({
-                content: crearContenidoInfoEnlace(style, startNode, endNode, distance)
+                content: crearContenidoInfoEnlace(style, startNode, endNode, distance, fiberElement)
             });
 
             line.addListener('mouseover', (event) => {
+                closeAllInfoWindows();
+                
                 infoWindow.setPosition(event.latLng);
                 infoWindow.open(map);
             });
@@ -1069,6 +1085,15 @@
         }
 
         function crearContenidoInfoNodo(node, role = null) {
+            // Check if this is an EDFA element
+            const isEdfa = (node.raw && node.raw.type === 'Edfa') || node.type === 'Edfa';
+            
+            if (isEdfa) {
+                // Use EDFA-specific tooltip
+                return crearTooltipEdfa(node.raw || node);
+            }
+            
+            // Default tooltip for non-EDFA elements
             let roleHtml = '';
             if (role) {
                 const roleClass = role === 'Nodo Origen' ? 'role-source' : 'role-destination';
@@ -1089,7 +1114,22 @@
             return content;
         }
 
-        function crearContenidoInfoEnlace(linkData, startNode, endNode, distance) {
+        function crearContenidoInfoEnlace(linkData, startNode, endNode, distance, fiberElement = null) {
+            let fiberParamsHtml = '';
+            
+            // Add fiber parameters if available
+            if (fiberElement && fiberElement.params) {
+                const params = fiberElement.params;
+                fiberParamsHtml = `
+                    <hr style="margin: 8px 0;">
+                    <p><strong>Parámetros de Fibra:</strong></p>
+                    <p><strong>loss_coef:</strong> ${params.loss_coef || 'N/A'} dB/km</p>
+                    <p><strong>att_in:</strong> ${params.att_in || 'N/A'} dB</p>
+                    <p><strong>con_in:</strong> ${params.con_in || 'N/A'} dB</p>
+                    <p><strong>con_out:</strong> ${params.con_out || 'N/A'} dB</p>
+                `;
+            }
+            
             return `
                 <div class="custom-infowindow">
                     <h3 class="custom-infowindow-header">Enlace de Fibra</h3>
@@ -1097,6 +1137,7 @@
                         <p><strong>Desde:</strong> ${startNode.title}</p>
                         <p><strong>Hasta:</strong> ${endNode.title}</p>
                         <p><strong>Distancia:</strong> ${distance.toFixed(2)} km</p>
+                        ${fiberParamsHtml}
                     </div>
                 </div>`;
         }
@@ -1227,6 +1268,18 @@
                 }
             }
         }
+
+        function adjustMapHeight() {
+            const panel = document.querySelector('#main-content-section .calculation-panel');
+            const mapContainerEl = document.getElementById('map-container');
+            if (panel && mapContainerEl) {
+                mapContainerEl.style.height = panel.offsetHeight + 'px';
+            }
+        }
+
+        // Initial adjustment (after slight delay to allow layout)
+        setTimeout(adjustMapHeight, 100);
+        window.addEventListener('resize', adjustMapHeight);
     </script>
     
     <script

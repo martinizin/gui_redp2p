@@ -179,12 +179,12 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     """
     sensibilidad_receptor_watts = db2lin(sensibilidad_receptor_dbm)
 
-    # Convert power history from Watts. User wants to adapt from matplotlib example.
-    # Matplotlib example implies a /1000 scaling for sensitivity if axis is "mW" and base is Watts.
-    # And a label format like f'{value_in_watts:.2e} (MiliWatts)'
-    # For consistency, main power data also scaled by /1000.
-    power_history_scaled = [p / 1000 for p in power_history_linear] # Was p / 100
-    sensibilidad_receptor_scaled_for_plot = sensibilidad_receptor_watts / 1000 # Was sensibilidad_receptor_watts / 100
+    # Convertir historial de potencia desde Watts. El usuario quiere adaptar del ejemplo matplotlib.
+    # El ejemplo matplotlib implica un escalado /1000 para sensibilidad si el eje es "mW" y la base es Watts.
+    # Y un formato de etiqueta como f'{value_in_watts:.2e} (MiliWatts)'
+    # Para consistencia, los datos principales de potencia también escalados por /1000.
+    power_history_scaled = [p / 1000 for p in power_history_linear] # Era p / 100
+    sensibilidad_receptor_scaled_for_plot = sensibilidad_receptor_watts / 1000 # Era sensibilidad_receptor_watts / 100
 
     # Asegurar que todos los historiales tengan la misma longitud que longitud_acumulada
     # Esto es importante si los eventos de pérdida de conector no incrementan la longitud
@@ -194,27 +194,27 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     # Esto maneja los puntos verticales en las gráficas debido a pérdidas instantáneas (conectores).
     unique_lengths_map = {}
     for i, l in enumerate(longitud_acumulada):
-        unique_lengths_map[round(l, 5)] = power_history_scaled[i] # Use scaled history
+        unique_lengths_map[round(l, 5)] = power_history_scaled[i] # Usar historial escalado
     
     sorted_unique_lengths = sorted(unique_lengths_map.keys())
-    unique_power_history_scaled = [unique_lengths_map[l] for l in sorted_unique_lengths] # Use scaled history
+    unique_power_history_scaled = [unique_lengths_map[l] for l in sorted_unique_lengths] # Usar historial escalado
 
 
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
         x=sorted_unique_lengths,
-        y=unique_power_history_scaled, # Use scaled data for y-axis
+        y=unique_power_history_scaled, # Usar datos escalados para eje y
         mode='lines+markers',
-        name='Potencia (mW)' # Update label
+        name='Potencia (mW)' # Actualizar etiqueta
     ))
 
     fig.add_hline(
-        y=sensibilidad_receptor_scaled_for_plot, # Use scaled sensitivity for line position
+        y=sensibilidad_receptor_scaled_for_plot, # Usar sensibilidad escalada para posición de línea
         line_dash="dash",
-        # Annotation text based on user's f'Receiver sensitivity: {sensitivity_linear_watts:.2e} (MiliWatts)'
-        # This means displaying the original Watt value in the text, then "mW".
-        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_watts:.2e} mW", # Update annotation text
+        # Texto de anotación basado en f'Receiver sensitivity: {sensitivity_linear_watts:.2e} (MiliWatts)' del usuario
+        # Esto significa mostrar el valor original en Watt en el texto, luego "mW".
+        annotation_text=f"Sensibilidad Receptor: {sensibilidad_receptor_watts:.2e} mW", # Actualizar texto de anotación
         annotation_position="bottom right",
         line_color='red'
     )
@@ -222,13 +222,13 @@ def graficar_potencia_plotly_linear(longitud_acumulada, power_history_linear, se
     fig.update_layout(
         title="Potencia de Salida (Lineal) vs. Longitud",
         xaxis_title="Longitud acumulada de la fibra (km)",
-        yaxis_title="Potencia de la señal (mW)", # Update y-axis title
+        yaxis_title="Potencia de la señal (mW)", # Actualizar título del eje y
         yaxis_type="linear", 
         legend_title_text='Leyenda',
         height=500
     )
-    # Plotly's autorange should handle the new mW scale well.
-    # If specific range adjustments are needed later, they can be added to yaxis layout:
+    # El autorango de Plotly debería manejar bien la nueva escala mW.
+    # Si se necesitan ajustes específicos de rango más tarde, se pueden agregar al layout yaxis:
     # yaxis_range=[min_val_mw, max_val_mw] 
     return fig.to_dict()
 

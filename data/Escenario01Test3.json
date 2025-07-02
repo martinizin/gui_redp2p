@@ -1,0 +1,71 @@
+{
+  "network_name": "Enlace Punto a Punto con EDFA - Manabí a Ibarra",
+  "elements": [
+    {
+      "uid": "TX_Manabi",
+      "type": "Transceiver",
+      "type_variety": "standard_transceiver",
+      "metadata": {
+        "latitude": -1.3527,
+        "longitude": -80.2115,
+        "location": "Manabí, Ecuador"
+      }
+    },
+    {
+      "uid": "Edfa_1",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 17,
+        "tilt_target": 0,
+        "out_voa": 0
+      },
+      "metadata": {
+        "latitude": -1.8,
+        "longitude": -80.15,
+        "location": "Intermedio 1, Ecuador"
+      }
+    },
+    {
+      "uid": "Fiber_Span_1",
+      "type": "Fiber",
+      "type_variety": "standard_fiber",
+      "params": {
+        "length": 80,
+        "loss_coef": 0.2,
+        "con_in": 0.1,
+        "con_out": 0.3,
+        "att_in": 0.0
+      },
+      "metadata": {
+        "latitude": -2.3,
+        "longitude": -80.05,
+        "location": "Fibra entre EDFA 1 y RX Ibarra, Ecuador"
+      }
+    },
+    {
+      "uid": "RX_Ibarra",
+      "type": "Transceiver",
+      "type_variety": "standard_transceiver",
+      "metadata": {
+        "latitude": 0.3652,
+        "longitude": -78.1339,
+        "location": "Ibarra, Ecuador"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "from_node": "TX_Manabi",
+      "to_node": "Edfa_1"
+    },
+    {
+      "from_node": "Edfa_1",
+      "to_node": "Fiber_Span_1"
+    },
+    {
+      "from_node": "Fiber_Span_1",
+      "to_node": "RX_Ibarra"
+    }
+  ]
+}

@@ -14,20 +14,20 @@
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern UI font stack */
-            background-color: #eef1f5; /* Slightly cooler light gray */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Pila de fuentes modernas para la interfaz */
+            background-color: #eef1f5; /* Gris claro ligeramente más frío */
             margin: 0;
             padding-top: 15px; 
-            color: #333; /* Default text color */
+            color: #333; /* Color de texto por defecto */
         }
 
         h1, h3, h5 {
-            color: #343a40; /* Darker, more standard heading color */
+            color: #343a40; /* Color de encabezado más oscuro y estándar */
         }
         h1 {
             font-weight: 600;
             text-align: center;
-            margin-bottom: 25px; /* Slightly less margin */
+            margin-bottom: 25px; /* Margen ligeramente menor */
         }
         h3 {
             font-weight: 500;
@@ -48,22 +48,22 @@
             padding: 20px;
             background-color: #ffffff; 
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Enhanced shadow */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra mejorada */
         }
 
-        /* Network visualization container */
+        /* Contenedor de visualización de red */
         #red {
-            height: 480px; /* Slightly taller */
+            height: 480px; /* Ligeramente más alto */
             width: 100%; 
-            border: 1px solid #dee2e6; /* Consistent border color */
+            border: 1px solid #dee2e6; /* Color de borde consistente */
             background-color: #ffffff; 
-            border-radius: 6px; /* Consistent radius */
+            border-radius: 6px; /* Radio consistente */
             margin-top: 0; 
             box-sizing: border-box;
-            position: relative; /* For absolute positioning of controls inside */
+            position: relative; /* Para posicionamiento absoluto de controles internos */
         }
         
-        /* Button styling (general, can be overridden) */
+        /* Estilo de botones (general, puede ser sobrescrito) */
         .btn {
             border-radius: 5px;
             padding: 10px 20px;
@@ -86,13 +86,13 @@
             background-color: #1e7e34;
             border-color: #1e7e34;
         }
-        .calulos-button { /* Class for the main calculation button */
+        .calulos-button { /* Clase para el botón principal de cálculo */
             padding: 10px 24px; 
             font-size: 1.05rem;
             font-weight: 500;
         }
 
-        /* Form styling */
+        /* Estilo de formularios */
         .form-label {
             font-weight: 500;
             color: #495057;
@@ -106,17 +106,17 @@
             box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
         
-        /* Results container text styling */
+        /* Estilo de texto del contenedor de resultados */
         #resultados-container {
-            width: 100%; /* Makes the container fill the width of its parent */
-            padding-left: 15px; /* Add some padding if container-fluid is used */
-            padding-right: 15px; /* Add some padding if container-fluid is used */
+            width: 100%; /* Hace que el contenedor llene el ancho de su padre */
+            padding-left: 15px; /* Añade relleno si se usa container-fluid */
+            padding-right: 15px; /* Añade relleno si se usa container-fluid */
         }
         #resultados-container strong {
             color: #2c3e50;
         }
 
-        /* Tooltip custom styling */
+        /* Estilo personalizado de tooltip */
         .tooltip-custom {
             position: fixed; 
             z-index: 10000; 
@@ -135,7 +135,7 @@
             color: #007bff; 
         }
 
-        /* Modal styling */
+        /* Estilo de modal */
         .modal-content {
             border-radius: 8px;
             box-shadow: 0 5px 15px rgba(0,0,0,.5);
@@ -149,32 +149,32 @@
             font-weight: 500;
         }
 
-        /* Wrapper for the Vis.js canvas and its overlay controls */
+        /* Contenedor para el canvas de Vis.js y sus controles superpuestos */
         #network-container-wrapper {
             height: 500px;
             width: 100%;
-            padding: 0; /* Padding now handled by network-column */
-            background-color: transparent; /* Parent network-column provides background */
-            box-shadow: none; /* Parent network-column provides shadow */
-            margin-bottom: 15px; /* Space before "Realizar Calculos" button */
+            padding: 0; /* El relleno ahora lo maneja network-column */
+            background-color: transparent; /* El network-column padre proporciona el fondo */
+            box-shadow: none; /* El network-column padre proporciona la sombra */
+            margin-bottom: 15px; /* Espacio antes del botón "Realizar Calculos" */
             position: relative; 
         }
         
-        /* Styling for the main columns */
+        /* Estilo para las columnas principales */
         .col-md-8, .col-md-4 {
-            padding-left: 8px; /* Tighter gutters */
+            padding-left: 8px; /* Espaciado más estrecho */
             padding-right: 8px;
         }
-        /* Specific styling for the left column containing the network */
+        /* Estilo específico para la columna izquierda que contiene la red */
         .network-column { 
             background-color: #ffffff;
-            padding: 15px; /* Internal padding for the column */
+            padding: 15px; /* Relleno interno para la columna */
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            margin-bottom: 20px; /* Overall bottom margin for this column */
+            margin-bottom: 20px; /* Margen inferior general para esta columna */
         }
 
-        /* Custom Network Controls (Zoom, Fit) - Pan arrows removed */
+        /* Controles personalizados de red (Zoom, Ajustar) - Flechas de panorámica eliminadas */
         #custom-network-controls {
             position: absolute;
             top: 10px; 
@@ -185,11 +185,11 @@
             border-radius: 6px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
             display: flex;
-            /* flex-direction: column; /* Not needed if only one group */
-            gap: 4px; /* Gap between buttons if in a single row/group */
+            /* flex-direction: column; /* No necesario si solo hay un grupo */
+            gap: 4px; /* Espacio entre botones si están en una sola fila/grupo */
         }
         /* #custom-network-controls .control-group { 
-            display: flex; Removed as pan arrows group is gone 
+            display: flex; Eliminado ya que el grupo de flechas de panorámica desapareció 
             gap: 4px;
         } */
         #custom-network-controls button {
@@ -217,10 +217,10 @@
         }
         
 
-        /* Reset Layout Button */
+        /* Botón de reinicio de diseño */
         #resetLayoutButton {
             position: absolute;
-            top: 10px; /* Match custom controls */
+            top: 10px; /* Coincide con los controles personalizados */
             right: 10px;
             z-index: 100;
         }
@@ -228,7 +228,7 @@
             background-color: #f8f9fa;
             border-color: #ced4da;
             color: #212529;
-            height: 36px; /* Match custom controls height */
+            height: 36px; /* Coincide con la altura de los controles personalizados */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -241,54 +241,54 @@
        
 
 
-        /* Right Panel: Span Configuration - Made smaller */
+        /* Panel derecho: Configuración de tramos - Hecho más pequeño */
         #span-configuration-panel {
             background-color: #ffffff; 
-            padding: 15px; /* Reduced padding */
+            padding: 15px; /* Relleno reducido */
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             max-height: 548px;
          
-            /* max-width: 300px; /* Optional: uncomment if still too wide */
-            /* margin-left: auto; /* Optional: if using max-width and col structure allows */
-            /* margin-right: auto; /* Optional: if using max-width and col structure allows */
+            /* max-width: 300px; /* Opcional: descomentar si aún es muy ancho */
+            /* margin-left: auto; /* Opcional: si se usa max-width y la estructura de columnas lo permite */
+            /* margin-right: auto; /* Opcional: si se usa max-width y la estructura de columnas lo permite */
         }
         #span-configuration-panel h5 {
             margin-top: 0;
-            font-size: 1.1rem; /* Slightly smaller title */
+            font-size: 1.1rem; /* Título ligeramente más pequeño */
             color: #343a40; 
-            padding-bottom: 8px; /* Reduced padding */
-            margin-bottom: 12px; /* Reduced margin */
+            padding-bottom: 8px; /* Relleno reducido */
+            margin-bottom: 12px; /* Margen reducido */
             border-bottom: 1px solid #dee2e6;
             height: 40px;
         }
         #span-configuration-panel .form-label {
-            margin-bottom: .3rem; /* Tighter label margin */
-            font-size: 0.9rem; /* Smaller label font */
+            margin-bottom: .3rem; /* Margen de etiqueta más estrecho */
+            font-size: 0.9rem; /* Fuente de etiqueta más pequeña */
             font-weight: 500;
             color: #495057;
         }
         #span-configuration-panel .form-select,
         #span-configuration-panel .form-control { 
-            margin-bottom: 8px; /* Tighter control margin */
-            font-size: 0.9rem; /* Smaller font in controls */
+            margin-bottom: 8px; /* Margen de control más estrecho */
+            font-size: 0.9rem; /* Fuente más pequeña en controles */
             height: 40px;
         }
         #span-configuration-panel #saveFiberSpans {
-            font-size: 0.85rem; /* Smaller button font */
-            padding: 0.4rem 0.8rem; /* Smaller button padding */
+            font-size: 0.85rem; /* Fuente de botón más pequeña */
+            padding: 0.4rem 0.8rem; /* Relleno de botón más pequeño */
         }
 
-        /* "Realizar Calculos" Button Container */
+        /* Contenedor del botón "Realizar Calculos" */
         .realizar-calculos-container {
             text-align: center;
             padding: 10px 0 0 0; 
-            /* This class is now on a div that might be directly in container-fluid */
-            /* Adding margin-bottom here if it's moved above results */
+            /* Esta clase está ahora en un div que podría estar directamente en container-fluid */
+            /* Se añade margin-bottom aquí si se mueve arriba de los resultados */
             margin-bottom: 20px; 
         }
         
-        /* Plotly Graph Styling */
+        /* Estilo de gráficas Plotly */
         #plotly-graph-dbm, #plotly-graph-linear {
             min-height: 380px; 
             width: 100%;
@@ -297,7 +297,7 @@
             border-radius: 6px;
             margin-top: 10px; 
         }
-        .container-main h3 + .row { /* Space between H3 and first graph row */
+        .container-main h3 + .row { /* Espacio entre H3 y la primera fila de gráfica */
             margin-top: 5px;
         }
 
@@ -307,11 +307,7 @@
     <!-- Contenedor para el título principal -->
     <div class="container-fluid">
         <h1>Simulación de Red de Fibra Óptica</h1>
-        <div class="text-center mb-4">
-            <a href="{{ url_for('index') }}" class="btn btn-primary">Scenario 01</a>
-            <a href="{{ url_for('scenario02') }}" class="btn btn-secondary">Scenario 02</a>
-            <a href="{{ url_for('scenario03') }}" class="btn btn-secondary">Scenario 03</a>
-        </div>
+        {% include 'scenario_nav.html' %}
     </div>
 
     <div class="container-fluid">
@@ -327,7 +323,6 @@
                             <button id="panLeftBtn" title="Pan Left">&larr;</button>
                             <button id="panRightBtn" title="Pan Right">&rarr;</button>
                         </div> -->
-                        
                     </div>
                     <div id="red"></div>
                     <button id="resetLayoutButton" class="btn btn-light btn-sm" title="Restablecer Diseño"> 
@@ -457,46 +452,46 @@ function dbmToMw(dbm) {
 
 function mwToDbm(mw) {
     const mwFloat = parseFloat(mw);
-    if (mwFloat <= 0) { // Power must be > 0 for log
-        // Return a very small dBm value or handle as an error state
-        // For example, -100 dBm is 1e-10 mW, effectively zero for many practical purposes
-        return -100; // Or handle as an error, e.g., throw new Error("Power in mW must be positive.");
+    if (mwFloat <= 0) { // La potencia debe ser > 0 para el logaritmo
+        // Devuelve un valor muy pequeño de dBm o lo maneja como estado de error
+        // Por ejemplo, -100 dBm es 1e-10 mW, efectivamente cero para muchos propósitos prácticos
+        return -100; // O manejar como error, ej., throw new Error("La potencia en mW debe ser positiva.");
     }
     return 10 * Math.log10(mwFloat);
 }
 
-// Global Vis.js datasets
+// Conjuntos de datos globales de Vis.js
 let nodos = new vis.DataSet([]);
 let enlaces = new vis.DataSet([]);
-let red = null; // network instance
+let red = null; // instancia de red
 
-// Global parameters (editable via UI)
+// Parámetros globales (editables a través de la interfaz)
 let globalTxPowerDbm = 30.0;
-let globalDisplayTxPowerValue = 30.0; // Persists user's last entered display value for Tx
-let globalDisplayTxPowerUnit = 'dBm';   // Persists user's last entered display unit for Tx
+let globalDisplayTxPowerValue = 30.0; // Persiste el último valor de visualización ingresado por el usuario para Tx
+let globalDisplayTxPowerUnit = 'dBm';   // Persiste la última unidad de visualización ingresada por el usuario para Tx
 let globalReceiverSensitivityDbm = 14.0;
-let persistentSpanParams = {}; // Added for durable span parameters
+let persistentSpanParams = {}; // Añadido para parámetros de tramo duraderos
 
 
 document.querySelector('.calulos-button').addEventListener('click', function () {
-    // Gather parameters for calculation
+    // Recopila parámetros para el cálculo
     const fiber_params = [];
     enlaces.get().forEach(edge => {
-        // Ensure all necessary parameters are present and correctly typed
+        // Asegura que todos los parámetros necesarios estén presentes y correctamente tipados
         fiber_params.push({
-            // id: edge.id, // useful for debugging or more complex updates
+            // id: edge.id, // útil para depuración o actualizaciones más complejas
             loss_coef: parseFloat(edge.parametros['loss_coef'] || 0.2),
             att_in: parseFloat(edge.parametros['att_in'] || 0),
             con_in: parseFloat(edge.parametros['con_in'] || 0.25),
             con_out: parseFloat(edge.parametros['con_out'] || 0.30),
-            length_stretch: parseFloat(edge.parametros['length_stretch'] || 23) // Standardized key
+            length_stretch: parseFloat(edge.parametros['length_stretch'] || 23) // Clave estandarizada
         });
     });
     
-    // Get Tx power and Rx sensitivity from the respective nodes
-    // These are updated if the user edits the Transmisor/Receptor nodes directly
-    const transmisorNode = nodos.get(1); // Assuming ID 1 is Transmisor
-    const receptorNode = nodos.get(3);   // Assuming ID 3 is Receptor
+    // Obtiene la potencia Tx y sensibilidad Rx de los nodos respectivos
+    // Estos se actualizan si el usuario edita directamente los nodos Transmisor/Receptor
+    const transmisorNode = nodos.get(1); // Asumiendo que ID 1 es Transmisor
+    const receptorNode = nodos.get(3);   // Asumiendo que ID 3 es Receptor
 
     if (transmisorNode && transmisorNode.potencia !== undefined) {
         globalTxPowerDbm = parseFloat(transmisorNode.potencia);
@@ -512,7 +507,7 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
         fiber_params: fiber_params
     };
 
-    // Send AJAX request to Flask backend
+    // Envía solicitud AJAX al backend de Flask
     fetch('/calcular', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -520,10 +515,10 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
     })
     .then(response => response.json())
     .then(resultados => {
-        // Show the results container
+        // Muestra el contenedor de resultados
         document.getElementById('resultados-container').style.display = 'block';
 
-        // Update the results section
+        // Actualiza la sección de resultados
         let html = `
         <h3>Resultados de Simulación:</h3>
         <p><strong>Potencia de la señal inicial (dBm):</strong> ${resultados.potencia_inicial_dbm.toFixed(2)} dBm</p>
@@ -541,14 +536,14 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
         <p><strong>Sensibilidad del receptor (dBm):</strong> ${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm</p>
         `;
 
-        // Add the new "Estado de la red" label here
+        // Añade aquí la nueva etiqueta "Estado de la red"
         if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
             html += `<p><strong>Estado de la red:</strong> <span class="text-success">OPERACIONAL</span></p>`;
         } else {
             html += `<p><strong>Estado de la red:</strong> <span class="text-danger">NO OPERACIONAL</span></p>`;
         }
 
-        // Existing detailed link status
+        // Estado detallado del enlace existente
         if (resultados.potencia_final_dbm >= resultados.sensibilidad_receptor_dbm) {
             html += `<p class="text-success"><strong>Estado del Enlace:</strong> ¡Éxitoso! La potencia de la señal recibida (${resultados.potencia_final_dbm.toFixed(2)} dBm) es mayor o igual a la sensibilidad del receptor (${resultados.sensibilidad_receptor_dbm.toFixed(2)} dBm).</p>`;
         } else {
@@ -557,7 +552,7 @@ document.querySelector('.calulos-button').addEventListener('click', function () 
         }
         document.getElementById('resultados-container').innerHTML = html;
 
-        // Update Plotly graphs
+        // Actualiza las gráficas de Plotly
         if (resultados.plot_dbm_plotly) {
             Plotly.react('plotly-graph-dbm', resultados.plot_dbm_plotly.data, resultados.plot_dbm_plotly.layout);
         }
