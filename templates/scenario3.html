@@ -298,30 +298,31 @@
         #calculation-section {
             padding: 0 15px;
             max-width: 1400px;
-            margin: 10px auto 10px auto; /* Márgenes aún más reducidos */
+            margin: 5px auto 5px auto; /* Further reduced margins */
             background-color: transparent;
             border-top: none;
         }
         .calculation-panel {
             background-color: white;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             border: 1px solid #e0e0e0;
-            height: 100%;
+            height: auto; /* Changed from 100% to auto to fit content */
+            min-height: auto; /* Remove any minimum height constraints */
         }
         .panel-title {
             font-size: 1rem;
             color: #343a40;
-            margin-bottom: 12px;
+            margin-bottom: 10px; /* Reduced from 12px to 10px */
             font-weight: 500;
             border-bottom: 1px solid #eee;
-            padding-bottom: 6px;
+            padding-bottom: 5px; /* Reduced from 6px to 5px */
         }
         .form-row-flex {
             display: flex;
             gap: 12px;
-            margin-bottom: 8px;
+            margin-bottom: 6px; /* Reduced from 8px to 6px */
             align-items: flex-start;
         }
         .flex-grow {
@@ -334,11 +335,11 @@
             font-size: 0.95rem;
             color: #6c757d;
             margin-top: 0;
-            margin-bottom: 10px;
+            margin-bottom: 8px; /* Reduced from 10px to 8px */
             font-weight: 500;
         }
         .form-group {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem; /* Reduced from 0.5rem to 0.4rem */
         }
         .form-group label {
             display: block;
@@ -362,10 +363,13 @@
             font-weight: 500;
         }
         .radio-group {
-            padding-top: 0.25rem;
+            padding-top: 0.15rem; /* Reduced from 0.25rem to 0.15rem */
         }
         .form-check-label {
             font-weight: 400;
+        }
+        .form-check-inline {
+            margin-right: 0.75rem; /* Reduced spacing between radio buttons */
         }
 
         /* Estilos de InfoWindow personalizado */
@@ -502,35 +506,40 @@
                 <div class="calculation-panel" style="height: 100%;">
                     <h3 class="panel-title">Parámetros de Simulación</h3>
                     <div class="form-group">
-                        <label for="tx-osnr">f_min</label>
-                        <input type="number" id="tx-osnr" class="form-control" value="191.4e12" step="0.1">
+                        <label for="f-min">f_min</label>
+                        <input type="text" id="f-min" class="form-control" value="{{ si_config.f_min }}" placeholder="e.g., 191.3e12">
                     </div>
                     <div class="form-group">
-                        <label for="baud-rate">f_max</label>
-                        <input type="number" id="baud-rate" class="form-control" value="195.1e12" step="1">
+                        <label for="baud-rate">baud_rate</label>
+                        <input type="text" id="baud-rate" class="form-control" value="{{ si_config.baud_rate }}" placeholder="e.g., 32e9">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">Spacing</label>
-                        <input type="number" id="tx-power" class="form-control" value="50.e9" step="0.1">
+                        <label for="f-max">f_max</label>
+                        <input type="text" id="f-max" class="form-control" value="{{ si_config.f_max }}" placeholder="e.g., 195.1e12">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">roll_off</label>
-                        <input type="number" id="tx-power" class="form-control" value="0.15" step="0.1">
+                        <label for="spacing">spacing</label>
+                        <input type="text" id="spacing" class="form-control" value="{{ si_config.spacing }}" placeholder="e.g., 50e9">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">tx_osnr</label>
-                        <input type="number" id="tx-power" class="form-control" value="40" step="0.1">
-                    </div> <div class="form-group">
-                        <label for="tx-power">tx_power_dbm</label>
-                        <input type="number" id="tx-power" class="form-control" value="1" step="0.1">
+                        <label for="power-dbm">power_dbm</label>
+                        <input type="number" id="power-dbm" class="form-control" value="{{ si_config.power_dbm }}" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">baud_rate</label>
-                        <input type="number" id="tx-power" class="form-control" value="32e9" step="0.1">
+                        <label for="tx-power-dbm">tx_power_dbm</label>
+                        <input type="number" id="tx-power-dbm" class="form-control" value="{{ si_config.tx_power_dbm }}" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power">delta_pbd</label>
-                        <input type="number" id="tx-power" class="form-control" value="0" step="0.1">
+                        <label for="roll-off">roll_off</label>
+                        <input type="number" id="roll-off" class="form-control" value="{{ si_config.roll_off }}" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="tx-osnr">tx_osnr</label>
+                        <input type="number" id="tx-osnr" class="form-control" value="{{ si_config.tx_osnr }}" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="sys-margins">sys_margins</label>
+                        <input type="number" id="sys-margins" class="form-control" value="{{ si_config.sys_margins }}" step="1">
                     </div>
                 </div>
             </div>
@@ -550,6 +559,14 @@
                 <div class="form-group flex-grow">
                     <label for="destination-node">Nodo Destino</label>
                     <select id="destination-node" class="form-control custom-select"></select>
+                </div>
+            </div>
+            <div class="form-row-flex">
+                <div class="form-group flex-grow">
+                    <label for="number-of-routes">Ingrese el número de rutas optimas deseadas</label>
+                    <input type="number" id="number-of-routes" class="form-control" 
+                           min="1" max="10" step="1" 
+                           placeholder="Máximo 10">
                 </div>
             </div>
             <div class="form-row-flex">
@@ -1280,6 +1297,44 @@
         // Initial adjustment (after slight delay to allow layout)
         setTimeout(adjustMapHeight, 100);
         window.addEventListener('resize', adjustMapHeight);
+
+        // Validation for number of routes input
+        document.addEventListener('DOMContentLoaded', function() {
+            const numberOfRoutesInput = document.getElementById('number-of-routes');
+            
+            numberOfRoutesInput.addEventListener('input', function() {
+                let value = parseInt(this.value);
+                
+                // If field is empty, allow it to remain empty
+                if (this.value === '') {
+                    return;
+                }
+                
+                // If value is not a number or less than 1, set to 1
+                if (isNaN(value) || value < 1) {
+                    this.value = 1;
+                } else if (value > 10) {
+                    this.value = 10;
+                }
+            });
+            
+            // Prevent entering non-numeric characters
+            numberOfRoutesInput.addEventListener('keypress', function(e) {
+                // Allow backspace, delete, tab, escape, enter
+                if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
+                    // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                    (e.keyCode === 65 && e.ctrlKey === true) ||
+                    (e.keyCode === 67 && e.ctrlKey === true) ||
+                    (e.keyCode === 86 && e.ctrlKey === true) ||
+                    (e.keyCode === 88 && e.ctrlKey === true)) {
+                    return;
+                }
+                // Ensure that it is a number and stop the keypress
+                if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+                    e.preventDefault();
+                }
+            });
+        });
     </script>
     
     <script

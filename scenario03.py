@@ -21,10 +21,62 @@ if os.path.exists(EQPT_CONFIG_FILE):
 else:
     print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_FILE}")
 
+def format_scientific_notation(value):
+    """Format a number to match the exact notation used in the config file."""
+    if value == 191.3e12:
+        return '191.3e12'
+    elif value == 32e9:
+        return '32e9'
+    elif value == 195.1e12:
+        return '195.1e12'
+    elif value == 50e9:
+        return '50e9'
+    else:
+        # For other values, use a general scientific notation
+        if value >= 1e12:
+            return f"{value/1e12:.1f}e12"
+        elif value >= 1e9:
+            return f"{value/1e9:.0f}e9"
+        else:
+            return str(value)
+
 def handle_scenario03():
     """Maneja la lógica para el escenario 3."""
     maps_api_key = os.getenv('MAPS_API_KEY')
-    return render_template('scenario3.html', maps_api_key=maps_api_key)
+    
+    # Load equipment configuration to get SI parameters
+    eqpt_config = load_equipment_config()
+    si_config = {}
+    
+    # Extract SI configuration parameters
+    if 'SI' in eqpt_config and len(eqpt_config['SI']) > 0:
+        si_data = eqpt_config['SI'][0]  # Use first SI configuration
+        si_config = {
+            'f_min': format_scientific_notation(si_data.get('f_min', 191.3e12)),
+            'baud_rate': format_scientific_notation(si_data.get('baud_rate', 32e9)),
+            'f_max': format_scientific_notation(si_data.get('f_max', 195.1e12)),
+            'spacing': format_scientific_notation(si_data.get('spacing', 50e9)),
+            'power_dbm': si_data.get('power_dbm', 2),
+            'tx_power_dbm': si_data.get('tx_power_dbm', 0),
+            'roll_off': si_data.get('roll_off', 0.15),
+            'tx_osnr': si_data.get('tx_osnr', 35),
+            'sys_margins': si_data.get('sys_margins', 2)
+        }
+    else:
+        # Fallback values if SI section is not found
+        si_config = {
+            'f_min': '191.3e12',
+            'baud_rate': '32e9',
+            'f_max': '195.1e12',
+            'spacing': '50e9',
+            'power_dbm': 2,
+            'tx_power_dbm': 0,
+            'roll_off': 0.15,
+            'tx_osnr': 35,
+            'sys_margins': 2
+        }
+    
+    return render_template('scenario3.html', maps_api_key=maps_api_key, si_config=si_config)
 
 def get_topology_names():
     """Devuelve lista de archivos de topología disponibles."""
@@ -100,7 +152,7 @@ def get_transceiver_defaults():
     """Obtener parámetros por defecto para transceptores."""
     return {
         'p_rb': {'value': -20.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Fuerza de Señal Recibida - Modifique este valor para ajustar la fuerza de la señal'},
-        'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
+        'tx_osnr': {'value': 35.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
         'sens': {'value': -25.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - El nivel de sensibilidad del receptor a las señales entrantes'}
     }
 

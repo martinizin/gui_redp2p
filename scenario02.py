@@ -3,6 +3,58 @@ import json
 import os
 import numpy as np
 from flask import jsonify, request
+from pathlib import Path
+import traceback
+
+# Check if gnpy is available
+try:
+    from gnpy.tools.json_io import load_equipment, load_network
+    from gnpy.core.info import create_arbitrary_spectral_information
+    from gnpy.core.utils import dbm2watt as gnpy_dbm2watt_orig, watt2dbm as gnpy_watt2dbm_orig, lin2db as gnpy_lin2db_orig
+    from gnpy.core.elements import Transceiver, Fiber, Edfa
+    GNPY_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: gnpy not available - {e}")
+    GNPY_AVAILABLE = False
+    gnpy_dbm2watt_orig = None
+    gnpy_watt2dbm_orig = None
+    gnpy_lin2db_orig = None
+
+# Basic conversion functions (defined first so they can be used by wrapper functions)
+def dbm2watt(dbm):
+    """Convert dBm to Watts"""
+    return 10 ** ((dbm - 30) / 10)
+
+def watt2dbm(watt):
+    """Convert Watts to dBm"""
+    if watt <= 0:
+        return -float('inf')
+    return 30 + 10 * np.log10(watt)
+
+def lin2db(lin):
+    """Convert linear to dB"""
+    if lin <= 0:
+        return -float('inf')
+    return 10 * np.log10(lin)
+
+# Wrapper functions that use gnpy versions when available, fallback to local ones
+def gnpy_dbm2watt(dbm):
+    """Convert dBm to Watts using gnpy if available, otherwise local function"""
+    if GNPY_AVAILABLE and gnpy_dbm2watt_orig:
+        return gnpy_dbm2watt_orig(dbm)
+    return dbm2watt(dbm)
+
+def gnpy_watt2dbm(watt):
+    """Convert Watts to dBm using gnpy if available, otherwise local function"""
+    if GNPY_AVAILABLE and gnpy_watt2dbm_orig:
+        return gnpy_watt2dbm_orig(watt)
+    return watt2dbm(watt)
+
+def gnpy_lin2db(lin):
+    """Convert linear to dB using gnpy if available, otherwise local function"""
+    if GNPY_AVAILABLE and gnpy_lin2db_orig:
+        return gnpy_lin2db_orig(lin)
+    return lin2db(lin)
 
 # 1) PARÁMETROS
 f_min, f_max = 191.3e12, 195.1e12
@@ -11,18 +63,6 @@ roll_off = 0.15
 tx_osnr = 45  # dB inicial, este valor es para los cálculos de gnpy de OSNR_bw
 baud_rate = 32e9
 B_n=12.5e9 #no sea modificable
-
-# Import gnpy modules for proper OSNR_bw calculation
-try:
-    from pathlib import Path
-    from gnpy.tools.json_io import load_equipment, load_network
-    from gnpy.core.info import create_arbitrary_spectral_information
-    from gnpy.core.utils import dbm2watt as gnpy_dbm2watt, watt2dbm as gnpy_watt2dbm, lin2db as gnpy_lin2db
-    from gnpy.core.elements import Transceiver, Fiber, Edfa
-    GNPY_AVAILABLE = True
-except ImportError:
-    print("Warning: gnpy not available. OSNR_bw calculations may not be accurate.")
-    GNPY_AVAILABLE = False
 
 
 # Cargar la configuración de equipos
@@ -36,6 +76,39 @@ if os.path.exists(EQPT_CONFIG_PATH):
                 edfa_equipment_data[edfa_spec['type_variety']] = edfa_spec
 else:
     print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_PATH}")
+
+# Calcular el número de canales antes de las entradas de usuario
+nch = int(np.floor((f_max - f_min) / spacing)) + 1
+
+# 2) Default parameters (can be overridden by web interface)
+sens = -25.0  # Default sensitivity in dBm
+P_tot_dbm_input = 15.0  # Default total power in dBm
+
+# Calcular la potencia por canal a partir de la potencia total ingresada
+tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch) # Potencia POR CANAL en dBm
+
+# 3) Helpers OSNR
+def get_avg_osnr_db(si):
+    sig = np.array([np.sum(ch.power) for ch in si.carriers])
+    noise = si.ase + si.nli # SUMA ASE y NLI para el ruido total
+    return float(np.mean(lin2db(np.where(noise > 0, sig / noise, np.inf))))
+
+def format_osnr(v, decimals=2):
+    return "∞" if np.isinf(v) else f"{v:.{decimals}f}"
+
+def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
+    if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190: # Considerar ruido muy bajo
+        return float('inf') # OSNR muy alto si el ruido es casi cero
+
+    signal_power_lin = dbm2watt(signal_power_dbm)
+    ase_noise_lin = dbm2watt(ase_noise_dbm)
+
+    if ase_noise_lin <= 0:
+        return float('inf') # Evitar división por cero o negativo
+
+    return lin2db(signal_power_lin / ase_noise_lin)
+
+# =================== TOPOLOGY VISUALIZATION FUNCTIONS ===================
 
 def get_element_tooltip_text(element, edfa_specs):
     """Genera una cadena HTML formateada para el tooltip de un elemento."""
@@ -94,10 +167,10 @@ def get_fiber_chain_tooltip_text(fiber_chain, edfa_specs):
         tooltip_html += f"&nbsp;&nbsp;loss_coef: {loss_coef} dB/km<br>"
         tooltip_html += f"&nbsp;&nbsp;total_loss: {(length * loss_coef):.2f} dB<br>"
     
-    tooltip_html += f"<hr><b>Chain Summary:</b><br>"
-    tooltip_html += f"&nbsp;&nbsp;Total Length: {total_length} km<br>"
-    tooltip_html += f"&nbsp;&nbsp;Total Spans: {len(fiber_chain)}<br>"
-    
+        tooltip_html += f"<hr><b>Chain Summary:</b><br>"
+        tooltip_html += f"&nbsp;&nbsp;Total Length: {total_length} km<br>"
+        tooltip_html += f"&nbsp;&nbsp;Total Spans: {len(fiber_chain)}<br>"
+        
     return tooltip_html
 
 def get_node_styles_and_tooltips(nodes_to_plot, edfa_specs):
@@ -571,6 +644,287 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
     
     return fig
 
+def create_topology_visualization(topology_file_path):
+    """
+    Crear visualización de topología a partir de un archivo JSON.
+    
+    Args:
+        topology_file_path (str): Ruta al archivo JSON de topología
+        
+    Returns:
+        dict: Diccionario con la figura de plotly y datos de topología
+    """
+    try:
+        with open(topology_file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        elements = data.get('elements', [])
+        connections = data.get('connections', [])
+        
+        if not elements:
+            return {'error': 'No hay elementos en la topología'}
+        
+        # Process elements for visualization (same logic as process_scenario02_data)
+        elements_by_uid = {el['uid']: el for el in elements}
+        real_node_uids = {uid for uid, el in elements_by_uid.items() if el.get('type') != 'Fiber'}
+        fiber_elements_by_uid = {uid: el for uid, el in elements_by_uid.items() if el.get('type') == 'Fiber'}
+        
+        # Build connections map
+        connections_map = {}
+        for conn in connections:
+            from_n, to_n = conn['from_node'], conn['to_node']
+            connections_map.setdefault(from_n, []).append(to_n)
+        
+        # Process connections to handle fiber chains
+        processed_connections = []
+        processed_edge_tuples = set()
+        
+        def find_fiber_chain_end(start_fiber_uid, visited=None):
+            """Find the end of a fiber chain."""
+            if visited is None:
+                visited = set()
+            
+            if start_fiber_uid in visited:
+                return None, []
+            
+            visited.add(start_fiber_uid)
+            fiber_chain = [fiber_elements_by_uid[start_fiber_uid]]
+            
+            if start_fiber_uid not in connections_map:
+                return None, fiber_chain
+            
+            for next_uid in connections_map[start_fiber_uid]:
+                if next_uid in real_node_uids:
+                    return next_uid, fiber_chain
+                elif next_uid in fiber_elements_by_uid:
+                    end_node, remaining_chain = find_fiber_chain_end(next_uid, visited.copy())
+                    if end_node:
+                        return end_node, fiber_chain + remaining_chain
+            
+            return None, fiber_chain
+        
+        # Process connections from real nodes
+        for from_uid in real_node_uids:
+            if from_uid not in connections_map: 
+                continue
+                
+            for target_uid in connections_map[from_uid]:
+                if target_uid in fiber_elements_by_uid:
+                    end_node_uid, fiber_chain = find_fiber_chain_end(target_uid)
+                    
+                    if end_node_uid and end_node_uid in real_node_uids:
+                        edge_tuple = tuple(sorted((from_uid, end_node_uid)))
+                        if edge_tuple not in processed_edge_tuples:
+                            primary_fiber = fiber_chain[0] if fiber_chain else None
+                            processed_connections.append({
+                                'from_node': from_uid, 
+                                'to_node': end_node_uid,
+                                'fiber_element': primary_fiber,
+                                'fiber_chain': fiber_chain
+                            })
+                            processed_edge_tuples.add(edge_tuple)
+                            
+                elif target_uid in real_node_uids:
+                    edge_tuple = tuple(sorted((from_uid, target_uid)))
+                    if edge_tuple not in processed_edge_tuples:
+                        processed_connections.append({
+                            'from_node': from_uid, 
+                            'to_node': target_uid, 
+                            'fiber_element': None,
+                            'fiber_chain': []
+                        })
+                        processed_edge_tuples.add(edge_tuple)
+        
+        nodes_to_plot = [el for el in elements if el['uid'] in real_node_uids]
+        
+        # Determine plot type based on coordinates
+        has_coordinates = False
+        plot_nodes = [node for node in nodes_to_plot if node.get('type') != 'Fiber']
+        if plot_nodes:
+            has_coordinates = all(
+                isinstance(node.get('metadata'), dict) and
+                'latitude' in node['metadata'] and
+                'longitude' in node['metadata'] and
+                isinstance(node['metadata']['latitude'], (int, float)) and
+                isinstance(node['metadata']['longitude'], (int, float)) and
+                not (node['metadata']['latitude'] == 0 and node['metadata']['longitude'] == 0)
+                for node in plot_nodes
+            )
+
+        if has_coordinates:
+            fig = _create_map_plot(nodes_to_plot, processed_connections, data)
+        else:
+            fig = _create_horizontal_plot(nodes_to_plot, processed_connections, data)
+        
+        return {
+            'figure': fig,
+            'topology_data': data,
+            'elements': elements,
+            'connections': connections,
+            'processed_connections': processed_connections
+        }
+        
+    except Exception as e:
+        return {'error': f"Error al crear visualización: {e}"}
+
+def create_topology_visualization_from_data(data):
+    """Create topology visualization from data dict instead of file path."""
+    try:
+        elements = data.get('elements', [])
+        connections = data.get('connections', [])
+        
+        if not elements:
+            return {'error': 'No hay elementos en la topología'}
+        
+        # Same processing logic as create_topology_visualization
+        elements_by_uid = {el['uid']: el for el in elements}
+        real_node_uids = {uid for uid, el in elements_by_uid.items() if el.get('type') != 'Fiber'}
+        fiber_elements_by_uid = {uid: el for uid, el in elements_by_uid.items() if el.get('type') == 'Fiber'}
+        
+        connections_map = {}
+        for conn in connections:
+            from_n, to_n = conn['from_node'], conn['to_node']
+            connections_map.setdefault(from_n, []).append(to_n)
+        
+        processed_connections = []
+        processed_edge_tuples = set()
+        
+        def find_fiber_chain_end(start_fiber_uid, visited=None):
+            if visited is None:
+                visited = set()
+            
+            if start_fiber_uid in visited:
+                return None, []
+            
+            visited.add(start_fiber_uid)
+            fiber_chain = [fiber_elements_by_uid[start_fiber_uid]]
+            
+            if start_fiber_uid not in connections_map:
+                return None, fiber_chain
+            
+            for next_uid in connections_map[start_fiber_uid]:
+                if next_uid in real_node_uids:
+                    return next_uid, fiber_chain
+                elif next_uid in fiber_elements_by_uid:
+                    end_node, remaining_chain = find_fiber_chain_end(next_uid, visited.copy())
+                    if end_node:
+                        return end_node, fiber_chain + remaining_chain
+            
+            return None, fiber_chain
+        
+        for from_uid in real_node_uids:
+            if from_uid not in connections_map: 
+                continue
+                
+            for target_uid in connections_map[from_uid]:
+                if target_uid in fiber_elements_by_uid:
+                    end_node_uid, fiber_chain = find_fiber_chain_end(target_uid)
+                    
+                    if end_node_uid and end_node_uid in real_node_uids:
+                        edge_tuple = tuple(sorted((from_uid, end_node_uid)))
+                        if edge_tuple not in processed_edge_tuples:
+                            primary_fiber = fiber_chain[0] if fiber_chain else None
+                            processed_connections.append({
+                                'from_node': from_uid, 
+                                'to_node': end_node_uid,
+                                'fiber_element': primary_fiber,
+                                'fiber_chain': fiber_chain
+                            })
+                            processed_edge_tuples.add(edge_tuple)
+                            
+                elif target_uid in real_node_uids:
+                    edge_tuple = tuple(sorted((from_uid, target_uid)))
+                    if edge_tuple not in processed_edge_tuples:
+                        processed_connections.append({
+                            'from_node': from_uid, 
+                            'to_node': target_uid, 
+                            'fiber_element': None,
+                            'fiber_chain': []
+                        })
+                        processed_edge_tuples.add(edge_tuple)
+        
+        nodes_to_plot = [el for el in elements if el['uid'] in real_node_uids]
+        
+        has_coordinates = False
+        plot_nodes = [node for node in nodes_to_plot if node.get('type') != 'Fiber']
+        if plot_nodes:
+            has_coordinates = all(
+                isinstance(node.get('metadata'), dict) and
+                'latitude' in node['metadata'] and
+                'longitude' in node['metadata'] and
+                isinstance(node['metadata']['latitude'], (int, float)) and
+                isinstance(node['metadata']['longitude'], (int, float)) and
+                not (node['metadata']['latitude'] == 0 and node['metadata']['longitude'] == 0)
+                for node in plot_nodes
+            )
+
+        if has_coordinates:
+            fig = _create_map_plot(nodes_to_plot, processed_connections, data)
+        else:
+            fig = _create_horizontal_plot(nodes_to_plot, processed_connections, data)
+        
+        return {
+            'figure': fig,
+            'topology_data': data,
+            'elements': elements,
+            'connections': connections,
+            'processed_connections': processed_connections
+        }
+        
+    except Exception as e:
+        return {'error': f"Error al crear visualización: {e}"}
+
+def create_topology_summary(topology_file_path):
+    """
+    Crear un resumen de la topología cargada.
+    
+    Args:
+        topology_file_path (str): Ruta al archivo JSON de topología
+        
+    Returns:
+        dict: Resumen de la topología
+    """
+    try:
+        topology_viz = create_topology_visualization(topology_file_path)
+        
+        if 'error' in topology_viz:
+            return {'error': topology_viz['error']}
+        
+        elements = topology_viz['elements']
+        connections = topology_viz['connections']
+        
+        # Contar elementos por tipo
+        element_counts = {}
+        for element in elements:
+            element_type = element.get('type', 'Unknown')
+            element_counts[element_type] = element_counts.get(element_type, 0) + 1
+        
+        # Identificar transceivers de origen y destino
+        source_uid, dest_uid = identify_source_destination_transceivers(elements)
+        
+        # Calcular distancia total de fibras
+        total_fiber_length = 0
+        for element in elements:
+            if element.get('type') == 'Fiber':
+                params = element.get('params', {})
+                total_fiber_length += params.get('length', 0)
+        
+        summary = {
+            'topology_file': topology_file_path,
+            'total_elements': len(elements),
+            'total_connections': len(connections),
+            'element_counts': element_counts,
+            'source_transceiver': source_uid,
+            'destination_transceiver': dest_uid,
+            'total_fiber_length_km': total_fiber_length,
+            'topology_type': 'Punto a Punto' if element_counts.get('Transceiver', 0) == 2 else 'Compleja'
+        }
+        
+        return summary
+        
+    except Exception as e:
+        return {'error': f"Error al crear resumen: {e}"}
+
 def enhance_elements_with_parameters(elements):
     """Mejorar elementos con información de parámetros para edición."""
     enhanced_elements = []
@@ -670,7 +1024,7 @@ def get_source_transceiver_defaults():
 def get_destination_transceiver_defaults():
     """Obtener parámetros por defecto para transceptores de destino (receptores)."""
     return {
-        'sens': {'value': -30.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
+        'sens': {'value': 1, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
     }
 
 def get_transceiver_defaults():
@@ -750,31 +1104,282 @@ def calculate_scenario02():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400 
 
+# =================== MISSING CORE FUNCTIONS FROM ESCENARIO02 ===================
+
+def load_topology(topology_file_path, equipment_file_path="versionamientos/eqpt_config.json"):
+    """
+    Load network topology from JSON file and return network elements.
+    
+    Args:
+        topology_file_path (str): Path to the topology JSON file
+        equipment_file_path (str): Path to the equipment configuration file
+        
+    Returns:
+        dict: Dictionary containing network elements:
+            - 'network': The loaded network object
+            - 'transceivers': List of transceivers sorted by uid
+            - 'edfas': List of EDFAs sorted by uid
+            - 'fibers': List of fibers sorted by uid
+            - 'tx': First transceiver (transmitter)
+            - 'rx': Last transceiver (receiver)
+    """
+    if not GNPY_AVAILABLE:
+        raise ImportError("gnpy library is not available. Please install gnpy to load topologies.")
+        
+    try:
+        # Use full path for equipment file
+        if not os.path.isabs(equipment_file_path):
+            equipment_file_path = os.path.join(os.path.dirname(__file__), equipment_file_path)
+        
+        # Load equipment and network
+        equipment = load_equipment(Path(equipment_file_path))
+        network = load_network(Path(topology_file_path), equipment)
+        
+        # Extract and sort network elements
+        transceivers = sorted([n for n in network.nodes if isinstance(n, Transceiver)], key=lambda x: x.uid)
+        edfas = sorted([n for n in network.nodes if isinstance(n, Edfa)], key=lambda x: x.uid)
+        fibers = sorted([n for n in network.nodes if isinstance(n, Fiber)], key=lambda x: x.uid)
+        
+        # Validate topology
+        if len(transceivers) < 2:
+            raise ValueError(f"Topology must have at least 2 transceivers, found {len(transceivers)}")
+        
+        # Assign tx and rx (first and last transceivers)
+        tx = transceivers[0]
+        rx = transceivers[-1]
+        
+        return {
+            'network': network,
+            'transceivers': transceivers,
+            'edfas': edfas,
+            'fibers': fibers,
+            'tx': tx,
+            'rx': rx
+        }
+        
+    except Exception as e:
+        raise Exception(f"Error loading topology: {e}")
+
+def initialize_plot_data():
+    """Initialize plot data structure."""
+    return {
+        'distance': [],
+        'signal_power': [],
+        'ase_power': [], 
+        'osnr_bw': []
+    }
+
+def add_plot_point(plot_data, dist, si_current, osnr_val):
+    plot_data['distance'].append(dist)
+    plot_data['signal_power'].append(watt2dbm(sum(ch.power[0] for ch in si_current.carriers)))
+    # Sumamos la potencia de ruido ASE de todos los canales de GNPy
+    plot_data['ase_power'].append(watt2dbm(sum(si_current.ase)))
+    plot_data['osnr_bw'].append(osnr_val)
+
+def process_network_elements(si, edfas, fibers, tx, rx, nf_values, current_distance, plot_data):
+    """
+    Process network elements dynamically regardless of their number.
+    
+    Args:
+        si: Spectral information object
+        edfas: List of EDFA elements
+        fibers: List of fiber elements  
+        tx: Transmitter element
+        rx: Receiver element
+        nf_values: List of noise figures for EDFAs
+        current_distance: Current distance tracker
+        plot_data: Plot data dictionary
+    
+    Returns:
+        tuple: (final_si, final_distance, final_power_dbm, final_osnr_db, final_ase_lin)
+    """
+    if not GNPY_AVAILABLE:
+        raise ImportError("gnpy library is not available. Please install gnpy to process network elements.")
+    
+    # Constants
+    QUANTUM_NOISE_FLOOR_DBM = -58.0
+    
+    # Initialize tracking variables
+    current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small, negligible value
+    
+    # Process transmitter (starting point)
+    p_tx = P_tot_dbm_input
+    o_tx = tx_osnr
+    add_plot_point(plot_data, current_distance, si, o_tx)
+    
+    # Process EDFAs and fibers in sequence
+    # Typically: EDFA -> Fiber -> EDFA -> Fiber -> ... -> EDFA
+    for i, edfa in enumerate(edfas):
+        # Process EDFA
+        si = edfa(si)
+        p_edfa = watt2dbm(sum(ch.power[0] for ch in si.carriers))
+        o_edfa = get_avg_osnr_db(si)
+        
+        # Calculate EDFA noise contribution
+        gain_db = edfa.operational.gain_target
+        if i < len(nf_values):
+            noise_factor_db = nf_values[i]
+        else:
+            # Default NF if not provided
+            noise_factor_db = 4.5
+        
+        p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+        current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
+        
+        add_plot_point(plot_data, current_distance, si, o_edfa)
+        
+        # Process corresponding fiber span (if exists)
+        if i < len(fibers):
+            fiber = fibers[i]
+            
+            # Store noise states before fiber
+            ase_before_fiber = si.ase.copy()
+            nli_before_fiber = si.nli.copy()
+            
+            # Set fiber input power
+            p_in_fiber = watt2dbm(sum(ch.power[0] for ch in si.carriers))
+            ase_in_fiber_lin_for_parallel_calc = current_total_ase_lin_for_parallel_calc
+            
+            fiber.ref_pch_in_dbm = p_in_fiber - 10 * np.log10(nch)
+            si = fiber(si)
+            
+            # Calculate fiber loss
+            loss_dB = fiber.params.loss_coef * fiber.params.length + fiber.params.con_in + fiber.params.con_out + fiber.params.att_in
+            loss_lin = 10**(-loss_dB / 10)
+            
+            # Apply loss to noise components
+            si.ase = ase_before_fiber * loss_lin
+            si.nli = nli_before_fiber * loss_lin
+            
+            # Update ASE tracking
+            current_total_ase_lin_for_parallel_calc = ase_in_fiber_lin_for_parallel_calc * loss_lin
+            
+            # Calculate fiber output
+            p_fiber = watt2dbm(sum(ch.power[0] for ch in si.carriers))
+            o_fiber = get_avg_osnr_db(si)
+            
+            # Update distance
+            current_distance += fiber.params.length / 1000
+            
+            add_plot_point(plot_data, current_distance, si, o_fiber)
+    
+    # Process receiver (final point)
+    si = rx(si)
+    p_rx = watt2dbm(sum(ch.power[0] for ch in si.carriers))
+    o_rx = get_avg_osnr_db(si)
+    
+    add_plot_point(plot_data, current_distance, si, o_rx)
+    
+    return si, current_distance, p_rx, o_rx, current_total_ase_lin_for_parallel_calc
+
+def create_plotly_figures(plot_data):
+    """Create Plotly figures from plot data."""
+    
+    # Plot 1 - Signal Power
+    fig1 = go.Figure()
+    fig1.add_trace(go.Scatter(
+        x=plot_data['distance'],
+        y=plot_data['signal_power'],
+        mode='lines+markers',
+        name='P_signal (dBm)',
+        line=dict(color='blue', width=2),
+        marker=dict(size=6)
+    ))
+    
+    fig1.update_layout(
+        title='Evolución de la Potencia de Señal a lo largo del enlace óptico',
+        xaxis_title='Distancia (km)',
+        yaxis_title='Potencia (dBm)',
+        width=800,
+        height=400,
+        showlegend=True,
+        grid=True
+    )
+    fig1.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig1.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    # Plot 2 - ASE Power
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=plot_data['distance'],
+        y=plot_data['ase_power'],
+        mode='lines+markers',
+        name='P_ASE (dBm)',
+        line=dict(color='red', width=2),
+        marker=dict(size=6)
+    ))
+    
+    fig2.update_layout(
+        title='Evolución de la Potencia de Ruido ASE a lo largo del enlace óptico',
+        xaxis_title='Distancia (km)',
+        yaxis_title='Potencia (dBm)',
+        width=800,
+        height=400,
+        showlegend=True,
+        grid=True
+    )
+    fig2.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig2.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    # Plot 3 - OSNR
+    fig3 = go.Figure()
+    fig3.add_trace(go.Scatter(
+        x=plot_data['distance'],
+        y=plot_data['osnr_bw'],
+        mode='lines+markers',
+        name='OSNR_bw (dB)',
+        line=dict(color='orange', width=2),
+        marker=dict(size=6)
+    ))
+    
+    fig3.update_layout(
+        title='Evolución de OSNR a lo largo del enlace óptico',
+        xaxis_title='Distancia (km)',
+        yaxis_title='OSNR (dB)',
+        width=800,
+        height=400,
+        showlegend=True,
+        grid=True
+    )
+    fig3.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    fig3.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
+    
+    return {
+        'signal_power_plot': fig1,
+        'ase_power_plot': fig2,
+        'osnr_plot': fig3
+    }
+
+# =================== END MISSING CORE FUNCTIONS ===================
+
+# 4) SpectralInformation inicial (initialize as in escenario02)
+freq = [f_min + spacing * i for i in range(nch)]
+signal = [dbm2watt(tx_power_dbm)] * nch # USAR LA POTENCIA POR CANAL CALCULADA
+delta = np.zeros(nch)
+label = [f"{baud_rate * 1e-9:.2f}G"] * nch
+
+if GNPY_AVAILABLE:
+    si = create_arbitrary_spectral_information(
+        freq, slot_width=spacing, signal=signal,
+        baud_rate=baud_rate, roll_off=roll_off,
+        delta_pdb_per_channel=delta,
+        tx_osnr=tx_osnr, tx_power=tx_power_dbm, label=label # tx_power aquí es la potencia por canal
+    )
+    si.signal = si.signal.astype(np.float64)
+    si.nli = si.nli.astype(np.float64)
+    # Forzar ASE inicial para OSNR Tx exacto
+    lin_osnr0 = 10**(tx_osnr / 10)
+    # EL ASE INICIAL AQUI ES PARA EL CALCULO DE GNPY (OSNR_bw y potencialmente OSNR@0.1nm si se descomenta)
+    si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers], dtype=np.float64)
+else:
+    si = None  # Will be created when needed if gnpy becomes available
+
 # Funciones de cálculo del notebook
-def dbm2watt(dbm):
-    """Convertir dBm a Watts"""
-    return 10 ** ((dbm - 30) / 10)
-
-def watt2dbm(watt):
-    """Convertir Watts a dBm"""
-    if watt <= 0:
-        return -float('inf')
-    return 30 + 10 * np.log10(watt)
-
-def lin2db(lin):
-    """Convertir lineal a dB"""
-    if lin <= 0:
-        return -float('inf')
-    return 10 * np.log10(lin)
+# Note: dbm2watt, watt2dbm, lin2db functions are already defined above with gnpy wrapper functions
 
 def db2lin(db):
     """Convertir dB a lineal"""
     return 10 ** (db / 10)
-
-def format_osnr(v):
-    """Formatear valor OSNR para visualización"""
-    return "∞" if np.isinf(v) else f"{v:.2f}"
-
 
 
 def ensure_json_serializable(obj):
@@ -865,25 +1470,13 @@ def get_avg_osnr_db_from_spectral_info(si):
         print(f"  carriers count: {len(si.carriers)}")
         return float('inf')
 
-def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=0.0):
+def get_avg_osnr_db_manual(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=0.0):
+    """Manual OSNR calculation using individual parameters"""
     total_noise_lin = ase_noise_lin_per_channel + nli_noise_lin_per_channel
     if total_noise_lin <= 0:
         return float('inf')
     osnr_lin = signal_power_lin_per_channel / total_noise_lin
     return lin2db(osnr_lin)
-
-
-def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
-    if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190: # Considerar ruido muy bajo
-        return float('inf') # OSNR muy alto si el ruido es casi cero
-    
-    signal_power_lin = dbm2watt(signal_power_dbm)
-    ase_noise_lin = dbm2watt(ase_noise_dbm)
-    
-    if ase_noise_lin <= 0:
-        return float('inf') # Evitar división por cero o negativo
-    
-    return lin2db(signal_power_lin / ase_noise_lin)
 
 def test_gnpy_integration():
     """Función de prueba para verificar que la integración de gnpy funciona correctamente"""
@@ -1533,3 +2126,58 @@ def generate_scenario02_plots(plot_data):
         'ase_plot': ase_fig.to_dict(),
         'osnr_plot': osnr_fig.to_dict()
     }
+
+if __name__ == '__main__':
+    print("Executing test script...")
+    
+    # Cargar los datos de la topología desde el archivo
+    topology_file_path = 'versionamientos/topologiaEdfa1.json'
+    with open(topology_file_path, 'r') as f:
+        topology_data = json.load(f)
+
+    # Mejorar los elementos con parámetros por defecto
+    enhanced_elements = enhance_elements_with_parameters(topology_data['elements'])
+    topology_data['elements'] = enhanced_elements
+
+    test_params = {
+        'topology_data': topology_data,
+        'simulation_name': 'Test from Gemini',
+    }
+    # Forzar parámetros de entrada del notebook
+    for el in test_params['topology_data']['elements']:
+        if el['uid'] == 'Site_A':
+            el['parameters']['tx_osnr']['value'] = 40.0
+            el['parameters']['P_tot_dbm_input']['value'] = 1.0
+        if el['uid'] == 'Site_B':
+            el['parameters']['sens']['value'] = 0.0
+        if el.get('type') == 'Edfa':
+            # Asumiendo que el nf se debe aplicar a todos los edfa
+            # y que el json de topología tiene 'nf0' en sus parámetros
+            if 'nf0' in el.get('parameters', {}):
+                 el['parameters']['nf0']['value'] = 5.0
+
+    results_data = calculate_scenario02_network(test_params)
+    print("Full results_data object:")
+    print(results_data)
+    
+    if results_data and results_data['success']:
+        # Print results in a similar format to the notebook
+        header = f"{'Etapa':>10s} | {'Pot[dBm]':>8s} | {'OSNR_bw':>8s} | {'OSNR_teórico':>15s}"
+        print("\\n" + header)
+        print("-" * len(header))
+        
+        for stage in results_data['results']:
+            name = stage['name']
+            p_dbm = stage['power_dbm']
+            osnr_db = stage['osnr_bw']
+            osnr_parallel = stage.get('osnr_parallel', '')
+            
+            p_dbm_str = f"{p_dbm:.2f}"
+            osnr_db_formatted = f"{osnr_db}" if isinstance(osnr_db, str) else f"{osnr_db:.2f}"
+            osnr_parallel_formatted = f"{osnr_parallel}" if isinstance(osnr_parallel, str) else (f"{osnr_parallel:.3f}" if isinstance(osnr_parallel, (int, float)) and not np.isinf(osnr_parallel) else ('∞' if np.isinf(osnr_parallel) else ''))
+
+            print(f"{name:>10s} | {p_dbm_str:>8s} | {osnr_db_formatted:>8s} | {osnr_parallel_formatted:>17s}")
+    else:
+        print("Calculation failed.")
+        if results_data:
+            print(f"Error: {results_data.get('error')}")
