@@ -5,32 +5,32 @@ from scenario01 import calcular_red, obtener_topologia_datos
 from scenario02 import calculate_scenario02, update_scenario02_parameters, process_scenario02_data
 from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters
 
-# Load environment variables
+# Carga las variables de entorno
 load_dotenv()
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def index():
-    """Handles the main page with scenario 1 logic."""
-    # Provide initial data for the network and graphs
+    """Maneja la página principal con la lógica del escenario 1."""
+    # Proporciona datos iniciales para la red y los gráficos
     nodos, enlaces = obtener_topologia_datos()
 
     initial_params_for_calc = {
-        'tx_power_dbm': 30,  # Default from your JS
-        'sensitivity_receiver_dbm': 14,  # Default from your JS
-        'fiber_params': [{  # A default single span
+        'tx_power_dbm': 30,  # Valor por defecto del JS
+        'sensitivity_receiver_dbm': 14,  # Valor por defecto del JS
+        'fiber_params': [{  # Un tramo por defecto
             'loss_coef': 0.2,
             'att_in': 0,
             'con_in': 0.25,
             'con_out': 0.30,
-            'length_stretch': 23  # Default length from your JS form
+            'length_stretch': 23  # Longitud por defecto del formulario JS
         }]
     }
-    resultados = calcular_red(initial_params_for_calc)  # This now includes Plotly dicts
+    resultados = calcular_red(initial_params_for_calc)  # Ahora incluye diccionarios de Plotly
 
     return render_template('index.html',
-                           resultados=resultados,  # Contains Plotly graph data
+                           resultados=resultados,  # Contiene datos de gráficos Plotly
                            nodos=nodos,
                            enlaces=enlaces,
                            initial_graph_dbm=resultados.get('plot_dbm_plotly'),
@@ -38,7 +38,7 @@ def index():
 
 @app.route('/scenario02', methods=['GET', 'POST'])
 def scenario02():
-    """Renders the scenario 2 page and handles file upload for network visualization."""
+    """Renderiza la página del escenario 2 y maneja la subida de archivos para visualización de red."""
     if request.method == 'POST':
         if 'file' not in request.files:
             return render_template('scenario2.html', error="No se encontró el archivo")
@@ -55,23 +55,23 @@ def scenario02():
 
 @app.route('/scenario03')
 def scenario03():
-    """Renders the scenario 3 page."""
+    """Renderiza la página del escenario 3."""
     return handle_scenario03()
 
-# Scenario 03 API routes
+# Rutas de API del Escenario 03
 @app.route("/get_topology_names")
 def get_topology_names_route():
-    """API endpoint to get available topology files."""
+    """Endpoint de API para obtener los archivos de topología disponibles."""
     return get_topology_names()
 
 @app.route("/get_topology")
 def get_topology_route():
-    """API endpoint to get topology data."""
+    """Endpoint de API para obtener datos de topología."""
     return get_topology_data()
 
 @app.route('/upload_topology', methods=['POST'])
 def upload_topology_route():
-    """API endpoint to upload topology files."""
+    """Endpoint de API para subir archivos de topología."""
     if 'file' not in request.files:
         return jsonify({'error': 'No hay archivo en la solicitud'}), 400
     
@@ -80,36 +80,42 @@ def upload_topology_route():
 
 @app.route('/update_network_parameters', methods=['POST'])
 def update_network_parameters_route():
-    """API endpoint to update network parameters."""
+    """Endpoint de API para actualizar parámetros de red."""
     return update_network_parameters()
 
 @app.route('/update_scenario02_parameters', methods=['POST'])
 def update_scenario02_parameters_route():
-    """API endpoint to update scenario02 network parameters."""
+    """Endpoint de API para actualizar parámetros de red del escenario02."""
     return update_scenario02_parameters()
 
 @app.route('/calculate_scenario02', methods=['POST'])
 def calculate_scenario02_route():
-    """API endpoint to calculate scenario02 network."""
+    """Endpoint de API para calcular la red del escenario02."""
     return calculate_scenario02()
+
+@app.route('/test_gnpy', methods=['GET'])
+def test_gnpy_route():
+    """Endpoint de API para probar la integración de gnpy."""
+    from scenario02 import test_gnpy_integration
+    return jsonify(test_gnpy_integration())
 
 @app.route('/calcular', methods=['POST'])
 def calcular():
-    """Handles the calculation requests for scenario 1."""
+    """Maneja las solicitudes de cálculo para el escenario 1."""
     data = request.get_json()
-    # Extract parameters from the JSON payload sent by the frontend
+    # Extrae parámetros del payload JSON enviado por el frontend
     tx_power_dbm = float(data.get('tx_power_dbm', 30))
     sensitivity_receiver_dbm = float(data.get('sensitivity_receiver_dbm', 14))
     fiber_params_from_frontend = data.get('fiber_params', [])
     params_for_calc = {
         'tx_power_dbm': tx_power_dbm,
         'sensitivity_receiver_dbm': sensitivity_receiver_dbm,
-        'fiber_params': fiber_params_from_frontend  # Already structured by frontend
+        'fiber_params': fiber_params_from_frontend  # Ya estructurado por el frontend
     }
 
     resultados = calcular_red(params_for_calc)
-    # `resultados` now includes 'plot_dbm_plotly' and 'plot_linear_plotly'  
-    return jsonify(resultados)  # Send all results, including Plotly data, back to frontend
+    # `resultados` ahora incluye 'plot_dbm_plotly' y 'plot_linear_plotly'
+    return jsonify(resultados)  # Envía todos los resultados, incluyendo datos de Plotly, de vuelta al frontend
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

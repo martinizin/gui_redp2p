@@ -4,7 +4,28 @@ import os
 import numpy as np
 from flask import jsonify, request
 
-# Cargar configuración de equipos
+# 1) PARÁMETROS
+f_min, f_max = 191.3e12, 195.1e12
+spacing = 50e9
+roll_off = 0.15
+tx_osnr = 45  # dB inicial, este valor es para los cálculos de gnpy de OSNR_bw
+baud_rate = 32e9
+B_n=12.5e9 #no sea modificable
+
+# Import gnpy modules for proper OSNR_bw calculation
+try:
+    from pathlib import Path
+    from gnpy.tools.json_io import load_equipment, load_network
+    from gnpy.core.info import create_arbitrary_spectral_information
+    from gnpy.core.utils import dbm2watt as gnpy_dbm2watt, watt2dbm as gnpy_watt2dbm, lin2db as gnpy_lin2db
+    from gnpy.core.elements import Transceiver, Fiber, Edfa
+    GNPY_AVAILABLE = True
+except ImportError:
+    print("Warning: gnpy not available. OSNR_bw calculations may not be accurate.")
+    GNPY_AVAILABLE = False
+
+
+# Cargar la configuración de equipos
 EQPT_CONFIG_PATH = 'versionamientos/eqpt_config.json'
 edfa_equipment_data = {}
 if os.path.exists(EQPT_CONFIG_PATH):
@@ -642,7 +663,7 @@ def identify_source_destination_transceivers(elements):
 def get_source_transceiver_defaults():
     """Obtener parámetros por defecto para transceptores de origen (transmisores)."""
     return {
-        'P_tot_dbm_input': {'value': 50.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Total del Transmisor (P_tot_dbm_input) - Potencia total de salida del transmisor que será dividida entre todos los canales'},
+        'P_tot_dbm_input': {'value': 0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Total del Transmisor (P_tot_dbm_input) - Potencia total de salida del transmisor que será dividida entre todos los canales'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - OSNR inicial del transmisor usado para los cálculos'}
     }
 
@@ -657,7 +678,7 @@ def get_transceiver_defaults():
     return {
         'p_rb': {'value': -17.86, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia de Señal Recibida - Modifique este valor para ajustar la potencia de señal'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
-        'sens': {'value': -30.0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - El nivel de sensibilidad del receptor a las señales entrantes'}
+        'sens': {'value': 1, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - El nivel de sensibilidad del receptor a las señales entrantes'}
     }
 
 def get_fiber_defaults(existing_params):
@@ -676,7 +697,7 @@ def get_edfa_defaults(edfa_config, operational):
         'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Plana Máxima - La ganancia máxima alcanzada por el amplificador under condiciones planas'},
         'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Mínima - La ganancia mínima alcanzable por el amplificador'},
         'p_max': {'value': edfa_config.get('p_max', 23), 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Máxima - La potencia de salida máxima proporcionada por el amplificador'},
-        'nf0': {'value': edfa_config.get('nf_min', edfa_config.get('nf0', 6)), 'unit': 'dB', 'editable': True, 'tooltip': 'Factor de Ruido (NF) - La figura de ruido del amplificador que afecta la relación señal-ruido. Este valor puede ser modificado para coincidir con especificaciones del fabricante o condiciones operacionales específicas.'},
+        'nf0': {'value': edfa_config.get('nf_min', edfa_config.get('nf0', 5)), 'unit': 'dB', 'editable': True, 'tooltip': 'Factor de Ruido (NF) - La figura de ruido del amplificador que afecta la relación señal-ruido. Este valor puede ser modificado para coincidir con especificaciones del fabricante o condiciones operacionales específicas.'},
         'gain_target': {'value': operational.get('gain_target', 20), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Objetivo - La ganancia deseada a ser alcanzada por el amplificador basada en configuraciones operacionales'}
     }
 
@@ -754,37 +775,154 @@ def format_osnr(v):
     """Formatear valor OSNR para visualización"""
     return "∞" if np.isinf(v) else f"{v:.2f}"
 
-def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=None):
+
+
+def ensure_json_serializable(obj):
+    """Convertir objetos numpy a tipos nativos de Python para serialización JSON"""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    elif isinstance(obj, dict):
+        return {k: ensure_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [ensure_json_serializable(item) for item in obj]
+    else:
+        return obj
+
+def create_spectral_information_for_calculation(nch, tx_power_dbm, tx_osnr, f_min, spacing, baud_rate, roll_off):
     """
-    Calcular OSNR promedio en dB como la función get_avg_osnr_db(si) del notebook
-    Imita: sig = np.array([np.sum(ch.power) for ch in si.carriers])
-            noise = si.ase + si.nli
-            return float(np.mean(lin2db(np.where(noise > 0, sig / noise, np.inf))))
+    Crear información espectral usando gnpy como en el notebook.
+    Esta función replica exactamente la lógica del notebook para crear el SpectralInformation inicial.
     """
-    if nli_noise_lin_per_channel is None:
-        nli_noise_lin_per_channel = 0.0
+    if not GNPY_AVAILABLE:
+        # Fallback a cálculo manual si gnpy no está disponible
+        return None
     
-    total_noise_lin = ase_noise_lin_per_channel + nli_noise_lin_per_channel
+    # 4) SpectralInformation inicial
+    freq = [f_min + spacing * i for i in range(nch)]
+    signal = [dbm2watt(tx_power_dbm)] * nch # USAR LA POTENCIA POR CANAL CALCULADA
+    delta = np.zeros(nch)
+    label = [f"{baud_rate * 1e-9:.2f}G"] * nch
+
+    si = create_arbitrary_spectral_information(
+        freq, slot_width=spacing, signal=signal,
+        baud_rate=baud_rate, roll_off=roll_off,
+        delta_pdb_per_channel=delta,
+        tx_osnr=tx_osnr, tx_power=tx_power_dbm, label=label # tx_power aquí es la potencia por canal
+    )
+    si.signal = si.signal.astype(np.float64)
+    si.nli = si.nli.astype(np.float64)
+    # Forzar ASE inicial para OSNR Tx exacto
+    lin_osnr0 = 10**(tx_osnr / 10)
+    # EL ASE INICIAL AQUI ES PARA EL CALCULO DE GNPY (OSNR_bw y potencialmente OSNR@0.1nm si se descomenta)
+    si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers], dtype=np.float64)
     
-    if total_noise_lin <= 0:
+    return si
+
+
+def get_avg_osnr_db_from_spectral_info(si):
+    """
+    Calcular OSNR promedio exactamente como en el notebook usando SpectralInformation de gnpy.
+    Esta función replica: get_avg_osnr_db(si) del notebook
+    """
+    if si is None or not GNPY_AVAILABLE:
         return float('inf')
     
-    # Calcular OSNR por canal como el notebook
+    try:
+        # Código exacto del notebook - manejar arrays correctamente
+        sig_power_list = []
+        for ch in si.carriers:
+            if hasattr(ch.power, '__len__'):  # Es un array
+                sig_power_list.append(np.sum(ch.power))
+            else:  # Es un escalar
+                sig_power_list.append(ch.power)
+        
+        sig = np.array(sig_power_list)
+        
+        # Asegurar que ASE y NLI son arrays numpy
+        ase = np.array(si.ase) if not isinstance(si.ase, np.ndarray) else si.ase
+        nli = np.array(si.nli) if not isinstance(si.nli, np.ndarray) else si.nli
+        
+        noise = ase + nli  # SUMA ASE y NLI para el ruido total
+        
+        # Calcular OSNR por canal
+        osnr_per_channel = np.where(noise > 0, sig / noise, np.inf)
+        
+        # Obtener OSNR promedio en dB
+        osnr_result = float(np.mean(gnpy_lin2db(osnr_per_channel)))
+        
+        # Asegurar que el resultado es un float de Python, no numpy
+        return float(osnr_result) if not np.isnan(osnr_result) and not np.isinf(osnr_result) else float('inf')
+    except Exception as e:
+        print(f"Error in get_avg_osnr_db_from_spectral_info: {e}")
+        print(f"  si.ase type: {type(si.ase)}, shape: {getattr(si.ase, 'shape', 'N/A')}")
+        print(f"  si.nli type: {type(si.nli)}, shape: {getattr(si.nli, 'shape', 'N/A')}")
+        print(f"  carriers count: {len(si.carriers)}")
+        return float('inf')
+
+def get_avg_osnr_db(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=0.0):
+    total_noise_lin = ase_noise_lin_per_channel + nli_noise_lin_per_channel
+    if total_noise_lin <= 0:
+        return float('inf')
     osnr_lin = signal_power_lin_per_channel / total_noise_lin
     return lin2db(osnr_lin)
 
+
 def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
-    """Calcular OSNR usando método de cálculo paralelo"""
-    if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190:
-        return float('inf')
+    if ase_noise_dbm == -float('inf') or ase_noise_dbm <= -190: # Considerar ruido muy bajo
+        return float('inf') # OSNR muy alto si el ruido es casi cero
     
     signal_power_lin = dbm2watt(signal_power_dbm)
     ase_noise_lin = dbm2watt(ase_noise_dbm)
     
     if ase_noise_lin <= 0:
-        return float('inf')
+        return float('inf') # Evitar división por cero o negativo
     
     return lin2db(signal_power_lin / ase_noise_lin)
+
+def test_gnpy_integration():
+    """Función de prueba para verificar que la integración de gnpy funciona correctamente"""
+    try:
+        if not GNPY_AVAILABLE:
+            return ensure_json_serializable({'status': 'error', 'message': 'gnpy not available'})
+        
+        # Parámetros de prueba (como en el notebook)
+        f_min, f_max = 191.3e12, 195.1e12
+        spacing = 50e9
+        roll_off = 0.15
+        tx_osnr = 45
+        baud_rate = 32e9
+        P_tot_dbm_input = 50.0
+        
+        nch = int(np.floor((f_max - f_min) / spacing)) + 1
+        tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)
+        
+        # Crear información espectral de prueba
+        test_si = create_spectral_information_for_calculation(
+            nch, tx_power_dbm, tx_osnr, f_min, spacing, baud_rate, roll_off
+        )
+        
+        if test_si is None:
+            return ensure_json_serializable({'status': 'error', 'message': 'Could not create spectral information'})
+        
+        # Calcular OSNR usando el método de gnpy
+        osnr_bw = get_avg_osnr_db_from_spectral_info(test_si)
+        
+        return ensure_json_serializable({
+            'status': 'success', 
+            'message': f'gnpy integration working - OSNR_bw: {osnr_bw:.2f} dB',
+            'nch': int(nch),
+            'tx_power_dbm': float(tx_power_dbm),
+            'osnr_bw': float(osnr_bw)
+        })
+        
+    except Exception as e:
+        return ensure_json_serializable({'status': 'error', 'message': f'gnpy integration test failed: {str(e)}'})
 
 def validate_topology_requirements(elements, connections):
     """
@@ -898,7 +1036,7 @@ def calculate_scenario02_network(params):
         source_params = source_transceiver.get('parameters', {})
         dest_params = destination_transceiver.get('parameters', {})
 
-        tx_osnr = source_params.get('tx_osnr', {}).get('value', 40.0)
+        tx_osnr = source_params.get('tx_osnr', {}).get('value', 45.0)  # Usar 45 como en el notebook
         P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 50.0)
         sens = dest_params.get('sens', {}).get('value', 20.0)
         
@@ -906,19 +1044,33 @@ def calculate_scenario02_network(params):
         nch = int(np.floor((f_max - f_min) / spacing)) + 1
         tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Potencia por canal
         
-        # Inicializar información espectral (imitando el enfoque del notebook)
-        # freq = [f_min + spacing * i for i in range(nch)]
-        # signal = [dbm2watt(tx_power_dbm)] * nch
-        signal_power_lin_per_channel = dbm2watt(tx_power_dbm)  # Potencia por canal en lineal
+        # Crear información espectral usando gnpy (exactamente como en el notebook)
+        reference_si = create_spectral_information_for_calculation(
+            nch, tx_power_dbm, tx_osnr, f_min, spacing, baud_rate, roll_off
+        )
         
-        # Inicializar ASE para OSNR exacto del transmisor (como notebook: si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers]))
-        lin_osnr0 = 10**(tx_osnr / 10)
-        initial_ase_lin_per_channel = signal_power_lin_per_channel / lin_osnr0
+        # Extraer datos iniciales de la información espectral de referencia
+        if GNPY_AVAILABLE and reference_si is not None:
+            # Extraer potencia por canal inicial
+            signal_power_per_channel = gnpy_dbm2watt(tx_power_dbm)  # Potencia por canal en watts
+            # Extraer ASE inicial (relacionado con tx_osnr)
+            lin_osnr0 = 10**(tx_osnr / 10)
+            ase_power_per_channel = signal_power_per_channel / lin_osnr0
+            # NLI inicial es 0
+            nli_power_per_channel = 0.0
+            
+            print(f"Inicialización gnpy:")
+            print(f"  Canales: {nch}")
+            print(f"  Potencia por canal: {gnpy_watt2dbm(signal_power_per_channel):.2f} dBm")
+            print(f"  ASE inicial por canal: {gnpy_watt2dbm(ase_power_per_channel):.2f} dBm")
+            print(f"  OSNR inicial: {tx_osnr:.2f} dB")
+        else:
+            # Fallback si gnpy no está disponible
+            signal_power_per_channel = dbm2watt(tx_power_dbm)
+            ase_power_per_channel = signal_power_per_channel / (10**(tx_osnr / 10))
+            nli_power_per_channel = 0.0
         
-        # Inicializar variables de cálculo (siguiendo la lógica del notebook exactamente)
-        current_signal_power_lin_per_channel = signal_power_lin_per_channel
-        current_ase_noise_lin_per_channel = initial_ase_lin_per_channel
-        current_nli_noise_lin_per_channel = 0.0  # NLI comienza en 0
+        # Variables para seguimiento paralelo de ASE (para compatibilidad con cálculos manuales)
         current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Valor inicial muy pequeño para cálculo paralelo
         current_distance = 0.0
         current_power_dbm = P_tot_dbm_input  # Mostrar potencia total en transmisor
@@ -939,25 +1091,48 @@ def calculate_scenario02_network(params):
         def add_stage_result(name, distance, power_dbm, osnr_bw, osnr_01nm, osnr_parallel, ase_power_lin):
             """Agregar resultado de una etapa a los resultados"""            
             results['stages'].append({
-                'name': name,
-                'distance': distance,
-                'power_dbm': power_dbm,
-                'osnr_bw': format_osnr(osnr_bw),
-                'osnr_01nm': format_osnr(osnr_01nm),
-                'osnr_parallel': format_osnr(osnr_parallel) if name == destination_transceiver.get('uid') else ''
+                'name': str(name),
+                'distance': float(distance),
+                'power_dbm': float(power_dbm),
+                'osnr_bw': format_osnr(float(osnr_bw)),
+                'osnr_01nm': format_osnr(float(osnr_01nm)),
+                'osnr_parallel': format_osnr(float(osnr_parallel)) if name == destination_transceiver.get('uid') else ''
             })
             
-            results['plot_data']['distance'].append(distance)
-            results['plot_data']['signal_power'].append(power_dbm)
-            results['plot_data']['ase_power'].append(watt2dbm(ase_power_lin) if ase_power_lin > 0 else -150.0)
-            results['plot_data']['osnr_bw'].append(osnr_bw if not np.isinf(osnr_bw) else 60.0)  # Límite para graficado
+            # Obtener potencia ASE usando nuestras variables rastreadas
+            ase_power_dbm = float((gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(ase_power_per_channel * nch)) if ase_power_per_channel > 0 else -150.0
+            
+            results['plot_data']['distance'].append(float(distance))
+            results['plot_data']['signal_power'].append(float(power_dbm))
+            results['plot_data']['ase_power'].append(float(ase_power_dbm))
+            results['plot_data']['osnr_bw'].append(float(osnr_bw) if not np.isinf(osnr_bw) else 60.0)  # Límite para graficado
         
         # Función auxiliar para calcular OSNR usando enfoque de información espectral (coincidiendo con notebook)
         def calculate_current_osnr_bw():
-            """Calcular OSNR_bw usando información espectral como get_avg_osnr_db(si) del notebook"""
-            return get_avg_osnr_db(current_signal_power_lin_per_channel, 
-                                 current_ase_noise_lin_per_channel, 
-                                 current_nli_noise_lin_per_channel)
+            """Calcular OSNR_bw usando nuestras variables rastreadas como get_avg_osnr_db(si) del notebook"""
+            try:
+                # Calcular ruido total (ASE + NLI)
+                total_noise_per_channel = ase_power_per_channel + nli_power_per_channel
+                
+                if total_noise_per_channel <= 0:
+                    return float('inf')
+                
+                # Calcular OSNR por canal como en el notebook: sig / noise
+                osnr_lin = signal_power_per_channel / total_noise_per_channel
+                
+                # Convertir a dB usando gnpy si está disponible, sino usar nuestra función
+                if GNPY_AVAILABLE:
+                    osnr_db = float(gnpy_lin2db(osnr_lin))
+                else:
+                    osnr_db = float(lin2db(osnr_lin))
+                
+                return osnr_db
+            except Exception as e:
+                print(f"Error in calculate_current_osnr_bw: {e}")
+                print(f"  signal_power_per_channel: {signal_power_per_channel}")
+                print(f"  ase_power_per_channel: {ase_power_per_channel}")
+                print(f"  nli_power_per_channel: {nli_power_per_channel}")
+                return float('inf')
         
         # Detectar si es topología punto a punto (solo 2 transceivers)
         transceivers_in_path = [el for el in ordered_elements if el.get('type') == 'Transceiver']
@@ -975,6 +1150,10 @@ def calculate_scenario02_network(params):
                     # Transceptor de origen (transmisor) - siguiendo la lógica del notebook exactamente
                     # Site_A: p0 = P_tot_dbm_input, o0 = tx_osnr
                     current_osnr_bw = calculate_current_osnr_bw()  # Debería igualar tx_osnr debido a la inicialización
+                    
+                    # Debug: verificar OSNR inicial
+                    print(f"Transceiver {element_uid}: tx_osnr={tx_osnr}, calculado={current_osnr_bw:.2f}")
+                    
                     osnr_01nm_initial = current_osnr_bw + 10 * np.log10(baud_rate / B_n)
                     osnr_parallel_initial = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
                     
@@ -989,10 +1168,10 @@ def calculate_scenario02_network(params):
                         connection_loss_db = 1.0  # Pérdida típica de conectores
                         connection_loss_lin = 10**(-connection_loss_db / 10)
                         
-                        # Aplicar pérdida a la señal
-                        current_signal_power_lin_per_channel *= connection_loss_lin
-                        current_ase_noise_lin_per_channel *= connection_loss_lin
-                        current_nli_noise_lin_per_channel *= connection_loss_lin
+                        # Aplicar pérdida a nuestras variables rastreadas
+                        signal_power_per_channel *= connection_loss_lin
+                        ase_power_per_channel *= connection_loss_lin
+                        nli_power_per_channel *= connection_loss_lin
                         current_power_dbm -= connection_loss_db
                         current_total_ase_lin_for_parallel_calc *= connection_loss_lin
                     
@@ -1005,32 +1184,51 @@ def calculate_scenario02_network(params):
                                     final_osnr_01nm, final_osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Edfa':
-                # Procesamiento EDFA - usando NF de parámetros (puede ser modificado vía modal)
+                # Procesamiento EDFA siguiendo exactamente la lógica del notebook
                 gain_db = params.get('gain_target', {}).get('value', 17.0)
                 noise_factor_db = params.get('nf0', {}).get('value', 6.0)  # Usar NF real de parámetros
                 gain_lin = 10**(gain_db / 10)
                 
-                # Aplicar ganancia a potencia de señal (como notebook: si = edfa(si))
-                current_signal_power_lin_per_channel *= gain_lin
+                # Guardar valores antes del EDFA para debug
+                signal_before = signal_power_per_channel
+                ase_before = ase_power_per_channel
+                nli_before = nli_power_per_channel
                 
-                # Aplicar ganancia a ASE y agregar nuevo ASE del EDFA (como notebook)
-                current_ase_noise_lin_per_channel *= gain_lin
-                # Agregar nuevo ASE de este EDFA (como procesamiento EDFA del notebook)
-                new_ase_lin_per_channel = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
-                current_ase_noise_lin_per_channel += new_ase_lin_per_channel
+                # Aplicar ganancia a la señal (como notebook: si = edfa(si))
+                signal_power_per_channel = signal_power_per_channel * gain_lin
                 
-                # Aplicar ganancia al ruido NLI
-                current_nli_noise_lin_per_channel *= gain_lin
+                # Amplificar ASE existente (como en notebook)
+                ase_power_per_channel = ase_power_per_channel * gain_lin
                 
-                # Actualizar potencia de visualización (para compatibilidad)
-                current_power_dbm += gain_db
+                # Agregar nuevo ASE de este EDFA usando la misma fórmula del notebook
+                new_ase_total_lin = gnpy_dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db) if GNPY_AVAILABLE else dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
+                new_ase_per_channel = new_ase_total_lin / nch
+                ase_power_per_channel = ase_power_per_channel + new_ase_per_channel
                 
-                # Cálculo manual de ASE para OSNR paralelo (seguimiento separado)
+                # Amplificar NLI existente (como en notebook)
+                nli_power_per_channel = nli_power_per_channel * gain_lin
+                
+                # Actualizar potencia de visualización
+                current_power_dbm = float((gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_power_per_channel * nch))
+                
+                # Debug: imprimir información detallada
+                print(f"EDFA {element_uid}: gain={gain_db}dB, NF={noise_factor_db}dB")
+                print(f"  Señal antes: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_before):.2f} dBm/ch")
+                print(f"  Señal después: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_power_per_channel):.2f} dBm/ch")
+                print(f"  ASE antes: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(ase_before):.2f} dBm/ch")
+                print(f"  ASE después amp: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(ase_before * gain_lin):.2f} dBm/ch")
+                print(f"  Nuevo ASE: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(new_ase_per_channel):.2f} dBm/ch")
+                print(f"  ASE total: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(ase_power_per_channel):.2f} dBm/ch")
+                
+                # Cálculo manual de ASE para OSNR paralelo (seguimiento separado, como en notebook)
                 p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
                 current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * gain_lin) + p_ase_edfa_lin_manual
                 
-                # Calcular OSNR_bw usando información espectral (como notebook: o1 = get_avg_osnr_db(si))
+                # Calcular OSNR_bw usando nuestras variables rastreadas (como notebook: o1 = get_avg_osnr_db(si))
                 current_osnr_bw = calculate_current_osnr_bw()
+                
+                # Debug: mostrar OSNR calculado
+                print(f"  OSNR_bw calculado: {current_osnr_bw:.2f} dB")
                 
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
                 osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
@@ -1039,7 +1237,7 @@ def calculate_scenario02_network(params):
                                osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
                 
             elif element_type == 'Fiber':
-                # Procesamiento de fibra - siguiendo la lógica del notebook exactamente
+                # Procesamiento de fibra siguiendo exactamente la lógica del notebook
                 length_km = params.get('length_km', {}).get('value', 80.0)
                 loss_coef = params.get('loss_coef', {}).get('value', 0.2)
                 con_in = params.get('con_in', {}).get('value', 0.5)
@@ -1050,14 +1248,20 @@ def calculate_scenario02_network(params):
                 total_loss_db = loss_coef * length_km + con_in + con_out + att_in
                 loss_lin = 10**(-total_loss_db / 10)
                 
-                # Aplicar pérdida a información espectral (como notebook: si = span(si))
-                current_signal_power_lin_per_channel *= loss_lin
-                # Aplicar pérdida a ASE y NLI (como notebook: si.ase = ase_before * loss_lin)
-                current_ase_noise_lin_per_channel *= loss_lin
-                current_nli_noise_lin_per_channel *= loss_lin
+                # Guardar valores antes del span para debug
+                signal_before = signal_power_per_channel
+                ase_before = ase_power_per_channel
+                nli_before = nli_power_per_channel
                 
-                # Actualizar potencia de visualización (para compatibilidad)
-                current_power_dbm -= total_loss_db
+                # Aplicar pérdida a la señal (como notebook: si = span(si))
+                signal_power_per_channel = signal_power_per_channel * loss_lin
+                
+                # Aplicar pérdida a ASE y NLI (exactamente como en notebook)
+                ase_power_per_channel = ase_before * loss_lin
+                nli_power_per_channel = nli_before * loss_lin
+                
+                # Actualizar potencia de visualización
+                current_power_dbm = float((gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_power_per_channel * nch))
                 
                 # Aplicar pérdida al seguimiento de ASE de cálculo paralelo
                 current_total_ase_lin_for_parallel_calc *= loss_lin
@@ -1065,8 +1269,14 @@ def calculate_scenario02_network(params):
                 # Actualizar distancia (como notebook: current_distance += span.params.length / 1000)
                 current_distance += length_km
                 
-                # Calcular OSNR_bw usando información espectral (como notebook: o_s1 = get_avg_osnr_db(si))
+                # Calcular OSNR_bw usando nuestras variables rastreadas (como notebook: o_s1 = get_avg_osnr_db(si))
                 current_osnr_bw = calculate_current_osnr_bw()
+                
+                # Debug: mostrar información de fibra
+                print(f"Fiber {element_uid}: loss={total_loss_db:.2f}dB, length={length_km}km")
+                print(f"  Señal antes: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_before):.2f} dBm/ch")
+                print(f"  Señal después: {(gnpy_watt2dbm if GNPY_AVAILABLE else watt2dbm)(signal_power_per_channel):.2f} dBm/ch")
+                print(f"  OSNR_bw después de fibra: {current_osnr_bw:.2f} dB")
                     
                 osnr_01nm = current_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(current_osnr_bw) else float('inf')
                 osnr_parallel = classical_osnr_parallel(current_power_dbm, watt2dbm(current_total_ase_lin_for_parallel_calc))
@@ -1075,7 +1285,8 @@ def calculate_scenario02_network(params):
                                osnr_01nm, osnr_parallel, current_total_ase_lin_for_parallel_calc)
         
         # Resultados finales - coincidiendo con la lógica del notebook
-        final_power_dbm = current_power_dbm
+        final_power_dbm = float(current_power_dbm)
+            
         link_successful = final_power_dbm >= sens
         
         # Calcular valores OSNR finales usando información espectral (mismo método que el bucle de cálculo)
@@ -1083,25 +1294,26 @@ def calculate_scenario02_network(params):
         final_osnr_01nm = final_osnr_bw + 10 * np.log10(baud_rate / B_n) if not np.isinf(final_osnr_bw) else float('inf')
         
         results['final_results'] = {
-            'final_power_dbm': final_power_dbm,
-            'receiver_sensitivity_dbm': sens,
-            'link_successful': link_successful,
-            'power_margin_db': final_power_dbm - sens,
-            'final_osnr_bw': format_osnr(final_osnr_bw),
-            'final_osnr_01nm': format_osnr(final_osnr_01nm),
-            'total_distance_km': current_distance,
-            'nch': nch,
-            'tx_power_per_channel_dbm': tx_power_dbm,
+            'final_power_dbm': float(final_power_dbm),
+            'receiver_sensitivity_dbm': float(sens),
+            'link_successful': bool(link_successful),
+            'power_margin_db': float(final_power_dbm - sens),
+            'final_osnr_bw': format_osnr(float(final_osnr_bw)),
+            'final_osnr_01nm': format_osnr(float(final_osnr_01nm)),
+            'total_distance_km': float(current_distance),
+            'nch': int(nch),
+            'tx_power_per_channel_dbm': float(tx_power_dbm),
             'message': f"{'¡Éxito!' if link_successful else 'Advertencia:'} La potencia de la señal recibida ({final_power_dbm:.2f} dBm) es {'mayor o igual que' if link_successful else 'menor que'} la sensibilidad del receptor ({sens:.2f} dBm)."
         }
         
         # Generar gráficos
         results['plots'] = generate_scenario02_plots(results['plot_data'])
         
-        return results
+        # Asegurar que todos los resultados sean serializables en JSON
+        return ensure_json_serializable(results)
         
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return ensure_json_serializable({'success': False, 'error': str(e)})
 
 def generate_scenario02_plots(plot_data):
     """Generar gráficos Plotly para resultados de scenario02 - tres gráficos separados con visualización mejorada"""
