@@ -153,6 +153,23 @@
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0,123,255,0.3);
         }
+        #center-map-button {
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: 1px solid #28a745;
+            background-color: #28a745;
+            color: white;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        #center-map-button:hover {
+            background-color: #218838;
+            border-color: #218838;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(40,167,69,0.3);
+        }
         
         /* Estilos del panel de parámetros */
         #parameters-panel {
@@ -485,6 +502,7 @@
             <select id="topology-select"></select>
             <input type="file" id="topology-upload" accept="application/json" style="display: none;" />
             <button id="upload-button">Subir Archivo</button>
+            <button id="center-map-button" onclick="centerMapToNetwork()" title="Centrar mapa en la red">📍 Centrar Red</button>
         </div>
     </div>
 
@@ -506,27 +524,27 @@
                 <div class="calculation-panel" style="height: 100%;">
                     <h3 class="panel-title">Parámetros de Simulación</h3>
                     <div class="form-group">
-                        <label for="f-min">f_min</label>
-                        <input type="text" id="f-min" class="form-control" value="{{ si_config.f_min }}" placeholder="e.g., 191.3e12">
+                        <label for="f-min">f_min (THz)</label>
+                        <input type="text" id="f-min" class="form-control" value="{{ si_config.f_min }}" placeholder="e.g., 191.3 or 191.3e12">
                     </div>
                     <div class="form-group">
-                        <label for="baud-rate">baud_rate</label>
-                        <input type="text" id="baud-rate" class="form-control" value="{{ si_config.baud_rate }}" placeholder="e.g., 32e9">
+                        <label for="baud-rate">baud_rate (Gbaud)</label>
+                        <input type="text" id="baud-rate" class="form-control" value="{{ si_config.baud_rate }}" placeholder="e.g., 31.57 or 32e9">
                     </div>
                     <div class="form-group">
-                        <label for="f-max">f_max</label>
-                        <input type="text" id="f-max" class="form-control" value="{{ si_config.f_max }}" placeholder="e.g., 195.1e12">
+                        <label for="f-max">f_max (THz)</label>
+                        <input type="text" id="f-max" class="form-control" value="{{ si_config.f_max }}" placeholder="e.g., 195.1 or 195.1e12">
                     </div>
                     <div class="form-group">
-                        <label for="spacing">spacing</label>
-                        <input type="text" id="spacing" class="form-control" value="{{ si_config.spacing }}" placeholder="e.g., 50e9">
+                        <label for="spacing">spacing (GHz)</label>
+                        <input type="text" id="spacing" class="form-control" value="{{ si_config.spacing }}" placeholder="e.g., 50 or 50e9">
                     </div>
                     <div class="form-group">
-                        <label for="power-dbm">power_dbm</label>
+                        <label for="power-dbm">power_dbm (dBm)</label>
                         <input type="number" id="power-dbm" class="form-control" value="{{ si_config.power_dbm }}" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power-dbm">tx_power_dbm</label>
+                        <label for="tx-power-dbm">tx_power_dbm (dBm)</label>
                         <input type="number" id="tx-power-dbm" class="form-control" value="{{ si_config.tx_power_dbm }}" step="0.1">
                     </div>
                     <div class="form-group">
@@ -534,11 +552,11 @@
                         <input type="number" id="roll-off" class="form-control" value="{{ si_config.roll_off }}" step="0.01">
                     </div>
                     <div class="form-group">
-                        <label for="tx-osnr">tx_osnr</label>
+                        <label for="tx-osnr">tx_osnr (dB)</label>
                         <input type="number" id="tx-osnr" class="form-control" value="{{ si_config.tx_osnr }}" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="sys-margins">sys_margins</label>
+                        <label for="sys-margins">sys_margins (dB)</label>
                         <input type="number" id="sys-margins" class="form-control" value="{{ si_config.sys_margins }}" step="1">
                     </div>
                 </div>
@@ -584,7 +602,7 @@
                     </div>
                 </div>
                 <div class="form-group align-self-flex-end">
-                    <button id="calculate-route-button" class="btn btn-primary">Calcular Ruta</button>
+                    <button id="calculate-route-button" class="btn btn-secondary" onclick="calculateRoutes()" disabled>Calcular Ruta</button>
                 </div>
             </div>
         </div>
@@ -611,6 +629,7 @@
         let infoWindows = {};
         let polylines = [];
         let currentTopologyData = null;
+        let currentNodesMap = {}; // Store current nodes for map centering
         let defaultNodeIcon;
         
         // Función global para cerrar todas las ventanas de información y prevenir superposición
@@ -706,8 +725,17 @@
                 cargarTopologia(e.target.value);
             });
 
-            document.getElementById('source-node').addEventListener('change', () => highlightSelectedNodes());
-            document.getElementById('destination-node').addEventListener('change', () => highlightSelectedNodes());
+            document.getElementById('source-node').addEventListener('change', () => {
+                highlightSelectedNodes();
+                validateCalculateButton();
+            });
+            document.getElementById('destination-node').addEventListener('change', () => {
+                highlightSelectedNodes();
+                validateCalculateButton();
+            });
+            document.getElementById('number-of-routes').addEventListener('input', () => {
+                validateCalculateButton();
+            });
 
             const uploadButton = document.getElementById('upload-button');
             const fileInput = document.getElementById('topology-upload');
@@ -783,6 +811,7 @@
                 const option = '<option value="" disabled>No se encontraron transceivers</option>';
                 sourceSelect.innerHTML = option;
                 destinationSelect.innerHTML = option;
+                validateCalculateButton();
                 return;
             }
 
@@ -793,13 +822,20 @@
                 sourceSelect.appendChild(option.cloneNode(true));
                 destinationSelect.appendChild(option);
             });
+            
+            // Validate button state after populating dropdowns
+            validateCalculateButton();
         }
 
         function dibujarTopologiaEnMapa(data) {
             limpiarMapa();
             const nodesMap = procesarNodos(data);
+            currentNodesMap = nodesMap; // Store for manual centering
             dibujarNodos(nodesMap);
             dibujarEnlaces(data, nodesMap);
+            
+            // Auto-fit map to show all network nodes
+            fitMapToNetwork(nodesMap);
         }
 
         function procesarNodos(data) {
@@ -1051,8 +1087,11 @@
                 strokeColor: style.color || "#FF0000",
                 strokeOpacity: style.opacity || 1.0,
                 strokeWeight: style.weight || 2,
-                map: map
+                map: map,
+                zIndex: 1 // Lower zIndex for topology connections
             });
+            // Explicitly mark as topology connection (not route highlight)
+            line.routeHighlight = false;
             polylines.push(line);
 
             const distance = haversine(
@@ -1082,6 +1121,7 @@
             markers = {};
             polylines = [];
             infoWindows = {};
+            currentNodesMap = {}; // Clear stored nodes map
         }
         
         function obtenerPuntoMedio(p1, p2) {
@@ -1335,6 +1375,445 @@
                 }
             });
         });
+
+        // Parse optical parameter values with proper unit conversion
+        function parseOpticalParameter(parameterName, value) {
+            const numValue = parseFloat(value);
+            
+            if (isNaN(numValue)) {
+                console.warn(`Invalid numeric value for ${parameterName}: ${value}`);
+                return 0;
+            }
+            
+            // Convert from display units to base units (Hz) for frequency parameters
+            switch (parameterName) {
+                case 'f_min':
+                case 'f_max':
+                    // Input assumed to be in THz, convert to Hz
+                    if (value.toString().includes('e')) {
+                        return parseFloat(value); // Already in scientific notation (Hz)
+                    }
+                    return numValue * 1e12; // Convert THz to Hz
+                    
+                case 'spacing':
+                    // Input assumed to be in GHz, convert to Hz  
+                    if (value.toString().includes('e')) {
+                        return parseFloat(value); // Already in scientific notation (Hz)
+                    }
+                    return numValue * 1e9; // Convert GHz to Hz
+                    
+                case 'baud_rate':
+                    // Input assumed to be in Gbaud, convert to Hz
+                    if (value.toString().includes('e')) {
+                        return parseFloat(value); // Already in scientific notation (Hz)
+                    }
+                    return numValue * 1e9; // Convert Gbaud to Hz
+                    
+                case 'roll_off':
+                case 'tx_osnr':
+                case 'sys_margins':
+                case 'power_dbm':
+                case 'tx_power_dbm':
+                default:
+                    // These parameters don't need unit conversion
+                    return numValue;
+            }
+        }
+
+        // Validate calculate button state
+        function validateCalculateButton() {
+            const sourceNode = document.getElementById('source-node').value;
+            const destinationNode = document.getElementById('destination-node').value;
+            const numberOfRoutes = document.getElementById('number-of-routes').value;
+            const button = document.getElementById('calculate-route-button');
+            
+            // Enable button only if all required fields are filled
+            const isValid = sourceNode && destinationNode && numberOfRoutes && 
+                           sourceNode !== destinationNode && 
+                           parseInt(numberOfRoutes) > 0;
+            
+            button.disabled = !isValid;
+            
+            // Add visual feedback
+            if (isValid) {
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-primary');
+                button.title = 'Calcular rutas óptimas';
+            } else {
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-secondary');
+                let errorMsg = 'Complete los campos requeridos: ';
+                let errors = [];
+                if (!sourceNode) errors.push('Nodo origen');
+                if (!destinationNode) errors.push('Nodo destino');
+                if (!numberOfRoutes || parseInt(numberOfRoutes) <= 0) errors.push('Número de rutas');
+                if (sourceNode && destinationNode && sourceNode === destinationNode) errors.push('Nodos origen y destino deben ser diferentes');
+                button.title = errorMsg + errors.join(', ');
+            }
+        }
+
+        // Route calculation function
+        function calculateRoutes() {
+            const sourceNode = document.getElementById('source-node').value;
+            const destinationNode = document.getElementById('destination-node').value;
+            const numberOfRoutes = parseInt(document.getElementById('number-of-routes').value);
+            const calculationCriteria = document.querySelector('input[name="criteria"]:checked').value;
+            const currentTopology = document.getElementById('topology-select').value;
+            
+            // Validate inputs
+            if (!sourceNode || !destinationNode || !numberOfRoutes || !currentTopology) {
+                alert('Por favor complete todos los campos requeridos:\n- Nodo origen\n- Nodo destino\n- Número de rutas\n- Topología seleccionada');
+                return;
+            }
+            
+            if (sourceNode === destinationNode) {
+                alert('El nodo origen y destino deben ser diferentes');
+                return;
+            }
+            
+            // Get optical parameters with proper unit conversion
+            const opticalParams = {
+                f_min: parseOpticalParameter('f_min', document.getElementById('f-min').value),
+                f_max: parseOpticalParameter('f_max', document.getElementById('f-max').value),
+                spacing: parseOpticalParameter('spacing', document.getElementById('spacing').value),
+                baud_rate: parseOpticalParameter('baud_rate', document.getElementById('baud-rate').value),
+                roll_off: parseOpticalParameter('roll_off', document.getElementById('roll-off').value),
+                tx_osnr: parseOpticalParameter('tx_osnr', document.getElementById('tx-osnr').value),
+                sys_margins: parseOpticalParameter('sys_margins', document.getElementById('sys-margins').value),
+                power_dbm: parseOpticalParameter('power_dbm', document.getElementById('power-dbm').value)
+            };
+            
+            // Debug: Log the parsed parameters
+            console.log('Parsed optical parameters:', opticalParams);
+            
+            // Prepare request data
+            const requestData = {
+                topology_filename: currentTopology,
+                source_node: sourceNode,
+                destination_node: destinationNode,
+                number_of_routes: numberOfRoutes,
+                calculation_criteria: calculationCriteria,
+                optical_parameters: opticalParams
+            };
+            
+            // Show loading state
+            const button = document.getElementById('calculate-route-button');
+            const originalText = button.textContent;
+            button.textContent = 'Calculando...';
+            button.disabled = true;
+            
+            // Clear previous results
+            clearRouteResults();
+            
+            // Send request
+            fetch('/calculate_routes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                if (data.success) {
+                    displayRouteResults(data);
+                } else {
+                    alert('Error en el cálculo: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                button.textContent = originalText;
+                button.disabled = false;
+                console.error('Error:', error);
+                alert('Error en la comunicación con el servidor');
+            });
+        }
+
+        // Clear previous route results
+        function clearRouteResults() {
+            // Only clear route highlight polylines, not topology connections
+            polylines.forEach(line => {
+                if (line.routeHighlight) {
+                    line.setMap(null);
+                }
+            });
+            polylines = polylines.filter(line => !line.routeHighlight);
+            
+            // Clear results display
+            const resultsContainer = document.getElementById('route-results');
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '';
+            }
+        }
+
+        // Display route calculation results
+        function displayRouteResults(data) {
+            // Create or get results container
+            let resultsContainer = document.getElementById('route-results');
+            if (!resultsContainer) {
+                resultsContainer = document.createElement('div');
+                resultsContainer.id = 'route-results';
+                resultsContainer.style.marginTop = '20px';
+                document.getElementById('calculation-section').appendChild(resultsContainer);
+            }
+            
+            // Build results HTML following notebook format
+            let html = `
+                <div class="calculation-panel">
+                    <h3 class="panel-title">Resultados del Cálculo de Rutas</h3>
+                    
+                    <!-- PARÁMETROS DEL CANAL ÓPTICO -->
+                    <div class="mb-4">
+                        <h4>PARÁMETROS DEL CANAL ÓPTICO</h4>
+                        <div style="font-family: monospace; font-size: 0.9em; background: #f8f9fa; padding: 10px; border-radius: 3px;">
+                            <div>  f_min:           ${(data.optical_parameters.f_min / 1e12).toFixed(2)} THz</div>
+                            <div>  f_max:           ${(data.optical_parameters.f_max / 1e12).toFixed(2)} THz</div>
+                            <div>  spacing:         ${(data.optical_parameters.spacing / 1e9).toFixed(2)} GHz</div>
+                            <div>  baud_rate:       ${(data.optical_parameters.baud_rate / 1e9).toFixed(2)} Gbaud</div>
+                            <div>  roll_off:        ${data.optical_parameters.roll_off}</div>
+                            <div>  tx_osnr:         ${data.optical_parameters.tx_osnr} dB</div>
+                            <div>  sys_margins:     ${data.optical_parameters.sys_margins} dB</div>
+                            <div>  power_dbm:       ${data.optical_parameters.power_dbm} dBm</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Transceivers disponibles -->
+                    <div class="mb-4">
+                        <div style="font-family: monospace; font-size: 0.9em;">
+                            <div><strong> Transceivers disponibles:</strong></div>
+                `;
+                
+                data.transceivers_disponibles.forEach((tx, index) => {
+                    html += `<div>  ${index + 1}. ${tx}</div>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                    
+                    <!-- Transceivers destino disponibles -->
+                    <div class="mb-4">
+                        <div style="font-family: monospace; font-size: 0.9em;">
+                            <div><strong> Transceivers destino disponibles:</strong></div>
+                `;
+                
+                data.transceivers_destino_disponibles.forEach((tx, index) => {
+                    html += `<div>  ${index + 1}. ${tx}</div>`;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                    
+                    <!-- Search Summary -->
+                    <div class="mb-4">
+                        <div style="font-family: monospace; font-size: 0.9em;">
+                            <div><strong> Buscando hasta ${data.num_routes_requested} rutas entre ${data.source_uid} → ${data.destination_uid}...</strong></div>
+                        </div>
+                    </div>
+            `;
+            
+            // Add each route following notebook format
+            data.routes.forEach((route, index) => {
+                html += `
+                    <div class="route-result mb-4" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                        <h4> Ruta ${route.ruta_num}</h4>
+                        
+                        <!-- Tabla de nodos -->
+                        <div class="mb-3">
+                            <div style="font-family: monospace; font-size: 0.9em;">
+                                <div>Tabla de nodos en la ruta:</div>
+                                <div>Idx | ${'UID'.padEnd(30)} | Tipo</div>
+                                <div>${'-'.repeat(50)}</div>
+                `;
+                
+                route.ruta_nodos.forEach(nodo => {
+                    html += `<div>${nodo.idx.toString().padStart(3)} | ${nodo.uid.padEnd(30)} | ${nodo.tipo}</div>`;
+                });
+                
+                html += `
+                            </div>
+                        </div>
+                        
+                        <!-- Detalles de fibras -->
+                        <div class="mb-3">
+                            <div style="font-family: monospace; font-size: 0.9em;">
+                                <div><strong>Detalles de fibras:</strong></div>
+                `;
+                
+                route.fibras.forEach(fibra => {
+                    html += `<div>  ${fibra.uid}: ${fibra.length_km.toFixed(2)} km</div>`;
+                });
+                
+                html += `
+                            </div>
+                        </div>
+                        
+                        <!-- Receptor final -->
+                        <div class="mb-3">
+                            <div style="font-family: monospace; font-size: 0.9em;">
+                                <div><strong> Receptor final: ${route.receptor_uid}</strong></div>
+                                <div>  SNR (0.1nm, dB):             ${route.snr_01nm.toFixed(2)}</div>
+                                <div>  SNR (signal bw, dB):         ${route.snr_bw ? route.snr_bw.toFixed(2) : 'N/A'}</div>
+                                <div>  OSNR ASE (0.1nm, dB):        ${route.osnr_01nm.toFixed(2)}</div>
+                                <div>  OSNR ASE (signal bw, dB):    ${route.osnr_bw ? route.osnr_bw.toFixed(2) : 'N/A'}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Distancia total -->
+                        <div class="mb-3">
+                            <div style="font-family: monospace; font-size: 0.9em;">
+                                <div><strong> Distancia total recorrida:   ${route.distancia_total_km.toFixed(2)} km</strong></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Highlight button -->
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-secondary" onclick="highlightRoute(${index})">
+                                Resaltar en mapa
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                    <div class="mt-3 text-center">
+                        <button class="btn btn-warning btn-sm" onclick="clearAllRouteHighlights()">
+                            Limpiar todas las rutas resaltadas
+                        </button>
+                    </div>
+                </div>
+            `;
+            resultsContainer.innerHTML = html;
+            
+            // Store routes data for highlighting
+            window.calculatedRoutes = data.routes;
+        }
+
+        // Highlight a specific route on the map
+        function highlightRoute(routeIndex) {
+            if (!window.calculatedRoutes || !window.calculatedRoutes[routeIndex]) {
+                return;
+            }
+            
+            // Clear existing route highlights only
+            polylines.forEach(line => {
+                if (line.routeHighlight) {
+                    line.setMap(null);
+                }
+            });
+            polylines = polylines.filter(line => !line.routeHighlight);
+            
+            const route = window.calculatedRoutes[routeIndex];
+            const uid_path = route.uid_path;
+            
+            // Draw route path with distinctive styling
+            const routeColors = ['#FF6B35', '#004E98', '#F18F01', '#C73E1D', '#7209B7', '#2A9D8F', '#E63946', '#457B9D', '#A8DADC', '#1D3557'];
+            const routeColor = routeColors[routeIndex % routeColors.length];
+            
+            for (let i = 0; i < uid_path.length - 1; i++) {
+                const startUid = uid_path[i];
+                const endUid = uid_path[i + 1];
+                
+                // Find nodes in the current topology
+                const startNode = findNodeByUid(startUid);
+                const endNode = findNodeByUid(endUid);
+                
+                if (startNode && endNode) {
+                    const routeLine = new google.maps.Polyline({
+                        path: [
+                            { lat: startNode.latitude, lng: startNode.longitude },
+                            { lat: endNode.latitude, lng: endNode.longitude }
+                        ],
+                        geodesic: true,
+                        strokeColor: routeColor,
+                        strokeOpacity: 1.0,
+                        strokeWeight: 6,
+                        map: map,
+                        zIndex: 1000 // Ensure route highlights appear above topology connections
+                    });
+                    
+                    routeLine.routeHighlight = true;
+                    polylines.push(routeLine);
+                }
+            }
+        }
+
+        // Helper function to find node by UID
+        function findNodeByUid(uid) {
+            if (!currentTopologyData || !currentTopologyData.elements) {
+                return null;
+            }
+            
+            for (const element of currentTopologyData.elements) {
+                if (element.uid === uid) {
+                    const location = extraerUbicacion(element);
+                    if (location && location.lat && location.lng) {
+                        return {
+                            latitude: parseFloat(location.lat),
+                            longitude: parseFloat(location.lng)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Clear all route highlights from map
+        function clearAllRouteHighlights() {
+            polylines.forEach(line => {
+                if (line.routeHighlight) {
+                    line.setMap(null);
+                }
+            });
+            polylines = polylines.filter(line => !line.routeHighlight);
+        }
+
+        // Automatically fit map bounds to show all network nodes
+        function fitMapToNetwork(nodesMap) {
+            const nodeValues = Object.values(nodesMap);
+            
+            if (nodeValues.length === 0) {
+                console.log('No nodes to fit map bounds');
+                return;
+            }
+            
+            // Create bounds object
+            const bounds = new google.maps.LatLngBounds();
+            
+            // Extend bounds to include all nodes
+            nodeValues.forEach(node => {
+                bounds.extend(new google.maps.LatLng(node.latitude, node.longitude));
+            });
+            
+            // Fit map to bounds with some padding
+            map.fitBounds(bounds);
+            
+            // Optional: Set a maximum zoom level to prevent over-zooming on small networks
+            const listener = google.maps.event.addListener(map, "idle", function() {
+                if (map.getZoom() > 15) {
+                    map.setZoom(15);
+                }
+                google.maps.event.removeListener(listener);
+            });
+            
+            console.log(`Map fitted to ${nodeValues.length} network nodes`);
+        }
+
+        // Manual function to center map to network (called by button)
+        function centerMapToNetwork() {
+            if (Object.keys(currentNodesMap).length > 0) {
+                fitMapToNetwork(currentNodesMap);
+                console.log('Map manually centered to network');
+            } else {
+                console.log('No network loaded to center map');
+                alert('No hay red cargada para centrar el mapa');
+            }
+        }
     </script>
     
     <script

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 from scenario01 import calcular_red, obtener_topologia_datos
 from scenario02 import calculate_scenario02, update_scenario02_parameters, process_scenario02_data
-from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters
+from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters, calculate_routes
 
 # Carga las variables de entorno
 load_dotenv()
@@ -82,6 +82,11 @@ def upload_topology_route():
 def update_network_parameters_route():
     """Endpoint de API para actualizar parámetros de red."""
     return update_network_parameters()
+
+@app.route('/calculate_routes', methods=['POST'])
+def calculate_routes_route():
+    """Endpoint de API para calcular rutas óptimas entre nodos."""
+    return calculate_routes()
 
 @app.route('/update_scenario02_parameters', methods=['POST'])
 def update_scenario02_parameters_route():
