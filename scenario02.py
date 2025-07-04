@@ -1948,15 +1948,15 @@ def generate_scenario02_plots(plot_data):
     osnr_min, osnr_max = min(plot_y_osnr), max(plot_y_osnr)
     distance_min, distance_max = min(plot_x_signal), max(plot_x_signal)
     
-    # Agregar padding más generoso (15%) para evitar que las líneas estén muy cerca de los ejes
+    # Agregar padding para una mejor visualización, asegurando que no sea cero
     signal_range = signal_max - signal_min
-    signal_padding = max(signal_range * 0.15, 2.0)  # Mínimo 2 dB de padding
+    signal_padding = max(signal_range * 0.1, 1.0) if signal_range > 0 else 1.0
     
     ase_range = ase_max - ase_min
-    ase_padding = max(ase_range * 0.15, 2.0)  # Mínimo 2 dB de padding
+    ase_padding = max(ase_range * 0.1, 1.0) if ase_range > 0 else 1.0
     
     osnr_range = osnr_max - osnr_min
-    osnr_padding = max(osnr_range * 0.15, 1.0)  # Mínimo 1 dB de padding
+    osnr_padding = max(osnr_range * 0.1, 1.0) if osnr_range > 0 else 1.0
     
     distance_range = distance_max - distance_min
     distance_padding = max(distance_range * 0.05, 5.0)  # Mínimo 5 km de padding
@@ -2126,58 +2126,3 @@ def generate_scenario02_plots(plot_data):
         'ase_plot': ase_fig.to_dict(),
         'osnr_plot': osnr_fig.to_dict()
     }
-
-if __name__ == '__main__':
-    print("Executing test script...")
-    
-    # Cargar los datos de la topología desde el archivo
-    topology_file_path = 'versionamientos/topologiaEdfa1.json'
-    with open(topology_file_path, 'r') as f:
-        topology_data = json.load(f)
-
-    # Mejorar los elementos con parámetros por defecto
-    enhanced_elements = enhance_elements_with_parameters(topology_data['elements'])
-    topology_data['elements'] = enhanced_elements
-
-    test_params = {
-        'topology_data': topology_data,
-        'simulation_name': 'Test from Gemini',
-    }
-    # Forzar parámetros de entrada del notebook
-    for el in test_params['topology_data']['elements']:
-        if el['uid'] == 'Site_A':
-            el['parameters']['tx_osnr']['value'] = 40.0
-            el['parameters']['P_tot_dbm_input']['value'] = 1.0
-        if el['uid'] == 'Site_B':
-            el['parameters']['sens']['value'] = 0.0
-        if el.get('type') == 'Edfa':
-            # Asumiendo que el nf se debe aplicar a todos los edfa
-            # y que el json de topología tiene 'nf0' en sus parámetros
-            if 'nf0' in el.get('parameters', {}):
-                 el['parameters']['nf0']['value'] = 5.0
-
-    results_data = calculate_scenario02_network(test_params)
-    print("Full results_data object:")
-    print(results_data)
-    
-    if results_data and results_data['success']:
-        # Print results in a similar format to the notebook
-        header = f"{'Etapa':>10s} | {'Pot[dBm]':>8s} | {'OSNR_bw':>8s} | {'OSNR_teórico':>15s}"
-        print("\\n" + header)
-        print("-" * len(header))
-        
-        for stage in results_data['results']:
-            name = stage['name']
-            p_dbm = stage['power_dbm']
-            osnr_db = stage['osnr_bw']
-            osnr_parallel = stage.get('osnr_parallel', '')
-            
-            p_dbm_str = f"{p_dbm:.2f}"
-            osnr_db_formatted = f"{osnr_db}" if isinstance(osnr_db, str) else f"{osnr_db:.2f}"
-            osnr_parallel_formatted = f"{osnr_parallel}" if isinstance(osnr_parallel, str) else (f"{osnr_parallel:.3f}" if isinstance(osnr_parallel, (int, float)) and not np.isinf(osnr_parallel) else ('∞' if np.isinf(osnr_parallel) else ''))
-
-            print(f"{name:>10s} | {p_dbm_str:>8s} | {osnr_db_formatted:>8s} | {osnr_parallel_formatted:>17s}")
-    else:
-        print("Calculation failed.")
-        if results_data:
-            print(f"Error: {results_data.get('error')}")
