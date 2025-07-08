@@ -1658,6 +1658,11 @@
                                         <td>GHz</td>
                                     </tr>
                                     <tr>
+                                        <td><strong>num_channels</strong></td>
+                                        <td>${data.optical_parameters.num_channels}</td>
+                                        <td>-</td>
+                                    </tr>
+                                    <tr>
                                         <td><strong>baud_rate</strong></td>
                                         <td>${(data.optical_parameters.baud_rate / 1e9).toFixed(2)}</td>
                                         <td>Gbaud</td>
@@ -1682,6 +1687,7 @@
                                         <td>${data.optical_parameters.power_dbm}</td>
                                         <td>dBm</td>
                                     </tr>
+                                     
                                 </tbody>
                             </table>
                         </div>
@@ -1876,7 +1882,7 @@
                                                 <table class="table table-sm">
                                                     <tbody>
                                                         <tr>
-                                                            <td><strong>SNR (0.1nm)</strong></td>
+                                                            <td><strong>GSNR (0.1nm)</strong></td>
                                                             <td class="text-end"><span class="badge bg-primary">${route.snr_01nm.toFixed(2)} dB</span></td>
                                                         </tr>
                                                         <tr>

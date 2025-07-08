@@ -302,11 +302,15 @@ def calculate_routes():
         # CRÍTICO: Aplicar power_range_db SIEMPRE (como en el notebook)
         si.power_range_db = [0, 0, 1]  # Valor fijo como en el notebook
         
+        # Calcular número de canales
+        num_channels = automatic_nch(si.f_min, si.f_max, si.spacing)
+        
         if optical_params:
             print(f"📈 Applied SI parameters:")
             print(f"  f_min: {si.f_min} Hz ({si.f_min/1e12:.2f} THz)")
             print(f"  f_max: {si.f_max} Hz ({si.f_max/1e12:.2f} THz)")
             print(f"  spacing: {si.spacing} Hz ({si.spacing/1e9:.2f} GHz)")
+            print(f"  num_channels: {num_channels}")
             print(f"  baud_rate: {si.baud_rate} Hz ({si.baud_rate/1e9:.2f} Gbaud)")
             print(f"  roll_off: {si.roll_off}")
             print(f"  tx_osnr: {si.tx_osnr} dB")
@@ -433,6 +437,7 @@ def calculate_routes():
                 'f_min': si.f_min,
                 'f_max': si.f_max,
                 'spacing': si.spacing,
+                'num_channels': num_channels,
                 'baud_rate': si.baud_rate,
                 'roll_off': si.roll_off,
                 'tx_osnr': si.tx_osnr,
