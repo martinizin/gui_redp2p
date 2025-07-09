@@ -605,10 +605,6 @@
                         <input type="number" id="power-dbm" class="form-control" value="{{ si_config.power_dbm }}" step="0.1">
                     </div>
                     <div class="form-group">
-                        <label for="tx-power-dbm">tx_power_dbm (dBm)</label>
-                        <input type="number" id="tx-power-dbm" class="form-control" value="{{ si_config.tx_power_dbm }}" step="0.1">
-                    </div>
-                    <div class="form-group">
                         <label for="roll-off">roll_off</label>
                         <input type="number" id="roll-off" class="form-control" value="{{ si_config.roll_off }}" step="0.01">
                     </div>
@@ -1765,9 +1761,9 @@
                     </div>
             `;
             
-            // Add each route with enhanced styling
+            // Add each route with enhanced styling - avoid red/danger colors to prevent confusion with topology
             data.routes.forEach((route, index) => {
-                const routeColors = ['primary', 'success', 'danger', 'warning', 'info', 'secondary'];
+                const routeColors = ['primary', 'success', 'info', 'secondary', 'dark', 'primary'];
                 const routeColor = routeColors[index % routeColors.length];
                 
                 html += `
@@ -1961,8 +1957,8 @@
             const route = window.calculatedRoutes[routeIndex];
             const uid_path = route.uid_path;
             
-            // Draw route path with distinctive styling
-            const routeColors = ['#FF6B35', '#004E98', '#F18F01', '#C73E1D', '#7209B7', '#2A9D8F', '#E63946', '#457B9D', '#A8DADC', '#1D3557'];
+            // Draw route path with distinctive styling - colors avoid red range to prevent confusion with topology links
+            const routeColors = ['#0066CC', '#28A745', '#7209B7', '#17A2B8', '#6F42C1', '#20C997', '#0D6EFD', '#198754', '#6610F2', '#0DCAF0'];
             const routeColor = routeColors[routeIndex % routeColors.length];
             
             for (let i = 0; i < uid_path.length - 1; i++) {
@@ -1990,6 +1986,20 @@
                     routeLine.routeHighlight = true;
                     polylines.push(routeLine);
                 }
+            }
+            
+            // Scroll to map container to show the highlighted route
+            scrollToMap();
+        }
+
+        // Scroll to map container with smooth animation
+        function scrollToMap() {
+            const mapContainer = document.getElementById('map-container');
+            if (mapContainer) {
+                mapContainer.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
             }
         }
 
