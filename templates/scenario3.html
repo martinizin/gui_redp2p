@@ -387,7 +387,15 @@
             font-weight: 400;
         }
         .form-check-inline {
-            margin-right: 0.75rem; /* Reduced spacing between radio buttons */
+            margin-right: 1.5rem; /* Increased spacing for multi-line labels */
+        }
+        .form-check-inline .form-check-label {
+            line-height: 1.2;
+            vertical-align: top;
+            margin-left: 0.5rem;
+        }
+        .form-check-inline .form-check-input {
+            margin-top: 0.15rem; /* Align with first line of multi-line label */
         }
 
         /* Estilos de InfoWindow personalizado */
@@ -646,15 +654,21 @@
             </div>
             <div class="form-row-flex">
                 <div class="form-group">
-                    <label>Criterio de Cálculo</label>
+                    <label>Criterio de Optimización</label>
                     <div class="radio-group">
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="radio" name="criteria" id="criteria-distance" value="distance" checked>
-                            <label class="form-check-label" for="criteria-distance">Distancia</label>
+                            <label class="form-check-label" for="criteria-distance">
+                                <strong>Distancia</strong>
+                                <br><small class="text-muted">Prioriza rutas más cortas</small>
+                            </label>
                         </div>
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="radio" name="criteria" id="criteria-osnr" value="osnr">
-                            <label class="form-check-label" for="criteria-osnr">OSNR</label>
+                            <label class="form-check-label" for="criteria-osnr">
+                                <strong>OSNR</strong>
+                                <br><small class="text-muted">Prioriza mejor calidad de señal</small>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -792,6 +806,13 @@
             });
             document.getElementById('number-of-routes').addEventListener('input', () => {
                 validateCalculateButton();
+            });
+            
+            // Add event listeners for radio buttons
+            document.querySelectorAll('input[name="criteria"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    validateCalculateButton();
+                });
             });
 
             const uploadButton = document.getElementById('upload-button');
@@ -1482,12 +1503,14 @@
             const sourceNode = document.getElementById('source-node').value;
             const destinationNode = document.getElementById('destination-node').value;
             const numberOfRoutes = document.getElementById('number-of-routes').value;
+            const criteriaSelected = document.querySelector('input[name="criteria"]:checked');
             const button = document.getElementById('calculate-route-button');
             
             // Enable button only if all required fields are filled
             const isValid = sourceNode && destinationNode && numberOfRoutes && 
                            sourceNode !== destinationNode && 
-                           parseInt(numberOfRoutes) > 0;
+                           parseInt(numberOfRoutes) > 0 && 
+                           criteriaSelected;
             
             button.disabled = !isValid;
             
@@ -1505,6 +1528,7 @@
                 if (!destinationNode) errors.push('Nodo destino');
                 if (!numberOfRoutes || parseInt(numberOfRoutes) <= 0) errors.push('Número de rutas');
                 if (sourceNode && destinationNode && sourceNode === destinationNode) errors.push('Nodos origen y destino deben ser diferentes');
+                if (!criteriaSelected) errors.push('Criterio de cálculo');
                 button.title = errorMsg + errors.join(', ');
             }
         }
@@ -1757,7 +1781,8 @@
                     <!-- Search Summary -->
                     <div class="alert alert-info mb-4">
                         <h6 class="alert-heading">Resumen de Búsqueda</h6>
-                        <p class="mb-0">Se buscaron hasta <strong>${data.num_routes_requested}</strong> rutas entre <strong>${data.source_uid}</strong> → <strong>${data.destination_uid}</strong></p>
+                        <p class="mb-2">Se buscaron hasta <strong>${data.num_routes_requested}</strong> rutas entre <strong>${data.source_uid}</strong> → <strong>${data.destination_uid}</strong></p>
+                        <p class="mb-0"><strong>Criterio de optimización:</strong> ${data.calculation_criteria === 'osnr' ? 'OSNR (mejor calidad de señal)' : 'Distancia (ruta más corta)'}</p>
                     </div>
             `;
             
@@ -1769,7 +1794,7 @@
                 html += `
                     <div class="route-result mb-4 border border-${routeColor} rounded shadow-sm">
                         <div class="card-header bg-${routeColor} text-white">
-                            <h5 class="mb-0">Ruta ${route.ruta_num}</h5>
+                            <h5 class="mb-0">Ruta ${route.ruta_num} ${data.calculation_criteria === 'osnr' ? '(Optimizada por OSNR)' : '(Optimizada por Distancia)'}</h5>
                         </div>
                         <div class="card-body">
                             
@@ -1869,7 +1894,10 @@
                             
                             <!-- Receptor final -->
                             <div class="mb-4">
-                                <h6 class="text-secondary mb-3">Métricas del Receptor Final</h6>
+                                <h6 class="text-secondary mb-3">
+                                    Métricas del Receptor Final
+                                    ${data.calculation_criteria === 'osnr' ? '<span class="badge bg-success ms-2">Optimizada por OSNR</span>' : ''}
+                                </h6>
                                 <div class="alert alert-light">
                                     <h6 class="alert-heading">Receptor: ${route.receptor_uid}</h6>
                                     <div class="row">
@@ -1879,11 +1907,11 @@
                                                     <tbody>
                                                         <tr>
                                                             <td><strong>GSNR (0.1nm)</strong></td>
-                                                            <td class="text-end"><span class="badge bg-primary">${route.snr_01nm.toFixed(2)} dB</span></td>
+                                                            <td class="text-end"><span class="badge ${data.calculation_criteria === 'osnr' ? 'bg-success' : 'bg-primary'}">${route.snr_01nm.toFixed(2)} dB</span></td>
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>SNR (signal bw)</strong></td>
-                                                            <td class="text-end"><span class="badge bg-primary">${route.snr_bw ? route.snr_bw.toFixed(2) + ' dB' : 'N/A'}</span></td>
+                                                            <td><strong>GSNR (signal bw)</strong></td>
+                                                            <td class="text-end"><span class="badge ${data.calculation_criteria === 'osnr' ? 'bg-success' : 'bg-primary'}">${route.snr_bw ? route.snr_bw.toFixed(2) + ' dB' : 'N/A'}</span></td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -1894,12 +1922,12 @@
                                                 <table class="table table-sm">
                                                     <tbody>
                                                         <tr>
-                                                            <td><strong>OSNR ASE (0.1nm)</strong></td>
-                                                            <td class="text-end"><span class="badge bg-success">${route.osnr_01nm.toFixed(2)} dB</span></td>
+                                                            <td><strong>OSNR(0.1nm)</strong></td>
+                                                            <td class="text-end"><span class="badge ${data.calculation_criteria === 'osnr' ? 'bg-success' : 'bg-secondary'}">${route.osnr_01nm.toFixed(2)} dB</span></td>
                                                         </tr>
                                                         <tr>
-                                                            <td><strong>OSNR ASE (signal bw)</strong></td>
-                                                            <td class="text-end"><span class="badge bg-success">${route.osnr_bw ? route.osnr_bw.toFixed(2) + ' dB' : 'N/A'}</span></td>
+                                                            <td><strong>OSNR(signal bw)</strong></td>
+                                                            <td class="text-end"><span class="badge ${data.calculation_criteria === 'osnr' ? 'bg-success' : 'bg-secondary'}">${route.osnr_bw ? route.osnr_bw.toFixed(2) + ' dB' : 'N/A'}</span></td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -1912,8 +1940,11 @@
                             <!-- Distancia total y acciones -->
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <h6 class="text-secondary mb-2">Distancia Total</h6>
-                                    <span class="badge bg-info fs-6">${route.distancia_total_km.toFixed(2)} km</span>
+                                    <h6 class="text-secondary mb-2">
+                                        Distancia Total
+                                        ${data.calculation_criteria === 'distance' ? '<span class="badge bg-warning text-dark ms-2">Optimizada</span>' : ''}
+                                    </h6>
+                                    <span class="badge ${data.calculation_criteria === 'distance' ? 'bg-warning text-dark' : 'bg-info'} fs-6">${route.distancia_total_km.toFixed(2)} km</span>
                                 </div>
                                 <div>
                                     <button class="btn btn-outline-${routeColor} btn-sm" onclick="highlightRoute(${index})">

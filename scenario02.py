@@ -1117,7 +1117,7 @@ def calculate_scenario02():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400 
 
-# =================== MISSING CORE FUNCTIONS FROM ESCENARIO02 ===================
+# =================== FUNCIONES ACTUALIZADAS ===================
 
 def load_topology(topology_file_path, equipment_file_path="versionamientos/eqpt_config.json"):
     """
