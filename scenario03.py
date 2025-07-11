@@ -289,8 +289,6 @@ def calculate_routes():
         
         # Aplicar parámetros personalizados si se proporcionan
         if optical_params:
-            print(f"📊 Backend received optical parameters: {optical_params}")
-            
             si.f_min = float(optical_params.get('f_min', si.f_min))
             si.f_max = float(optical_params.get('f_max', si.f_max))
             si.spacing = float(optical_params.get('spacing', si.spacing))
@@ -305,19 +303,6 @@ def calculate_routes():
         
         # Calcular número de canales (exactamente como en el notebook)
         num_channels = int(np.floor((si.f_max - si.f_min) / si.spacing)) + 1
-        
-        if optical_params:
-            print(f"📈 Applied SI parameters:")
-            print(f"  f_min: {si.f_min} Hz ({si.f_min/1e12:.2f} THz)")
-            print(f"  f_max: {si.f_max} Hz ({si.f_max/1e12:.2f} THz)")
-            print(f"  spacing: {si.spacing} Hz ({si.spacing/1e9:.2f} GHz)")
-            print(f"  num_channels: {num_channels}")
-            print(f"  baud_rate: {si.baud_rate} Hz ({si.baud_rate/1e9:.2f} Gbaud)")
-            print(f"  roll_off: {si.roll_off}")
-            print(f"  tx_osnr: {si.tx_osnr} dB")
-            print(f"  sys_margins: {si.sys_margins} dB")
-            print(f"  power_dbm: {si.power_dbm} dBm")
-            print(f"  power_range_db: {si.power_range_db}")
         
         # Crear mapeo de UID a nodo
         uid2node = {n.uid: n for n in network.nodes()}
@@ -348,7 +333,6 @@ def calculate_routes():
         
         # Evaluar rutas
         resultados = []
-        print(f"📊 Evaluating {len(paths_uid)} paths found by NetworkX")
         for i, uid_path in enumerate(paths_uid):
             try:
                 path_nodes = [uid2node[uid] for uid in uid_path]
@@ -420,19 +404,14 @@ def calculate_routes():
                 continue
         
         # Ordenar resultados según el criterio especificado
-        print(f"🔄 Sorting {len(resultados)} routes by {calculation_criteria}")
         if calculation_criteria == 'osnr':
             resultados.sort(key=lambda r: (-r['snr_01nm'], r['distancia_total_km']))
-            print("→ Routes sorted by OSNR (descending), then distance (ascending)")
         else:  # 'distance'
             resultados.sort(key=lambda r: (r['distancia_total_km'], -r['snr_01nm']))
-            print("→ Routes sorted by distance (ascending), then OSNR (descending)")
         
         # CRÍTICO: Renumerar rutas después de ordenar para que la mejor ruta sea siempre "Ruta 1"
         for i, resultado in enumerate(resultados):
             resultado['ruta_num'] = i + 1
-        
-        print(f"✅ Routes renumbered after sorting: {[r['ruta_num'] for r in resultados]}")
         
         # Preparar respuesta
         response = {

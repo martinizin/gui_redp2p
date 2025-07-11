@@ -44,7 +44,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Simulador Topologías de red punto a punto</h1>
+        <h1 class="mb-4">Simulación de Topologías de red punto a punto</h1>
         {% include 'scenario_nav.html' %}
         <p>Suba un archivo <code>.json</code> para visualizar la topología de red.</p>
         
@@ -408,7 +408,6 @@
                         </div>
                         <div class="col-md-6">
                             <small><strong>OSNR Final (bw):</strong> ${finalResults.final_osnr_bw} dB</small><br>
-                            <small><strong>OSNR Final (0.1nm):</strong> ${finalResults.final_osnr_01nm} dB</small><br>
                             <small><strong>Distancia Total:</strong> ${finalResults.total_distance_km.toFixed(1)} km</small><br>
                             <small><strong>Potencia por Canal:</strong> ${finalResults.tx_power_per_channel_dbm ? finalResults.tx_power_per_channel_dbm.toFixed(2) + ' dBm' : 'N/A'}</small>
                         </div>
