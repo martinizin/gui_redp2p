@@ -73,7 +73,7 @@ B_n=12.5e9 #no sea modificable
 
 
 # Cargar la configuración de equipos
-EQPT_CONFIG_PATH = 'versionamientos/eqpt_config.json'
+EQPT_CONFIG_PATH = 'data/eqpt_config.json'
 edfa_equipment_data = {}
 if os.path.exists(EQPT_CONFIG_PATH):
     with open(EQPT_CONFIG_PATH, 'r', encoding='utf-8') as f:
@@ -1119,7 +1119,7 @@ def calculate_scenario02():
 
 # =================== FUNCIONES ACTUALIZADAS ===================
 
-def load_topology(topology_file_path, equipment_file_path="versionamientos/eqpt_config.json"):
+def load_topology(topology_file_path, equipment_file_path="data/eqpt_config.json"):
     """
     Load network topology from JSON file and return network elements.
     
@@ -1701,13 +1701,15 @@ def calculate_scenario02_network(params):
             'connections': connections
         }
         
-        # Write temporary topology file
-        temp_topology_path = 'temp_topology.json'
+        # Write temporary topology file to uploads directory (for Docker compatibility)
+        import os
+        uploads_dir = '/app/uploads' if os.path.exists('/app/uploads') else '.'
+        temp_topology_path = os.path.join(uploads_dir, 'temp_topology.json')
         with open(temp_topology_path, 'w') as f:
             json.dump(temp_topology, f, indent=2)
         
         # Load network using gnpy
-        equipment = load_equipment(Path("versionamientos/eqpt_config.json"))
+        equipment = load_equipment(Path("data/eqpt_config.json"))
         network = load_network(Path(temp_topology_path), equipment)
         
         # Extract network elements (como en notebook)
@@ -1875,15 +1877,23 @@ def calculate_scenario02_network(params):
         results['plots'] = generate_scenario02_plots(results['plot_data'])
         
         # Limpiar archivo temporal
-        if os.path.exists(temp_topology_path):
-            os.remove(temp_topology_path)
+        try:
+            if os.path.exists(temp_topology_path):
+                os.remove(temp_topology_path)
+        except Exception:
+            pass  # Ignore cleanup errors
         
         return ensure_json_serializable(results)
         
     except Exception as e:
         # Limpiar archivo temporal en caso de error
-        if os.path.exists('temp_topology.json'):
-            os.remove('temp_topology.json')
+        try:
+            uploads_dir = '/app/uploads' if os.path.exists('/app/uploads') else '.'
+            temp_file_path = os.path.join(uploads_dir, 'temp_topology.json')
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+        except Exception:
+            pass  # Ignore cleanup errors
         return ensure_json_serializable({'success': False, 'error': str(e)})
 
 def generate_scenario02_plots(plot_data):

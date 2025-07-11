@@ -1,4 +1,62 @@
-__pycache__
-.vscode
-venv
+# Python cache files
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment variables (excluding .env for API keys)
+# .env  # <- Commented out to include .env file with API keys
+.env.local
+.env.*.local
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# Documentation and versioning (as requested)
+versionamientos/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker related
+Dockerfile
+.dockerignore
+docker-compose.yml
+*.tar
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter notebooks (in versionamientos)
+*.ipynb
+
+# Large data files that might not be needed in container
+*.zip
+*.tar.gz

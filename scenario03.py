@@ -14,8 +14,9 @@ from gnpy.core.utils import lin2db
 from gnpy.core.elements import Transceiver, Roadm, Fiber, Edfa
 from gnpy.tools.worker_utils import designed_network, transmission_simulation
 
-# Cargar variables de entorno
-load_dotenv()
+# Cargar variables de entorno - specify explicit path for Docker compatibility
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
 
 # Configuración
 TOPOLOGY_DIR = os.getenv('TOPOLOGY_DIR', 'data')
@@ -54,6 +55,13 @@ def format_scientific_notation(value):
 def handle_scenario03():
     """Maneja la lógica para el escenario 3."""
     maps_api_key = os.getenv('MAPS_API_KEY')
+    
+    # Debug: Check if .env file exists and API key is loaded
+    env_file_path = os.path.join(os.path.dirname(__file__), '.env')
+    print(f"DEBUG: .env file path: {env_file_path}")
+    print(f"DEBUG: .env file exists: {os.path.exists(env_file_path)}")
+    print(f"DEBUG: API key loaded: {maps_api_key is not None}")
+    print(f"DEBUG: API key value: {maps_api_key[:10] if maps_api_key else 'None'}...")
     
     # Load equipment configuration to get SI parameters (matching notebook defaults)
     eqpt_config = load_equipment_config()

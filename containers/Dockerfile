@@ -1,19 +1,66 @@
-# Usar la imagen oficial de Python
-FROM python:3.10-slim
+# Multi-stage build for better optimization
+FROM python:3.10-slim as builder
 
+# Install system dependencies for gnpy and matplotlib
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
-
-# Establecer el directorio de trabajo dentro del contenedor
+# Set working directory
 WORKDIR /app
 
-# Copiar los archivos de tu proyecto al contenedor
-COPY . .
+# Copy requirements first for better caching
+COPY requirements.txt .
 
-# Instalar las dependencias
-RUN pip install --no-cache-dir -r dependencias.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Exponer el puerto en el que Flask escuchará
+# Production stage
+FROM python:3.10-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash app
+
+# Set working directory
+WORKDIR /app
+
+# Copy Python packages from builder stage
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application files
+COPY --chown=app:app app.py .
+COPY --chown=app:app scenario*.py ./
+COPY --chown=app:app utils.py .
+COPY --chown=app:app .env .
+COPY --chown=app:app templates/ templates/
+COPY --chown=app:app static/ static/
+COPY --chown=app:app data/ data/
+
+# Create directory for uploaded files
+RUN mkdir -p /app/uploads && chown app:app /app/uploads
+
+# Switch to non-root user
+USER app
+
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+ENV TOPOLOGY_DIR=/app/data
+
+# Expose port
 EXPOSE 5000
 
-# Comando para ejecutar la aplicación Flask
-CMD ["python", "app.py"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=5)" || exit 1
+
+# Run the application
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]
