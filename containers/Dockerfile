@@ -5,6 +5,7 @@ FROM python:3.10-slim as builder
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -13,7 +14,7 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies with specific versions for stability
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
@@ -22,6 +23,7 @@ FROM python:3.10-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -34,14 +36,16 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application files
+# Copy application files with proper ownership
 COPY --chown=app:app app.py .
 COPY --chown=app:app scenario*.py ./
 COPY --chown=app:app utils.py .
-COPY --chown=app:app .env .
 COPY --chown=app:app templates/ templates/
 COPY --chown=app:app static/ static/
 COPY --chown=app:app data/ data/
+
+# Copy .env file if it exists (for API keys and configuration)
+COPY --chown=app:app .env* ./
 
 # Create directory for uploaded files
 RUN mkdir -p /app/uploads && chown app:app /app/uploads
@@ -54,13 +58,14 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
 ENV TOPOLOGY_DIR=/app/data
+ENV PYTHONUNBUFFERED=1
 
 # Expose port
 EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=5)" || exit 1
+    CMD curl -f http://localhost:5000/ || exit 1
 
 # Run the application
 CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=5000"]

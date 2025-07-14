@@ -28,6 +28,7 @@ ENV/
 .gitattributes
 
 # Documentation and versioning (as requested)
+README.md
 versionamientos/
 
 # OS generated files
