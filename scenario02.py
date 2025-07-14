@@ -1037,7 +1037,8 @@ def get_source_transceiver_defaults():
 def get_destination_transceiver_defaults():
     """Obtener parámetros por defecto para transceptores de destino (receptores)."""
     return {
-        'sens': {'value': 1, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'}
+        'sens': {'value': 1, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'},
+        'osnr_req': {'value': 15.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR Requerido - Valor mínimo de OSNR necesario para el funcionamiento del circuito'}
     }
 
 def get_transceiver_defaults():
@@ -1647,6 +1648,7 @@ def calculate_scenario02_network(params):
         tx_osnr = source_params.get('tx_osnr', {}).get('value', 40.0)  # Usar 40 como en el notebook
         P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 1.0)  # Usar 1.0 como en el notebook
         sens = dest_params.get('sens', {}).get('value', 0.0)  # Usar 0.0 como en el notebook
+        osnr_req = dest_params.get('osnr_req', {}).get('value', 15.0)  # Nuevo parámetro OSNR requerido
         
         # Calcular número de canales y potencia por canal (exactamente como en notebook)
         nch = int(np.floor((f_max - f_min) / spacing)) + 1
@@ -1858,19 +1860,74 @@ def calculate_scenario02_network(params):
         add_stage_result(rx.uid, current_distance, p_rb, o_final, osnr_01nm_final, osnr_parallel_final)
         
         # Resultados finales
-        link_successful = p_rb >= sens
+        power_condition = p_rb >= sens
+        
+        # Encontrar el último EDFA en los stages para comparar con osnr_req
+        last_edfa_osnr_bw = None
+        last_edfa_name = None
+        
+        # Buscar el último EDFA en orden reverso
+        for stage in reversed(results['stages']):
+            stage_name = stage['name']
+            # Verificar si es un EDFA (buscar en elementos ordenados)
+            for element in ordered_elements:
+                if element.get('uid') == stage_name and element.get('type') == 'Edfa':
+                    last_edfa_name = stage_name
+                    # Convertir OSNR_bw de formato string a float para comparación
+                    osnr_bw_str = stage['osnr_bw']
+                    if osnr_bw_str != '∞':
+                        try:
+                            last_edfa_osnr_bw = float(osnr_bw_str)
+                        except ValueError:
+                            last_edfa_osnr_bw = None
+                    else:
+                        last_edfa_osnr_bw = float('inf')
+                    break
+            if last_edfa_name:
+                break
+        
+        # Determinar si el circuito es operacional
+        osnr_condition = True  # Por defecto True si no hay EDFAs
+        if last_edfa_osnr_bw is not None:
+            osnr_condition = last_edfa_osnr_bw > osnr_req
+        
+        circuit_operational = power_condition and osnr_condition
+        
+        # Construir mensaje detallado
+        power_status = "✓" if power_condition else "✗"
+        osnr_status = "✓" if osnr_condition else "✗"
+        
+        power_msg = f"Potencia: {power_status} {p_rb:.2f} dBm {'≥' if power_condition else '<'} {sens:.2f} dBm (sensibilidad)"
+        
+        if last_edfa_osnr_bw is not None:
+            if last_edfa_osnr_bw == float('inf'):
+                osnr_msg = f"OSNR: {osnr_status}(último EDFA: {last_edfa_name}) ∞ dB > {osnr_req:.2f} dB "
+            else:
+                osnr_msg = f"OSNR: {osnr_status} {last_edfa_osnr_bw:.2f}(último EDFA: {last_edfa_name}) dB {'>' if osnr_condition else '≤'} {osnr_req:.2f} dB "
+        else:
+            osnr_msg = f"OSNR: {osnr_status} No hay EDFAs en la red"
+        
+        operational_msg = f"{'✓ Circuito operacional' if circuit_operational else '✗ Circuito NO operacional'}"
+        
+        detailed_message = f"{operational_msg}\n{power_msg}\n{osnr_msg}"
         
         results['final_results'] = {
             'final_power_dbm': float(p_rb),
             'receiver_sensitivity_dbm': float(sens),
-            'link_successful': bool(link_successful),
+            'link_successful': bool(power_condition),  # Mantener compatibilidad con lógica existente
+            'circuit_operational': bool(circuit_operational),  # Nueva condición operacional
             'power_margin_db': float(p_rb - sens),
             'final_osnr_bw': format_osnr(float(o_final)),
             'final_osnr_01nm': format_osnr(float(osnr_01nm_final)),
             'total_distance_km': float(current_distance),
             'nch': int(nch),
             'tx_power_per_channel_dbm': float(tx_power_dbm),
-            'message': f"{'¡Éxito!' if link_successful else 'Advertencia:'} La potencia de la señal recibida ({p_rb:.2f} dBm) es {'mayor o igual que' if link_successful else 'menor que'} la sensibilidad del receptor ({sens:.2f} dBm)."
+            'osnr_req': float(osnr_req),
+            'last_edfa_osnr_bw': format_osnr(float(last_edfa_osnr_bw)) if last_edfa_osnr_bw is not None else 'N/A',
+            'last_edfa_name': last_edfa_name if last_edfa_name else 'N/A',
+            'power_condition': bool(power_condition),
+            'osnr_condition': bool(osnr_condition),
+            'message': detailed_message
         }
         
         # Generar gráficos
