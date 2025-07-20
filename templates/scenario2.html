@@ -360,22 +360,25 @@
                         <thead class="table-dark">
                             <tr>
                                 <th>Etapa</th>
-                                <th>Potencia [dBm]</th>
-                                <th>OSNR_bw [dB]</th>
-                                <th>OSNR_Clásico [dB]</th>
+                                <th>Pot[dBm]</th>
+                                <th>OSNR_bw</th>
+                                <th>OSNR@0.1nm</th>
+                                <th>OSNR_clásico</th>
                             </tr>
                         </thead>
                         <tbody>
             `;
             
             stages.forEach(stage => {
-                const powerStr = stage.power_dbm.toFixed(2) === "-0.00" ? "0.00" : stage.power_dbm.toFixed(2);
+                // Use the formatted power per channel string from the calculation
+                const powerStr = stage.power_per_channel_str || (stage.power_per_channel_dbm ? stage.power_per_channel_dbm.toFixed(2) : "N/A");
                 tableHtml += `
                     <tr>
                         <td><strong>${stage.name}</strong></td>
                         <td>${powerStr}</td>
                         <td>${stage.osnr_bw}</td>
-                        <td>${stage.osnr_parallel}</td>
+                        <td>${stage.osnr_01nm}</td>
+                        <td>${stage.osnr_parallel || ''}</td>
                     </tr>
                 `;
             });
@@ -419,7 +422,7 @@
                             <small><strong>OSNR Último EDFA:</strong> ${finalResults.last_edfa_osnr_bw} dB</small><br>
                             <small><strong>Último EDFA:</strong> ${finalResults.last_edfa_name || 'N/A'}</small><br>
                             <small><strong>Distancia Total:</strong> ${finalResults.total_distance_km.toFixed(1)} km</small><br>
-                            <small><strong>Potencia por Canal:</strong> ${finalResults.tx_power_per_channel_dbm ? finalResults.tx_power_per_channel_dbm.toFixed(2) + ' dBm' : 'N/A'}</small>
+                            <small><strong>Potencia Tx por Canal:</strong> ${finalResults.tx_power_per_channel_dbm ? finalResults.tx_power_per_channel_dbm.toFixed(2) + ' dBm' : 'N/A'}</small>
                         </div>
                     </div>
                 </div>
