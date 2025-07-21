@@ -7,6 +7,7 @@ __pycache__/
 # Entorno virtual
 venv/
 env/
+.env
 
 # Docker containers
 containers/
