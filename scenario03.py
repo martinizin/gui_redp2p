@@ -31,7 +31,7 @@ if os.path.exists(EQPT_CONFIG_FILE):
             for edfa_spec in full_eqpt_config['Edfa']:
                 edfa_equipment_data[edfa_spec['type_variety']] = edfa_spec
 else:
-    print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_FILE}")
+    print(f"Advertencia: Archivo de configuración de equipos no encontrado en {EQPT_CONFIG_FILE}")
 
 def format_scientific_notation(value):
     """Format a number to match the exact notation used in the config file."""
@@ -124,11 +124,15 @@ def get_topology_data(filename=None):
         # Incluir configuración de equipos en la respuesta (como scenario02.py)
         enhanced_data['eqpt_config'] = eqpt_config
         
+        # Validar requisitos de topología para redes bidireccionales
+        validation_result = validate_topology_requirements(enhanced_data)
+        enhanced_data['validation'] = validation_result
+        
         return jsonify(enhanced_data)
     except FileNotFoundError:
-        return jsonify({'error': f'File {filename} not found'}), 404
+        return jsonify({'error': f'Archivo {filename} no encontrado'}), 404
     except json.JSONDecodeError:
-        return jsonify({'error': f'Invalid JSON in file {filename}'}), 400
+        return jsonify({'error': f'JSON inválido en el archivo {filename}'}), 400
 
 def load_equipment_config():
     """Cargar configuración de equipos desde eqpt_config.json."""
@@ -209,6 +213,177 @@ def find_edfa_config(eqpt_config, type_variety):
     # Devolver valores por defecto si no se encuentra
     return {'gain_flatmax': 26, 'gain_min': 15, 'p_max': 23, 'nf_min': 6}
 
+def validate_topology_requirements(topology_data):
+    """
+    Validar que la topología cumple con los requisitos para redes bidireccionales.
+    Retorna un diccionario con resultado de validación y mensaje de error si aplica.
+    Ahora usa validación permisiva que permite cálculos pero advierte sobre mejores prácticas.
+    """
+    try:
+        elements = topology_data.get('elements', [])
+        connections = topology_data.get('connections', [])
+        
+        # Contar elementos por tipo
+        transceivers = [e for e in elements if e.get('type') == 'Transceiver']
+        roadms = [e for e in elements if e.get('type') == 'Roadm']
+        fibers = [e for e in elements if e.get('type') == 'Fiber']
+        edfas = [e for e in elements if e.get('type') == 'Edfa']
+        
+        # Clasificar problemas por severidad
+        critical_errors = []  # Bloquean cálculos
+        warnings = []         # Permiten cálculos pero recomiendan mejoras
+        
+        # VALIDACIONES CRÍTICAS (requieren mínimo absoluto para gnpy)
+        if len(transceivers) < 2:
+            critical_errors.append(f"Se requieren al menos 2 Transceivers para calcular rutas, encontrados: {len(transceivers)}")
+        
+        if len(fibers) == 0 and len(connections) == 0:
+            critical_errors.append("Se requiere al menos una conexión entre elementos para formar una red")
+        
+        # VALIDACIONES DE ADVERTENCIA (mejores prácticas)
+        if len(transceivers) < 3:
+            warnings.append(f"Recomendado: Al menos 3 Transceivers para redes robustas, encontrados: {len(transceivers)}")
+        
+        if len(roadms) < 2:
+            warnings.append(f"Recomendado: Al menos 2 ROADMs para topologías complejas, encontrados: {len(roadms)}")
+        
+        if len(edfas) == 0:
+            warnings.append("Recomendado: Usar amplificadores EDFA en enlaces largos para mejor rendimiento")
+        
+        # Validar conexiones bidireccionales (como advertencia, no bloqueo)
+        bidirectional_warnings = validate_bidirectional_connections(connections, elements)
+        if bidirectional_warnings:
+            warnings.extend([f"Recomendado: {warning}" for warning in bidirectional_warnings])
+        
+        documentation_url = "https://guiatopologias.netlify.app/"
+        
+        # SI HAY ERRORES CRÍTICOS: bloquear cálculos
+        if critical_errors:
+            error_message = (
+                "La topología no puede ser utilizada para cálculos debido a problemas críticos:\n\n" +
+                "• " + "\n• ".join(critical_errors) + 
+                f"\n\nConsulte la documentación completa en: {documentation_url}"
+            )
+            return {
+                'valid': False,
+                'errors': critical_errors,
+                'warnings': warnings,
+                'message': error_message,
+                'documentation_url': documentation_url,
+                'severity': 'critical'
+            }
+        
+        # SI SOLO HAY ADVERTENCIAS: permitir cálculos con avisos
+        if warnings:
+            warning_message = (
+                "La topología permite cálculos, pero se recomienda revisar las siguientes mejores prácticas:\n\n" +
+                "• " + "\n• ".join(warnings) + 
+                f"\n\nConsulte la documentación completa en: {documentation_url}"
+            )
+            return {
+                'valid': True,
+                'warnings': warnings,
+                'message': warning_message,
+                'documentation_url': documentation_url,
+                'severity': 'warning'
+            }
+        
+        # TODO BIEN
+        return {
+            'valid': True, 
+            'message': 'La topología cumple con todos los requisitos y mejores prácticas',
+            'severity': 'success'
+        }
+        
+    except Exception as e:
+        return {
+            'valid': False, 
+            'message': f'Error validando la topología: {str(e)}',
+            'documentation_url': "https://guiatopologias.netlify.app/",
+            'severity': 'error'
+        }
+
+def validate_bidirectional_connections(connections, elements):
+    """
+    Validar que las conexiones sean bidireccionales.
+    Por cada conexión A -> B, debe existir una conexión B -> A.
+    """
+    errors = []
+    
+    # Crear mapeo de conexiones
+    connection_pairs = {}
+    element_uids = {e['uid'] for e in elements}
+    
+    for conn in connections:
+        from_node = conn.get('from_node')
+        to_node = conn.get('to_node')
+        
+        if not from_node or not to_node:
+            continue
+            
+        # Verificar que ambos nodos existen en la topología
+        if from_node not in element_uids or to_node not in element_uids:
+            continue
+            
+        # Registrar la conexión
+        connection_key = (from_node, to_node)
+        reverse_key = (to_node, from_node)
+        
+        if connection_key not in connection_pairs:
+            connection_pairs[connection_key] = False
+        
+        if reverse_key in connection_pairs:
+            # Marcar ambas direcciones como encontradas
+            connection_pairs[reverse_key] = True
+            connection_pairs[connection_key] = True
+        else:
+            # Crear entrada para la conexión reversa
+            connection_pairs[reverse_key] = False
+    
+    # Buscar conexiones sin dirección opuesta
+    missing_connections = []
+    for (from_node, to_node), has_reverse in connection_pairs.items():
+        if not has_reverse:
+            missing_connections.append(f"{from_node} ↔ {to_node}")
+    
+    if missing_connections:
+        errors.append(
+            f"Faltan conexiones bidireccionales para: {', '.join(missing_connections[:5])}" +
+            (f" y {len(missing_connections) - 5} más" if len(missing_connections) > 5 else "")
+        )
+    
+    return errors
+
+def validate_topology():
+    """Endpoint para validar requisitos de topología."""
+    try:
+        data = request.get_json()
+        topology_filename = data.get('topology_filename')
+        
+        if not topology_filename:
+            return jsonify({'error': 'Se requiere especificar el nombre del archivo de topología'}), 400
+        
+        filepath = os.path.join(TOPOLOGY_DIR, topology_filename)
+        
+        if not os.path.exists(filepath):
+            return jsonify({'error': f'Archivo de topología no encontrado: {topology_filename}'}), 404
+        
+        with open(filepath, 'r', encoding='utf-8') as f:
+            topology_data = json.load(f)
+        
+        validation_result = validate_topology_requirements(topology_data)
+        
+        return jsonify({
+            'success': True,
+            'topology_filename': topology_filename,
+            'validation': validation_result
+        })
+        
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Archivo de topología con formato JSON inválido'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error validando topología: {str(e)}'}), 500
+
 def update_network_parameters():
     """Actualizar parámetros de red para elementos."""
     try:
@@ -221,7 +396,7 @@ def update_network_parameters():
         # Por ahora, solo devolvemos éxito
         return jsonify({
             'success': True,
-            'message': f'Parameter {parameter_name} updated for element {element_uid}',
+            'message': f'Parámetro {parameter_name} actualizado para el elemento {element_uid}',
             'element_uid': element_uid,
             'parameter_name': parameter_name,
             'new_value': new_value
@@ -246,9 +421,32 @@ def upload_topology_file(file):
         
         try:
             file.save(filepath)
-            return jsonify({'message': 'Archivo subido exitosamente', 'filename': filename}), 200
+            
+            # Validar la topología recién subida
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    topology_data = json.load(f)
+                
+                validation_result = validate_topology_requirements(topology_data)
+                response_data = {
+                    'message': 'Archivo subido exitosamente', 
+                    'filename': filename,
+                    'validation': validation_result
+                }
+                
+                # Determinar mensaje según severidad
+                if not validation_result['valid'] and validation_result.get('severity') == 'critical':
+                    response_data['warning'] = 'El archivo se subió correctamente, pero la topología tiene problemas críticos que impiden los cálculos de rutas.'
+                elif validation_result.get('warnings'):
+                    response_data['info'] = 'El archivo se subió correctamente. La topología permite cálculos pero se recomienda revisar las mejores prácticas.'
+                
+                return jsonify(response_data), 200
+                
+            except (json.JSONDecodeError, Exception):
+                # Si hay error validando, aún confirmar que el archivo se subió
+                return jsonify({'message': 'Archivo subido exitosamente', 'filename': filename}), 200
         except Exception as e:
-            return jsonify({'error': f'Error saving file: {str(e)}'}), 500
+            return jsonify({'error': f'Error guardando el archivo: {str(e)}'}), 500
     else:
         return jsonify({'error': 'Tipo de archivo no válido. Solo se permiten archivos .json'}), 400
 
@@ -291,6 +489,25 @@ def calculate_routes():
         # Cargar red y configuración de equipos
         equipment = load_equipment(EQPT)
         network = load_network(TOPO, equipment)
+        
+        # Validar requisitos de topología antes de los cálculos
+        with open(TOPO, 'r', encoding='utf-8') as f:
+            topology_data = json.load(f)
+        
+        validation_result = validate_topology_requirements(topology_data)
+        
+        # Solo bloquear en errores críticos, permitir advertencias
+        if not validation_result['valid'] and validation_result.get('severity') == 'critical':
+            return jsonify({
+                'error': 'Topología no válida para cálculos de rutas',
+                'validation_message': validation_result['message'],
+                'documentation_url': validation_result.get('documentation_url'),
+                'validation_errors': validation_result.get('errors', []),
+                'error_type': 'topology_validation'
+            }), 400
+        
+        # Si hay advertencias pero la topología es válida, continuar con cálculos
+        # Las advertencias se mostrarán en la respuesta final
         
         # Configurar parámetros del canal óptico (exactamente como en el notebook)
         si = list(equipment["SI"].values())[0]
@@ -445,9 +662,37 @@ def calculate_routes():
             'routes': resultados
         }
         
+        # Incluir advertencias de validación si existen
+        if validation_result.get('warnings'):
+            response['validation_warnings'] = {
+                'message': validation_result['message'],
+                'warnings': validation_result['warnings'],
+                'documentation_url': validation_result.get('documentation_url'),
+                'severity': validation_result.get('severity', 'warning')
+            }
+        
         return jsonify(response)
         
     except Exception as e:
         print(f"❌ Error en calculate_routes: {e}")
         traceback.print_exc()
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        
+        # Determinar si es un error de validación de topología
+        error_message = str(e)
+        documentation_url = "https://guiatopologias.netlify.app/"
+        
+        if any(keyword in error_message.lower() for keyword in ['trx', 'fiber', 'roadm', 'edfa', 'connection', 'bidirectional']):
+            return jsonify({
+                'error': 'Error de topología en el cálculo de rutas',
+                'details': f'Error interno del servidor: {str(e)}',
+                'validation_message': f'La topología puede no cumplir con los requisitos para redes bidireccionales.\n\nError específico: {str(e)}\n\nConsulte la documentación para verificar los requisitos de topología.',
+                'documentation_url': documentation_url,
+                'error_type': 'topology_error'
+            }), 500
+        else:
+            return jsonify({
+                'error': 'Error interno del servidor',
+                'details': str(e),
+                'documentation_url': documentation_url,
+                'error_type': 'server_error'
+            }), 500

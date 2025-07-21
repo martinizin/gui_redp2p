@@ -1,0 +1,48 @@
+{
+    "elements": [
+    
+      { "uid": "trx_Quito", "type": "Transceiver", "metadata": { "location": { "city": "Quito", "latitude": -0.22985, "longitude": -78.52498 } } },
+      { "uid": "trx_Guayaquil", "type": "Transceiver", "metadata": { "location": { "city": "Guayaquil", "latitude": -2.17099, "longitude": -79.92236 } } },
+      { "uid": "trx_Cuenca", "type": "Transceiver", "metadata": { "location": { "city": "Cuenca", "latitude": -2.90013, "longitude": -79.00589 } } },
+  
+     
+      { "uid": "roadm_Quito", "type": "Roadm", "metadata": { "location": { "city": "Quito", "latitude": -0.22985, "longitude": -78.52498 } } },
+      { "uid": "roadm_Guayaquil", "type": "Roadm", "metadata": { "location": { "city": "Guayaquil", "latitude": -2.17099, "longitude": -79.92236 } } },
+      { "uid": "roadm_Cuenca", "type": "Roadm", "metadata": { "location": { "city": "Cuenca", "latitude": -2.90013, "longitude": -79.00589 } } },
+  
+     
+      { "uid": "fiber_Q_G", "type": "Fiber", "params": { "length": 420.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_G_Q", "type": "Fiber", "params": { "length": 420.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_G_C", "type": "Fiber", "params": { "length": 200.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_C_G", "type": "Fiber", "params": { "length": 200.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_Q_C_1", "type": "Fiber", "params": { "length": 225.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_Q_C_2", "type": "Fiber", "params": { "length": 225.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_C_Q_1", "type": "Fiber", "params": { "length": 225.0, "loss_coef": 0.2 } },
+      { "uid": "fiber_C_Q_2", "type": "Fiber", "params": { "length": 225.0, "loss_coef": 0.2 } },
+  
+    
+      { "uid": "edfa_Q_C", "type": "Edfa", "operational": { "gain_target": 22 } },
+      { "uid": "edfa_C_Q", "type": "Edfa", "operational": { "gain_target": 22 } }
+    ],
+    "connections": [
+    
+      { "from_node": "trx_Quito", "to_node": "roadm_Quito" }, { "from_node": "roadm_Quito", "to_node": "trx_Quito" },
+      { "from_node": "trx_Guayaquil", "to_node": "roadm_Guayaquil" }, { "from_node": "roadm_Guayaquil", "to_node": "trx_Guayaquil" },
+      { "from_node": "trx_Cuenca", "to_node": "roadm_Cuenca" }, { "from_node": "roadm_Cuenca", "to_node": "trx_Cuenca" },
+  
+     
+      { "from_node": "roadm_Quito", "to_node": "fiber_Q_G" }, { "from_node": "fiber_Q_G", "to_node": "roadm_Guayaquil" },
+      { "from_node": "roadm_Guayaquil", "to_node": "fiber_G_Q" }, { "from_node": "fiber_G_Q", "to_node": "roadm_Quito" },
+  
+  
+      { "from_node": "roadm_Guayaquil", "to_node": "fiber_G_C" }, { "from_node": "fiber_G_C", "to_node": "roadm_Cuenca" },
+      { "from_node": "roadm_Cuenca", "to_node": "fiber_C_G" }, { "from_node": "fiber_C_G", "to_node": "roadm_Guayaquil" },
+  
+     
+      { "from_node": "roadm_Quito", "to_node": "fiber_Q_C_1" }, { "from_node": "fiber_Q_C_1", "to_node": "edfa_Q_C" },
+      { "from_node": "edfa_Q_C", "to_node": "fiber_Q_C_2" }, { "from_node": "fiber_Q_C_2", "to_node": "roadm_Cuenca" },
+      { "from_node": "roadm_Cuenca", "to_node": "fiber_C_Q_1" }, { "from_node": "fiber_C_Q_1", "to_node": "edfa_C_Q" },
+      { "from_node": "edfa_C_Q", "to_node": "fiber_C_Q_2" }, { "from_node": "fiber_C_Q_2", "to_node": "roadm_Quito" }
+    ]
+  }
+  

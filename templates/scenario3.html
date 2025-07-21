@@ -551,6 +551,220 @@
                 width: 100%;
             }
         }
+
+        /* Professional Modal Styles */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .custom-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .custom-modal-content {
+            background-color: #fefefe;
+            margin: auto;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            animation: slideInDown 0.3s ease-out;
+            position: relative;
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .custom-modal-header {
+            padding: 20px 24px 16px 24px;
+            border-bottom: 1px solid #e9ecef;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .custom-modal-header.error {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            border-bottom: none;
+        }
+
+        .custom-modal-header.warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #212529;
+            border-bottom: none;
+        }
+
+        .custom-modal-header.success {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+            border-bottom: none;
+        }
+
+        .custom-modal-header.info {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-bottom: none;
+        }
+
+        .custom-modal-title {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .custom-modal-icon {
+            font-size: 1.6rem;
+            opacity: 0.9;
+        }
+
+        .custom-modal-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            font-weight: 700;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: inherit;
+        }
+
+        .custom-modal-close:hover {
+            opacity: 1;
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .custom-modal-body {
+            padding: 24px;
+            line-height: 1.6;
+            color: #495057;
+        }
+
+        .custom-modal-body h5 {
+            color: #343a40;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .custom-modal-body p {
+            margin-bottom: 12px;
+        }
+
+        .custom-modal-body ul {
+            padding-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        .custom-modal-body li {
+            margin-bottom: 8px;
+        }
+
+        .documentation-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 10px 16px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+
+        .documentation-link:hover {
+            color: #0056b3;
+            background-color: #e9ecef;
+            border-color: #007bff;
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        .documentation-link i {
+            font-size: 1.1rem;
+        }
+
+        .custom-modal-footer {
+            padding: 16px 24px 20px 24px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .error-details {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #495057;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .validation-errors {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .validation-errors ul {
+            margin-bottom: 0;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            .custom-modal-content {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .custom-modal-header, .custom-modal-body, .custom-modal-footer {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -695,11 +909,123 @@
         </div>
     </div>
 
+    <!-- Professional Modal Dialog -->
+    <div id="customModal" class="custom-modal">
+        <div class="custom-modal-content">
+            <div id="modalHeader" class="custom-modal-header">
+                <h4 id="modalTitle" class="custom-modal-title">
+                    <span id="modalIcon" class="custom-modal-icon"></span>
+                    <span id="modalTitleText"></span>
+                </h4>
+                <button id="modalClose" class="custom-modal-close" onclick="closeCustomModal()">&times;</button>
+            </div>
+            <div id="modalBody" class="custom-modal-body">
+                <div id="modalMessage"></div>
+            </div>
+            <div id="modalFooter" class="custom-modal-footer">
+                <button class="btn btn-secondary" onclick="closeCustomModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let map;
         let markers = {};
         let infoWindows = {};
         let polylines = [];
+
+        // Professional Modal Dialog Functions
+        function showCustomModal(title, message, type = 'info', documentationUrl = null, additionalData = null) {
+            const modal = document.getElementById('customModal');
+            const header = document.getElementById('modalHeader');
+            const titleText = document.getElementById('modalTitleText');
+            const icon = document.getElementById('modalIcon');
+            const body = document.getElementById('modalMessage');
+            
+            // Set title
+            titleText.textContent = title;
+            
+            // Set type-specific styling and icon
+            header.className = `custom-modal-header ${type}`;
+            
+            switch (type) {
+                case 'error':
+                    icon.innerHTML = '⚠️';
+                    break;
+                case 'warning':
+                    icon.innerHTML = '⚠️';
+                    break;
+                case 'success':
+                    icon.innerHTML = '✅';
+                    break;
+                case 'info':
+                default:
+                    icon.innerHTML = 'ℹ️';
+                    break;
+            }
+            
+            // Build message content
+            let messageContent = `<p>${message}</p>`;
+            
+            // Add validation errors if provided
+            if (additionalData && additionalData.validation_errors && additionalData.validation_errors.length > 0) {
+                messageContent += `
+                    <div class="validation-errors">
+                        <h5>Problemas identificados:</h5>
+                        <ul>
+                            ${additionalData.validation_errors.map(error => `<li>${error}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            // Add technical details if provided
+            if (additionalData && additionalData.details) {
+                messageContent += `
+                    <div class="error-details">
+                        <h5>Detalles técnicos:</h5>
+                        <pre>${additionalData.details}</pre>
+                    </div>
+                `;
+            }
+            
+            // Add documentation link if provided
+            if (documentationUrl) {
+                messageContent += `
+                    <a href="${documentationUrl}" target="_blank" class="documentation-link">
+                        <i class="fas fa-external-link-alt"></i>
+                        Ver Documentación de Requisitos
+                    </a>
+                `;
+            }
+            
+            body.innerHTML = messageContent;
+            
+            // Show modal
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCustomModal() {
+            const modal = document.getElementById('customModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('customModal');
+            if (event.target === modal) {
+                closeCustomModal();
+            }
+        }
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeCustomModal();
+            }
+        });
         let currentTopologyData = null;
         let currentNodesMap = {}; // Store current nodes for map centering
         let defaultNodeIcon;
@@ -837,6 +1163,35 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.filename) {
+                        // Check validation status and show appropriate message
+                        if (data.validation && !data.validation.valid && data.validation.severity === 'critical') {
+                            showCustomModal(
+                                'Archivo Subido con Errores Críticos',
+                                `El archivo "${data.filename}" se subió correctamente, pero la topología tiene problemas críticos que impiden los cálculos.`,
+                                'error',
+                                data.validation.documentation_url,
+                                {
+                                    validation_errors: data.validation.errors || []
+                                }
+                            );
+                        } else if (data.validation && data.validation.warnings) {
+                            showCustomModal(
+                                'Archivo Subido con Recomendaciones',
+                                `El archivo "${data.filename}" se subió correctamente y permite cálculos, pero se recomienda revisar las mejores prácticas.`,
+                                'warning',
+                                data.validation.documentation_url,
+                                {
+                                    validation_errors: data.validation.warnings || []
+                                }
+                            );
+                        } else {
+                            showCustomModal(
+                                'Archivo Subido Exitosamente',
+                                `El archivo "${data.filename}" se subió correctamente y cumple con todos los requisitos.`,
+                                'success'
+                            );
+                        }
+                        
                         // Actualiza la lista de topologías
                         fetch('/get_topology_names')
                             .then(response => response.json())
@@ -856,12 +1211,28 @@
                                 fileInput.value = ''; // Reinicia el input del archivo
                             });
                     } else {
-                        alert('Falló la subida del archivo: ' + (data.error || 'Error desconocido'));
+                        showCustomModal(
+                            'Error al Subir Archivo',
+                            'No se pudo subir el archivo al servidor.',
+                            'error',
+                            null,
+                            {
+                                details: data.error || 'Error desconocido'
+                            }
+                        );
                     }
                 })
                 .catch(error => {
                     console.error('Error al subir el archivo:', error);
-                    alert('Ocurrió un error durante la subida del archivo.');
+                    showCustomModal(
+                        'Error de Comunicación',
+                        'Ocurrió un error durante la comunicación con el servidor al intentar subir el archivo.',
+                        'error',
+                        null,
+                        {
+                            details: error.message || error.toString()
+                        }
+                    );
                 });
             });
         }
@@ -1356,12 +1727,28 @@
                     }
                 } else {
                     console.error('Error updating parameter:', result.error);
-                    alert('Error updating parameter: ' + result.error);
+                    showCustomModal(
+                        'Error al Actualizar Parámetro',
+                        'No se pudo actualizar el parámetro del elemento de red.',
+                        'error',
+                        null,
+                        {
+                            details: result.error
+                        }
+                    );
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error updating parameter');
+                showCustomModal(
+                    'Error de Comunicación',
+                    'Ocurrió un error de comunicación al intentar actualizar el parámetro.',
+                    'error',
+                    null,
+                    {
+                        details: error.message || error.toString()
+                    }
+                );
             });
         }
 
@@ -1544,12 +1931,30 @@
             
             // Validate inputs
             if (!sourceNode || !destinationNode || !numberOfRoutes || !currentTopology) {
-                alert('Por favor complete todos los campos requeridos:\n- Nodo origen\n- Nodo destino\n- Número de rutas\n- Topología seleccionada');
+                let missingFields = [];
+                if (!sourceNode) missingFields.push('Nodo origen');
+                if (!destinationNode) missingFields.push('Nodo destino');
+                if (!numberOfRoutes) missingFields.push('Número de rutas');
+                if (!currentTopology) missingFields.push('Topología seleccionada');
+                
+                showCustomModal(
+                    'Campos Requeridos Incompletos',
+                    'Para calcular las rutas, debe completar todos los campos obligatorios.',
+                    'warning',
+                    null,
+                    {
+                        validation_errors: missingFields.map(field => `${field} es requerido`)
+                    }
+                );
                 return;
             }
             
             if (sourceNode === destinationNode) {
-                alert('El nodo origen y destino deben ser diferentes');
+                showCustomModal(
+                    'Nodos Inválidos',
+                    'El nodo origen y el nodo destino deben ser diferentes para calcular una ruta.',
+                    'warning'
+                );
                 return;
             }
             
@@ -1602,15 +2007,64 @@
                 
                 if (data.success) {
                     displayRouteResults(data);
+                    
+                    // Show validation warnings if present (calculations succeeded but recommendations exist)
+                    if (data.validation_warnings) {
+                        showCustomModal(
+                            'Cálculo Exitoso con Recomendaciones',
+                            'Los cálculos se completaron correctamente, pero se detectaron oportunidades de mejora en la topología.',
+                            'info',
+                            data.validation_warnings.documentation_url,
+                            {
+                                validation_errors: data.validation_warnings.warnings || []
+                            }
+                        );
+                    }
                 } else {
-                    alert('Error en el cálculo: ' + (data.error || 'Error desconocido'));
+                    // Handle different types of errors with appropriate messaging
+                    let title = 'Error en el Cálculo de Rutas';
+                    let message = data.error || 'Ocurrió un error desconocido durante el cálculo.';
+                    let documentationUrl = data.documentation_url || null;
+                    let additionalData = {};
+                    
+                    // Add validation message if provided
+                    if (data.validation_message) {
+                        message = data.validation_message;
+                    }
+                    
+                    // Add validation errors if provided
+                    if (data.validation_errors && data.validation_errors.length > 0) {
+                        additionalData.validation_errors = data.validation_errors;
+                    }
+                    
+                    // Add technical details if provided
+                    if (data.details) {
+                        additionalData.details = data.details;
+                    }
+                    
+                    // Determine error type for appropriate styling
+                    let errorType = 'error';
+                    if (data.error_type === 'topology_error' || data.validation_errors) {
+                        errorType = 'warning';
+                        title = 'Error de Validación de Topología';
+                    }
+                    
+                    showCustomModal(title, message, errorType, documentationUrl, additionalData);
                 }
             })
             .catch(error => {
                 button.textContent = originalText;
                 button.disabled = false;
                 console.error('Error:', error);
-                alert('Error en la comunicación con el servidor');
+                showCustomModal(
+                    'Error de Comunicación',
+                    'No se pudo establecer comunicación con el servidor para procesar el cálculo de rutas.',
+                    'error',
+                    'https://guiatopologias.netlify.app/',
+                    {
+                        details: error.message || error.toString()
+                    }
+                );
             });
         }
 
@@ -2103,7 +2557,11 @@
                 console.log('Map manually centered to network');
             } else {
                 console.log('No network loaded to center map');
-                alert('No hay red cargada para centrar el mapa');
+                showCustomModal(
+                    'Red No Disponible',
+                    'No hay una red cargada actualmente. Por favor, seleccione o suba un archivo de topología primero.',
+                    'info'
+                );
             }
         }
     </script>
