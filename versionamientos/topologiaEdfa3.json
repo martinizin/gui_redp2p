@@ -23,7 +23,7 @@
         },
         "metadata": {
           "location": {
-            "latitude": 0.5,
+            "latitude": 0,
             "longitude": 0,
             "city": null,
             "region": ""
@@ -101,7 +101,7 @@
         },
         "metadata": {
           "location": {
-            "latitude": 2.5,
+            "latitude": 3,
             "longitude": 0,
             "city": null,
             "region": ""

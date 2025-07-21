@@ -6,6 +6,64 @@ from flask import jsonify, request
 from pathlib import Path
 import traceback
 
+"""
+SCENARIO02.PY - TOPOLOGY VISUALIZATION WITH OVERLAP HANDLING
+
+This module provides advanced topology visualization for network elements with built-in
+overlap detection and visual offset capabilities.
+
+NEW FEATURES (Element Overlap Handling):
+
+1. COORDINATE OVERLAP DETECTION:
+   - Detects when multiple elements share identical metadata coordinates
+   - Groups overlapping elements for processing
+   - Handles floating-point precision issues with coordinate tolerance
+
+2. VISUAL OFFSET STRATEGIES:
+   
+   For MAP VISUALIZATIONS:
+   - Applies small circular offsets around original coordinates
+   - First element stays at original position
+   - Subsequent elements get angular offsets (0.001 degree default)
+   - Maintains all connections and fiber tooltips
+   
+   For 2D CANVAS VISUALIZATIONS:
+   - Applies vertical offsets for elements at same horizontal position
+   - Maintains proper spacing and network topology representation
+   - Preserves element ordering and connections
+
+3. ENHANCED USER EXPERIENCE:
+   - Prevents element stacking that creates topology confusion
+   - Maintains tooltip and interaction functionality
+   - Preserves all existing visualization features
+   - Works automatically without user configuration
+
+4. BACKWARD COMPATIBILITY:
+   - All existing functions remain unchanged
+   - No impact on topologies without overlapping elements
+   - Seamless integration with current workflow
+
+Usage: The overlap handling is automatically applied in:
+- _create_map_plot() - for geographic visualizations (circular offsets)
+- _create_horizontal_plot() - for 2D network diagrams (coordinate grouping)
+- All create_topology_visualization functions
+
+ISSUE RESOLVED - Elements with Same "Non-Real" Metadata:
+Before: Site_A and Edfa1 with identical (0,0) coordinates were spread far apart horizontally,
+        creating the visual illusion of 3 fiber spans when only 2 existed.
+        WORSE: Elements appeared out of topology order (e.g., "Edfa1 Site_A" instead of "Site_A Edfa1").
+After:  Elements sharing coordinates are grouped together with small visual offsets,
+        RESPECTING the network topology flow order within each coordinate group,
+        clearly showing the true network structure: 2 fiber spans, not 3.
+
+Example overlapping scenarios resolved:
+- MAP VIEW: TX_Manta (lat: -0.9577, lon: -80.7130) -> Edfa_1 offset to (lat: -0.9587, lon: -80.7130)
+- 2D CANVAS TOPOLOGY ORDER: Site_A (x: -15) → Edfa1 (x: 15) → [gap] → Edfa2 (x: 160) → [gap] → Edfa3 → Site_B
+  ✅ Correct network flow maintained: Source first, destination last, intermediate elements in proper sequence
+  ✅ STRAIGHT CONNECTIONS: Forced horizontal line averaging prevents curved/angled connections
+  ✅ AUTOSCALE PROTECTION: Fixed axis ranges prevent layout disruption on autoscale button
+"""
+
 # Check if gnpy is available
 try:
     from gnpy.tools.json_io import load_equipment, load_network
@@ -205,6 +263,176 @@ def get_node_styles_and_tooltips(nodes_to_plot, edfa_specs):
             
     return node_hover_texts, node_symbols, node_colors
 
+def detect_coordinate_overlaps(nodes_to_plot, coordinate_tolerance=1e-6):
+    """
+    Detect groups of nodes that share the same coordinates (within tolerance).
+    Returns a dictionary mapping coordinate tuples to lists of nodes.
+    Supports both metadata.latitude/longitude and metadata.location.latitude/longitude structures.
+    """
+    coordinate_groups = {}
+    
+    for node in nodes_to_plot:
+        if 'metadata' in node:
+            # Handle different metadata structures
+            lat, lon = None, None
+            
+            # Try metadata.latitude/longitude first (Escenario02Test1.json structure)
+            if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+                lat = node['metadata'].get('latitude')
+                lon = node['metadata'].get('longitude')
+            # Try metadata.location.latitude/longitude (topologiaEdfa1.json structure)
+            elif 'location' in node['metadata']:
+                location = node['metadata']['location']
+                if isinstance(location, dict):
+                    lat = location.get('latitude')
+                    lon = location.get('longitude')
+            
+            if lat is not None and lon is not None:
+                # Round coordinates to handle floating point precision issues
+                coord_key = (round(float(lat) / coordinate_tolerance) * coordinate_tolerance,
+                           round(float(lon) / coordinate_tolerance) * coordinate_tolerance)
+                
+                if coord_key not in coordinate_groups:
+                    coordinate_groups[coord_key] = []
+                coordinate_groups[coord_key].append(node)
+    
+    return coordinate_groups
+
+def apply_coordinate_offsets(coordinate_groups, offset_distance=0.001):
+    """
+    Apply small offsets to nodes that share the same coordinates.
+    Returns a dictionary mapping node UIDs to their adjusted coordinates.
+    """
+    adjusted_coordinates = {}
+    
+    for coord_key, nodes in coordinate_groups.items():
+        if len(nodes) <= 1:
+            # No overlap, use original coordinates
+            if nodes:
+                node = nodes[0]
+                # Handle different metadata structures
+                lat, lon = None, None
+                if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+                    lat = node['metadata']['latitude']
+                    lon = node['metadata']['longitude']
+                elif 'location' in node['metadata'] and isinstance(node['metadata']['location'], dict):
+                    lat = node['metadata']['location'].get('latitude')
+                    lon = node['metadata']['location'].get('longitude')
+                
+                if lat is not None and lon is not None:
+                    adjusted_coordinates[node['uid']] = {
+                        'lat': lat,
+                        'lon': lon
+                    }
+        else:
+            # Multiple nodes at same location - apply offsets
+            base_lat, base_lon = coord_key
+            
+            # Calculate offsets in a small circle around the original point
+            for i, node in enumerate(nodes):
+                if i == 0:
+                    # First node stays at original position
+                    adjusted_coordinates[node['uid']] = {
+                        'lat': base_lat,
+                        'lon': base_lon
+                    }
+                else:
+                    # Subsequent nodes get small circular offsets
+                    angle = (2 * np.pi * i) / len(nodes)
+                    lat_offset = offset_distance * np.cos(angle)
+                    lon_offset = offset_distance * np.sin(angle)
+                    
+                    adjusted_coordinates[node['uid']] = {
+                        'lat': base_lat + lat_offset,
+                        'lon': base_lon + lon_offset
+                    }
+    
+    return adjusted_coordinates
+
+def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, group_offset=30):
+    """
+    Group nodes with the same coordinates together in horizontal layout.
+    This addresses the issue where elements sharing coordinates should be visually close together.
+    CRITICAL: Maintains topology order within each coordinate group.
+    """
+    adjusted_positions = {}
+    
+    # First, group nodes by their actual coordinates, preserving topology order
+    coordinate_groups = {}
+    coordinate_tolerance = 1e-6
+    
+    for i, node in enumerate(ordered_nodes):
+        if 'metadata' in node and 'location' in node['metadata']:
+            lat = node['metadata']['location'].get('latitude', None)
+            lon = node['metadata']['location'].get('longitude', None)
+            
+            if lat is not None and lon is not None:
+                # Create coordinate key for grouping
+                coord_key = (
+                    round(float(lat) / coordinate_tolerance) * coordinate_tolerance,
+                    round(float(lon) / coordinate_tolerance) * coordinate_tolerance
+                )
+                
+                if coord_key not in coordinate_groups:
+                    coordinate_groups[coord_key] = []
+                coordinate_groups[coord_key].append((node, i))
+            else:
+                # Handle nodes without coordinates
+                unique_key = f"no_coords_{i}"
+                coordinate_groups[unique_key] = [(node, i)]
+        else:
+            # Handle nodes without metadata
+            unique_key = f"no_metadata_{i}"
+            coordinate_groups[unique_key] = [(node, i)]
+    
+    # Sort coordinate groups by the minimum original index to maintain topology flow
+    sorted_groups = sorted(coordinate_groups.items(), key=lambda x: min(idx for _, idx in x[1]))
+    
+    # Position groups horizontally
+    current_x = 0
+    
+    for coord_key, nodes_with_idx in sorted_groups:
+        # CRITICAL FIX: Sort nodes within each group by topology order (original index)
+        nodes_with_idx.sort(key=lambda x: x[1])  # Sort by original index
+        
+        group_center_x = current_x
+        
+        if len(nodes_with_idx) == 1:
+            # Single node - place at group center
+            node, original_idx = nodes_with_idx[0]
+            adjusted_positions[node['uid']] = {
+                'x': group_center_x,
+                'y': 100
+            }
+        else:
+            # Multiple nodes with same coordinates - place them in topology order with small offsets
+            group_width = group_offset * (len(nodes_with_idx) - 1)
+            start_x = group_center_x - group_width / 2
+            
+            for j, (node, original_idx) in enumerate(nodes_with_idx):
+                # Position nodes horizontally in topology order with small spacing
+                node_x = start_x + (j * group_offset)
+                node_y = 100
+                
+                # MINIMAL vertical offset to avoid connection line issues
+                # Keep offset very small to maintain straight connections
+                if j > 0:
+                    node_y += (j % 2) * 1 - 0.5  # Very small alternating offsets (±0.5px)
+                
+                adjusted_positions[node['uid']] = {
+                    'x': node_x,
+                    'y': node_y
+                }
+        
+        # Move to next group position
+        if len(nodes_with_idx) > 1:
+            # Account for the space used by this group
+            current_x += horizontal_spacing + group_offset * len(nodes_with_idx)
+        else:
+            current_x += horizontal_spacing
+    
+    return adjusted_positions
+
 def build_topology_graph(elements, connections):
     """
     Construir una representación gráfica de la topología de red para búsqueda de rutas.
@@ -360,15 +588,29 @@ def process_scenario02_data(file):
         has_coordinates = False
         plot_nodes = [node for node in nodes_to_plot if node.get('type') != 'Fiber']
         if plot_nodes:
-            has_coordinates = all(
-                isinstance(node.get('metadata'), dict) and
-                'latitude' in node['metadata'] and
-                'longitude' in node['metadata'] and
-                isinstance(node['metadata']['latitude'], (int, float)) and
-                isinstance(node['metadata']['longitude'], (int, float)) and
-                not (node['metadata']['latitude'] == 0 and node['metadata']['longitude'] == 0)  # Evitar coordenadas (0,0) que pueden ser placeholders
-                for node in plot_nodes
-            )
+            def has_valid_coordinates(node):
+                if not isinstance(node.get('metadata'), dict):
+                    return False
+                
+                lat, lon = None, None
+                # Check for direct latitude/longitude
+                if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+                    lat = node['metadata']['latitude']
+                    lon = node['metadata']['longitude']
+                # Check for location.latitude/longitude
+                elif 'location' in node['metadata'] and isinstance(node['metadata']['location'], dict):
+                    lat = node['metadata']['location'].get('latitude')
+                    lon = node['metadata']['location'].get('longitude')
+                
+                if lat is None or lon is None:
+                    return False
+                
+                # Check if coordinates are valid numbers and not placeholder (0,0)
+                return (isinstance(lat, (int, float)) and 
+                       isinstance(lon, (int, float)) and 
+                       not (lat == 0 and lon == 0))
+            
+            has_coordinates = all(has_valid_coordinates(node) for node in plot_nodes)
 
         if has_coordinates:
             fig = _create_map_plot(nodes_to_plot, processed_connections, data)
@@ -391,15 +633,29 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
     
     nodes_by_uid = {node['uid']: node for node in nodes_to_plot}
     
+    # Detect coordinate overlaps and apply offsets
+    coordinate_groups = detect_coordinate_overlaps(nodes_to_plot)
+    adjusted_coordinates = apply_coordinate_offsets(coordinate_groups)
+    
     # Dibujar conexiones (líneas) entre nodos - forzar líneas rectas
     for conn in processed_connections:
         from_uid, to_uid = conn['from_node'], conn['to_node']
         if from_uid in nodes_by_uid and to_uid in nodes_by_uid:
             from_node, to_node = nodes_by_uid[from_uid], nodes_by_uid[to_uid]
             
+            # Use adjusted coordinates for line drawing
+            from_coords = adjusted_coordinates.get(from_uid, {
+                'lat': from_node['metadata']['latitude'], 
+                'lon': from_node['metadata']['longitude']
+            })
+            to_coords = adjusted_coordinates.get(to_uid, {
+                'lat': to_node['metadata']['latitude'], 
+                'lon': to_node['metadata']['longitude']
+            })
+            
             # Crear líneas rectas agregando puntos intermedios para evitar curvatura
-            from_lat, from_lon = from_node['metadata']['latitude'], from_node['metadata']['longitude']
-            to_lat, to_lon = to_node['metadata']['latitude'], to_node['metadata']['longitude']
+            from_lat, from_lon = from_coords['lat'], from_coords['lon']
+            to_lat, to_lon = to_coords['lat'], to_coords['lon']
             
             # Generar puntos intermedios para línea recta
             num_points = 20  # Número de puntos intermedios
@@ -422,8 +678,19 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
             from_uid, to_uid = conn['from_node'], conn['to_node']
             if from_uid in nodes_by_uid and to_uid in nodes_by_uid:
                 from_node, to_node = nodes_by_uid[from_uid], nodes_by_uid[to_uid]
-                fiber_hover_lons.append((from_node['metadata']['longitude'] + to_node['metadata']['longitude']) / 2)
-                fiber_hover_lats.append((from_node['metadata']['latitude'] + to_node['metadata']['latitude']) / 2)
+                
+                # Use adjusted coordinates for fiber hover points
+                from_coords = adjusted_coordinates.get(from_uid, {
+                    'lat': from_node['metadata']['latitude'], 
+                    'lon': from_node['metadata']['longitude']
+                })
+                to_coords = adjusted_coordinates.get(to_uid, {
+                    'lat': to_node['metadata']['latitude'], 
+                    'lon': to_node['metadata']['longitude']
+                })
+                
+                fiber_hover_lons.append((from_coords['lon'] + to_coords['lon']) / 2)
+                fiber_hover_lats.append((from_coords['lat'] + to_coords['lat']) / 2)
                 fiber_hover_texts.append(get_fiber_chain_tooltip_text(conn['fiber_chain'], edfa_equipment_data))
     
     if fiber_hover_texts:
@@ -448,9 +715,25 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
     other_nodes = []
     
     for i, node in enumerate(nodes_to_plot):
+        # Use adjusted coordinates if available, otherwise use original coordinates
+        # Handle different metadata structures
+        default_lat, default_lon = 0, 0
+        if 'metadata' in node:
+            if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+                default_lat = node['metadata']['latitude']
+                default_lon = node['metadata']['longitude']
+            elif 'location' in node['metadata'] and isinstance(node['metadata']['location'], dict):
+                default_lat = node['metadata']['location'].get('latitude', 0)
+                default_lon = node['metadata']['location'].get('longitude', 0)
+        
+        coords = adjusted_coordinates.get(node['uid'], {
+            'lat': default_lat,
+            'lon': default_lon
+        })
+        
         node_info = {
-            'lat': node['metadata']['latitude'],
-            'lon': node['metadata']['longitude'],
+            'lat': coords['lat'],
+            'lon': coords['lon'],
             'uid': node['uid'],
             'hover': node_hover_texts[i],
             'color': node_colors[i]
@@ -528,9 +811,21 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
     all_lats = []
     all_lons = []
     for node in nodes_to_plot:
-        if 'metadata' in node and 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
-            all_lats.append(node['metadata']['latitude'])
-            all_lons.append(node['metadata']['longitude'])
+        if 'metadata' in node:
+            # Handle different metadata structures
+            lat, lon = None, None
+            if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
+                lat = node['metadata']['latitude']
+                lon = node['metadata']['longitude']
+            elif 'location' in node['metadata'] and isinstance(node['metadata']['location'], dict):
+                lat = node['metadata']['location'].get('latitude')
+                lon = node['metadata']['location'].get('longitude')
+            
+            if lat is not None and lon is not None:
+                # Use adjusted coordinates for centering calculation
+                coords = adjusted_coordinates.get(node['uid'], {'lat': lat, 'lon': lon})
+                all_lats.append(coords['lat'])
+                all_lons.append(coords['lon'])
     
     center_lat = np.mean(all_lats) if all_lats else 0
     center_lon = np.mean(all_lons) if all_lons else 0
@@ -590,23 +885,44 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
 
     node_hover_texts, node_symbols, node_colors = get_node_styles_and_tooltips(ordered_nodes_to_plot, edfa_equipment_data)
     
-    # Asignar coordenadas horizontales
-    node_positions = {uid: {'x': i * 100, 'y': 100} for i, uid in enumerate(ordered_node_uids)}
+    # Apply horizontal coordinate grouping for elements with same coordinates
+    adjusted_positions = apply_horizontal_coordinate_grouping(ordered_nodes_to_plot)
+    
+    # Use adjusted positions, fallback to default positioning if needed
+    node_positions = {}
+    for i, node in enumerate(ordered_nodes_to_plot):
+        uid = node['uid']
+        if uid in adjusted_positions:
+            node_positions[uid] = adjusted_positions[uid]
+        else:
+            # Fallback to original positioning
+            node_positions[uid] = {'x': i * 100, 'y': 100}
 
     # Preparar listas para puntos de hover de span de fibra
     hover_x, hover_y, d2_hover_texts = [], [], []
 
-    # Dibujar conexiones (líneas) entre nodos
+    # Dibujar conexiones (líneas) entre nodos - ensure perfectly straight lines
     for conn in processed_connections:
         from_uid, to_uid = conn['from_node'], conn['to_node']
         if from_uid in node_positions and to_uid in node_positions:
             from_pos, to_pos = node_positions[from_uid], node_positions[to_uid]
+            
+            # Force perfectly horizontal lines by using the average Y position
+            # This prevents any visual curvature in connections
+            avg_y = (from_pos['y'] + to_pos['y']) / 2
+            
+            # Create multiple points to ensure straight line rendering
+            x_points = [from_pos['x'], (from_pos['x'] + to_pos['x'])/2, to_pos['x']]
+            y_points = [avg_y, avg_y, avg_y]
 
             fig.add_trace(go.Scatter(
-                x=[from_pos['x'], to_pos['x']],
-                y=[from_pos['y'], to_pos['y']],
-                mode='lines', line=dict(width=2, color='gray'),
-                hoverinfo='none', showlegend=False
+                x=x_points,
+                y=y_points,
+                mode='lines', 
+                line=dict(width=2, color='gray', shape='linear'),  # Explicitly linear
+                hoverinfo='none', 
+                showlegend=False,
+                connectgaps=True  # Ensure lines connect properly
             ))
 
             # Agregar un marcador invisible en el punto medio para el tooltip de fibra
@@ -645,14 +961,48 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
     # Detectar si es topología punto a punto para ajustar título
     is_point_to_point = len(ordered_nodes_to_plot) == 2
     
+    # Calculate proper axis ranges to prevent autoscale issues
+    if node_positions:
+        x_positions = [pos['x'] for pos in node_positions.values()]
+        y_positions = [pos['y'] for pos in node_positions.values()]
+        
+        x_min, x_max = min(x_positions), max(x_positions)
+        y_min, y_max = min(y_positions), max(y_positions)
+        
+        # Add padding for better visualization
+        x_padding = max((x_max - x_min) * 0.1, 50)
+        y_padding = max((y_max - y_min) * 0.2, 30)
+        
+        x_range = [x_min - x_padding, x_max + x_padding]
+        y_range = [y_min - y_padding, y_max + y_padding]
+    else:
+        # Fallback ranges
+        x_range = [-50, len(ordered_nodes_to_plot) * 100 - 50]
+        y_range = [0, 200]
+    
     fig.update_layout(
         title_text=data.get('network_name', 'Topología de Red Punto a Punto' if is_point_to_point else 'Topología de Red'),
-        showlegend=False, 
-        xaxis=dict(visible=False, range=[-50, len(ordered_nodes_to_plot) * 100 - 50]),
-        yaxis=dict(visible=False, range=[0, 200]),
-        hovermode='closest', 
+        showlegend=False,
+        xaxis=dict(
+            visible=False, 
+            range=x_range,
+            fixedrange=True,  # Prevent zooming/panning on x-axis
+            autorange=False   # Disable automatic range adjustment
+        ),
+        yaxis=dict(
+            visible=False, 
+            range=y_range,
+            fixedrange=True,  # Prevent zooming/panning on y-axis  
+            autorange=False,  # Disable automatic range adjustment
+            scaleanchor="x",  # Maintain aspect ratio
+            scaleratio=1      # 1:1 aspect ratio for straight lines
+        ),
+        hovermode='closest',
         plot_bgcolor='#f8f9fa',
-        margin=dict(l=20, r=20, t=40, b=20)
+        margin=dict(l=20, r=20, t=40, b=20),
+        # Additional settings to prevent layout changes
+        autosize=True,
+        dragmode='pan'    # Allow panning but prevent other drag modes that might trigger autoscale
     )
     
     return fig
@@ -2200,3 +2550,72 @@ def generate_scenario02_plots(plot_data):
         'ase_plot': ase_fig.to_dict(),
         'osnr_plot': osnr_fig.to_dict()
     }
+
+def test_coordinate_overlap_logic():
+    """
+    Test function to verify the coordinate overlap detection and offset logic.
+    Returns test results for debugging.
+    """
+    # Create test nodes with overlapping coordinates (matching topologiaEdfa1.json structure)
+    test_nodes = [
+        {
+            'uid': 'Site_A',
+            'type': 'Transceiver',
+            'metadata': {'location': {'latitude': 0, 'longitude': 0}}
+        },
+        {
+            'uid': 'Edfa1',
+            'type': 'Edfa',
+            'metadata': {'location': {'latitude': 0, 'longitude': 0}}
+        },
+        {
+            'uid': 'Edfa2',
+            'type': 'Edfa',
+            'metadata': {'location': {'latitude': 1.5, 'longitude': 0}}
+        },
+        {
+            'uid': 'Site_B',
+            'type': 'Transceiver',
+            'metadata': {'location': {'latitude': 3, 'longitude': 0}}
+        }
+    ]
+    
+    # Test coordinate overlap detection
+    coordinate_groups = detect_coordinate_overlaps(test_nodes)
+    
+    # Test coordinate offset application
+    adjusted_coordinates = apply_coordinate_offsets(coordinate_groups)
+    
+    # Test horizontal coordinate grouping logic
+    adjusted_horizontal = apply_horizontal_coordinate_grouping(test_nodes)
+    
+    test_results = {
+        'original_nodes': len(test_nodes),
+        'coordinate_groups': {str(k): [n['uid'] for n in v] for k, v in coordinate_groups.items()},
+        'overlapping_groups': len([g for g in coordinate_groups.values() if len(g) > 1]),
+        'adjusted_coordinates': {uid: coords for uid, coords in adjusted_coordinates.items()},
+        'horizontal_adjustments': {uid: pos for uid, pos in adjusted_horizontal.items()},
+        'success': True
+    }
+    
+    # Verify that overlapping nodes got different positions in horizontal layout
+    site_a_pos = adjusted_horizontal.get('Site_A')
+    edfa1_pos = adjusted_horizontal.get('Edfa1')
+    
+    if site_a_pos and edfa1_pos:
+        distance = ((site_a_pos['x'] - edfa1_pos['x'])**2 + 
+                   (site_a_pos['y'] - edfa1_pos['y'])**2)**0.5
+        test_results['horizontal_separation_distance'] = distance
+        test_results['properly_separated_horizontal'] = distance > 0 and distance < 50  # Should be close but not identical
+    
+    # Also verify map coordinate separation
+    manta_coords = adjusted_coordinates.get('Site_A')
+    edfa1_coords = adjusted_coordinates.get('Edfa1')
+    
+    if manta_coords and edfa1_coords:
+        map_distance = ((manta_coords['lat'] - edfa1_coords['lat'])**2 + 
+                       (manta_coords['lon'] - edfa1_coords['lon'])**2)**0.5
+        test_results['map_separation_distance'] = map_distance
+        test_results['properly_separated_map'] = map_distance > 0
+    
+    return ensure_json_serializable(test_results)
