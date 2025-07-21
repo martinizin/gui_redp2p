@@ -11,13 +11,13 @@ import re
 import io
 import contextlib
 
-# Gnpy imports for route calculation
+# Importaciones de Gnpy para el cálculo de rutas
 from gnpy.tools.json_io import load_equipment, load_network
 from gnpy.core.utils import lin2db
 from gnpy.core.elements import Transceiver, Roadm, Fiber, Edfa
 from gnpy.tools.worker_utils import designed_network, transmission_simulation
 
-# Cargar variables de entorno - specify explicit path for Docker compatibility
+# Cargar variables de entorno - especificar ruta explícita para compatibilidad con Docker
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(env_path)
 
@@ -37,7 +37,7 @@ else:
     print(f"Advertencia: Archivo de configuración de equipos no encontrado en {EQPT_CONFIG_FILE}")
 
 def format_scientific_notation(value):
-    """Format a number to match the exact notation used in the config file."""
+    """Formatear un número para coincidir con la notación exacta usada en el archivo de configuración."""
     if value == 191.3e12:
         return '191.3e12'
     elif value == 32e9:
@@ -47,7 +47,7 @@ def format_scientific_notation(value):
     elif value == 50e9:
         return '50e9'
     else:
-        # For other values, use a general scientific notation
+        # Para otros valores, usar notación científica general
         if value >= 1e12:
             return f"{value/1e12:.1f}e12"
         elif value >= 1e9:
@@ -59,24 +59,24 @@ def handle_scenario03():
     """Maneja la lógica para el escenario 3."""
     maps_api_key = os.getenv('MAPS_API_KEY')
     
-    # Debug: Check if .env file exists and API key is loaded
+    # Debug: Verificar si el archivo .env existe y la clave API está cargada
     env_file_path = os.path.join(os.path.dirname(__file__), '.env')
-    print(f"DEBUG: .env file path: {env_file_path}")
-    print(f"DEBUG: .env file exists: {os.path.exists(env_file_path)}")
-    print(f"DEBUG: API key loaded: {maps_api_key is not None}")
-    print(f"DEBUG: API key value: {maps_api_key[:10] if maps_api_key else 'None'}...")
+    print(f"DEBUG: ruta del archivo .env: {env_file_path}")
+    print(f"DEBUG: archivo .env existe: {os.path.exists(env_file_path)}")
+    print(f"DEBUG: clave API cargada: {maps_api_key is not None}")
+    print(f"DEBUG: valor de la clave API: {maps_api_key[:10] if maps_api_key else 'None'}...")
     
-    # Load equipment configuration to get SI parameters (matching notebook defaults)
+    # Cargar configuración de equipos para obtener parámetros SI (coincidiendo con los valores por defecto del notebook)
     eqpt_config = load_equipment_config()
     si_config = {}
     
-    # Extract SI configuration parameters
+    # Extraer parámetros de configuración SI
     if 'SI' in eqpt_config and len(eqpt_config['SI']) > 0:
-        si_data = eqpt_config['SI'][0]  # Use first SI configuration
+        si_data = eqpt_config['SI'][0]  # Usar primera configuración SI
         si_config = {
             'f_min': format_scientific_notation(si_data.get('f_min', 191.3e12)),
             'baud_rate': format_scientific_notation(si_data.get('baud_rate', 32e9)),
-            'f_max': format_scientific_notation(si_data.get('f_max', 196.1e12)),  # Matching notebook
+            'f_max': format_scientific_notation(si_data.get('f_max', 196.1e12)),  # Coincidiendo con el notebook
             'spacing': format_scientific_notation(si_data.get('spacing', 50e9)),
             'power_dbm': si_data.get('power_dbm', 2),
             'tx_power_dbm': si_data.get('tx_power_dbm', 0),
@@ -85,11 +85,11 @@ def handle_scenario03():
             'sys_margins': si_data.get('sys_margins', 2)
         }
     else:
-        # Fallback values matching notebook defaults exactly
+        # Valores de respaldo que coinciden exactamente con los valores por defecto del notebook
         si_config = {
             'f_min': '191.3e12',
             'baud_rate': '32e9',
-            'f_max': '196.1e12',  # Matching notebook
+            'f_max': '196.1e12',  # Coincidiendo con el notebook
             'spacing': '50e9',
             'power_dbm': 2,
             'tx_power_dbm': 0,
@@ -699,7 +699,7 @@ def calculate_routes():
                     if stderr_content:
                         console_messages.append(f"=== Ruta {i+1} - Errores Capturados ===\n{stderr_content}")
                     
-                    raise sim_error  # Re-raise para ser manejado por el except exterior
+                    raise sim_error  # Relanzar para ser manejado por el except exterior
                 receiver = path[-1]
                 
                 # Copiar métricas desde infos hacia el receiver

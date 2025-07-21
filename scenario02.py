@@ -6,65 +6,7 @@ from flask import jsonify, request
 from pathlib import Path
 import traceback
 
-"""
-SCENARIO02.PY - TOPOLOGY VISUALIZATION WITH OVERLAP HANDLING
-
-This module provides advanced topology visualization for network elements with built-in
-overlap detection and visual offset capabilities.
-
-NEW FEATURES (Element Overlap Handling):
-
-1. COORDINATE OVERLAP DETECTION:
-   - Detects when multiple elements share identical metadata coordinates
-   - Groups overlapping elements for processing
-   - Handles floating-point precision issues with coordinate tolerance
-
-2. VISUAL OFFSET STRATEGIES:
-   
-   For MAP VISUALIZATIONS:
-   - Applies small circular offsets around original coordinates
-   - First element stays at original position
-   - Subsequent elements get angular offsets (0.001 degree default)
-   - Maintains all connections and fiber tooltips
-   
-   For 2D CANVAS VISUALIZATIONS:
-   - Applies vertical offsets for elements at same horizontal position
-   - Maintains proper spacing and network topology representation
-   - Preserves element ordering and connections
-
-3. ENHANCED USER EXPERIENCE:
-   - Prevents element stacking that creates topology confusion
-   - Maintains tooltip and interaction functionality
-   - Preserves all existing visualization features
-   - Works automatically without user configuration
-
-4. BACKWARD COMPATIBILITY:
-   - All existing functions remain unchanged
-   - No impact on topologies without overlapping elements
-   - Seamless integration with current workflow
-
-Usage: The overlap handling is automatically applied in:
-- _create_map_plot() - for geographic visualizations (circular offsets)
-- _create_horizontal_plot() - for 2D network diagrams (coordinate grouping)
-- All create_topology_visualization functions
-
-ISSUE RESOLVED - Elements with Same "Non-Real" Metadata:
-Before: Site_A and Edfa1 with identical (0,0) coordinates were spread far apart horizontally,
-        creating the visual illusion of 3 fiber spans when only 2 existed.
-        WORSE: Elements appeared out of topology order (e.g., "Edfa1 Site_A" instead of "Site_A Edfa1").
-After:  Elements sharing coordinates are grouped together with small visual offsets,
-        RESPECTING the network topology flow order within each coordinate group,
-        clearly showing the true network structure: 2 fiber spans, not 3.
-
-Example overlapping scenarios resolved:
-- MAP VIEW: TX_Manta (lat: -0.9577, lon: -80.7130) -> Edfa_1 offset to (lat: -0.9587, lon: -80.7130)
-- 2D CANVAS TOPOLOGY ORDER: Site_A (x: -15) → Edfa1 (x: 15) → [gap] → Edfa2 (x: 160) → [gap] → Edfa3 → Site_B
-  ✅ Correct network flow maintained: Source first, destination last, intermediate elements in proper sequence
-  ✅ STRAIGHT CONNECTIONS: Forced horizontal line averaging prevents curved/angled connections
-  ✅ AUTOSCALE PROTECTION: Fixed axis ranges prevent layout disruption on autoscale button
-"""
-
-# Check if gnpy is available
+# Verificar si gnpy está disponible
 try:
     from gnpy.tools.json_io import load_equipment, load_network
     from gnpy.core.info import create_arbitrary_spectral_information
@@ -72,63 +14,62 @@ try:
     from gnpy.core.elements import Transceiver, Fiber, Edfa
     GNPY_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: gnpy not available - {e}")
+    print(f"Advertencia: gnpy no disponible - {e}")
     GNPY_AVAILABLE = False
     gnpy_dbm2watt_orig = None
     gnpy_watt2dbm_orig = None
     gnpy_lin2db_orig = None
 
-# Basic conversion functions (defined first so they can be used by wrapper functions)
+# Funciones básicas de conversión (definidas primero para que puedan ser usadas por funciones envolventes)
 def dbm2watt(dbm):
-    """Convert dBm to Watts"""
+    """Convertir dBm a Watts"""
     return 10 ** ((dbm - 30) / 10)
 
 def watt2dbm(watt):
-    """Convert Watts to dBm"""
+    """Convertir Watts a dBm"""
     if watt <= 0:
         return -float('inf')
     return 30 + 10 * np.log10(watt)
 
 def lin2db(lin):
-    """Convert linear to dB"""
+    """Convertir lineal a dB"""
     if np.isscalar(lin):
         if lin <= 0:
             return -float('inf')
         return 10 * np.log10(lin)
     else:
-        # Handle arrays
+        # Manejar arrays
         result = np.full_like(lin, -np.inf, dtype=float)
         mask = lin > 0
         result[mask] = 10 * np.log10(lin[mask])
         return result
 
-# Wrapper functions that use gnpy versions when available, fallback to local ones
+# Funciones envolventes que usan versiones de gnpy cuando están disponibles, recurren a las locales
 def gnpy_dbm2watt(dbm):
-    """Convert dBm to Watts using gnpy if available, otherwise local function"""
+    """Convertir dBm a Watts usando gnpy si está disponible, de lo contrario función local"""
     if GNPY_AVAILABLE and gnpy_dbm2watt_orig:
         return gnpy_dbm2watt_orig(dbm)
     return dbm2watt(dbm)
 
 def gnpy_watt2dbm(watt):
-    """Convert Watts to dBm using gnpy if available, otherwise local function"""
+    """Convertir Watts a dBm usando gnpy si está disponible, de lo contrario función local"""
     if GNPY_AVAILABLE and gnpy_watt2dbm_orig:
         return gnpy_watt2dbm_orig(watt)
     return watt2dbm(watt)
 
 def gnpy_lin2db(lin):
-    """Convert linear to dB using gnpy if available, otherwise local function"""
+    """Convertir lineal a dB usando gnpy si está disponible, de lo contrario función local"""
     if GNPY_AVAILABLE and gnpy_lin2db_orig:
         return gnpy_lin2db_orig(lin)
     return lin2db(lin)
 
-# 1) PARÁMETROS
+# PARÁMETROS
 f_min, f_max = 191.3e12, 195.1e12
 spacing = 50e9
 roll_off = 0.15
 tx_osnr = 40  # dB inicial, este valor es para los cálculos de gnpy de OSNR_bw
 baud_rate = 32e9
-B_n=12.5e9 #no sea modificable
-
+B_n=12.5e9 # No sea modificable
 
 # Cargar la configuración de equipos
 EQPT_CONFIG_PATH = 'data/eqpt_final.json'
@@ -140,24 +81,24 @@ if os.path.exists(EQPT_CONFIG_PATH):
             for edfa_spec in full_eqpt_config['Edfa']:
                 edfa_equipment_data[edfa_spec['type_variety']] = edfa_spec
 else:
-    print(f"Warning: Equipment configuration file not found at {EQPT_CONFIG_PATH}")
+    print(f"Advertencia: Archivo de configuración de equipos no encontrado en {EQPT_CONFIG_PATH}")
 
 # Calcular el número de canales antes de las entradas de usuario
 nch = int(np.floor((f_max - f_min) / spacing)) + 1
 
-# 2) Default parameters (can be overridden by web interface)
-sens = -25.0  # Default sensitivity in dBm
-P_tot_dbm_input = 15.0  # Default total power in dBm
+# Parámetros por defecto (pueden ser sobrescritos por la interfaz web)
+sens = -25.0  # Sensibilidad por defecto en dBm
+P_tot_dbm_input = 15.0  # Potencia total por defecto en dBm
 
 # Calcular la potencia por canal a partir de la potencia total ingresada
 tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch) # Potencia POR CANAL en dBm
 
-# 3) Helpers OSNR
+# Funciones auxiliares OSNR
 def get_avg_osnr_db(si):
     sig = np.array([np.sum(ch.power) for ch in si.carriers])
     noise = si.ase + si.nli # SUMA ASE y NLI para el ruido total
     
-    # Handle numpy array comparisons properly to avoid "ambiguous truth value" error
+    # Manejar comparaciones de arrays de numpy apropiadamente para evitar error de "valor de verdad ambiguo"
     mask = noise > 0
     osnr_linear = np.where(mask, sig / noise, np.inf)
     osnr_db = np.where(np.isfinite(osnr_linear), lin2db(osnr_linear), np.inf)
@@ -179,7 +120,7 @@ def classical_osnr_parallel(signal_power_dbm, ase_noise_dbm):
 
     return lin2db(signal_power_lin / ase_noise_lin)
 
-# =================== TOPOLOGY VISUALIZATION FUNCTIONS ===================
+# =================== FUNCIONES DE VISUALIZACIÓN DE TOPOLOGÍA ===================
 
 def get_element_tooltip_text(element, edfa_specs):
     """Genera una cadena HTML formateada para el tooltip de un elemento."""
@@ -195,11 +136,11 @@ def get_element_tooltip_text(element, edfa_specs):
     if element_type == 'Edfa':
         op = element.get('operational', {})
         spec = edfa_specs.get(type_variety, {})
-        tooltip_html += "<hr><b>Operational Params:</b><br>"
+        tooltip_html += "<hr><b>Parámetros Operacionales:</b><br>"
         tooltip_html += f"&nbsp;&nbsp;gain_target: {op.get('gain_target', 'N/A')} dB<br>"
         tooltip_html += f"&nbsp;&nbsp;tilt_target: {op.get('tilt_target', 'N/A')} dB<br>"
         tooltip_html += f"&nbsp;&nbsp;out_voa: {op.get('out_voa', 'N/A')} dB<br>"
-        tooltip_html += "<hr><b>Equipment Specs:</b><br>"
+        tooltip_html += "<hr><b>Especificaciones del Equipo:</b><br>"
         tooltip_html += f"&nbsp;&nbsp;gain_flatmax: {spec.get('gain_flatmax', 'N/A')} dB<br>"
         tooltip_html += f"&nbsp;&nbsp;gain_min: {spec.get('gain_min', 'N/A')} dB<br>"
         tooltip_html += f"&nbsp;&nbsp;p_max: {spec.get('p_max', 'N/A')} dBm<br>"
@@ -219,11 +160,9 @@ def get_fiber_chain_tooltip_text(fiber_chain, edfa_specs):
         return ""
     
     if len(fiber_chain) == 1:
-        # Fibra única, usar tooltip existente
         return get_element_tooltip_text(fiber_chain[0], edfa_specs)
     
-    # Múltiples fibras en cadena
-    tooltip_html = f"<b>Fiber Chain ({len(fiber_chain)} spans):</b><br>"
+    tooltip_html = f"<b>Cadena de Fibras ({len(fiber_chain)} tramos):</b><br>"
     total_length = 0
     
     for i, fiber in enumerate(fiber_chain, 1):
@@ -233,14 +172,14 @@ def get_fiber_chain_tooltip_text(fiber_chain, edfa_specs):
         loss_coef = params.get('loss_coef', 0.2)
         total_length += length
         
-        tooltip_html += f"<hr><b>Span {i}: {uid}</b><br>"
-        tooltip_html += f"&nbsp;&nbsp;length: {length} km<br>"
-        tooltip_html += f"&nbsp;&nbsp;loss_coef: {loss_coef} dB/km<br>"
-        tooltip_html += f"&nbsp;&nbsp;total_loss: {(length * loss_coef):.2f} dB<br>"
+        tooltip_html += f"<hr><b>Tramo {i}: {uid}</b><br>"
+        tooltip_html += f"&nbsp;&nbsp;longitud: {length} km<br>"
+        tooltip_html += f"&nbsp;&nbsp;coef_pérdida: {loss_coef} dB/km<br>"
+        tooltip_html += f"&nbsp;&nbsp;pérdida_total: {(length * loss_coef):.2f} dB<br>"
     
-        tooltip_html += f"<hr><b>Chain Summary:</b><br>"
-        tooltip_html += f"&nbsp;&nbsp;Total Length: {total_length} km<br>"
-        tooltip_html += f"&nbsp;&nbsp;Total Spans: {len(fiber_chain)}<br>"
+        tooltip_html += f"<hr><b>Resumen de Cadena:</b><br>"
+        tooltip_html += f"&nbsp;&nbsp;Longitud Total: {total_length} km<br>"
+        tooltip_html += f"&nbsp;&nbsp;Tramos Totales: {len(fiber_chain)}<br>"
         
     return tooltip_html
 
@@ -265,22 +204,21 @@ def get_node_styles_and_tooltips(nodes_to_plot, edfa_specs):
 
 def detect_coordinate_overlaps(nodes_to_plot, coordinate_tolerance=1e-6):
     """
-    Detect groups of nodes that share the same coordinates (within tolerance).
-    Returns a dictionary mapping coordinate tuples to lists of nodes.
-    Supports both metadata.latitude/longitude and metadata.location.latitude/longitude structures.
+    Detecta grupos de nodos que comparten las mismas coordenadas (dentro de la tolerancia).
+    Retorna un diccionario que mapea tuplas de coordenadas a listas de nodos.
+    Soporta tanto estructuras metadata.latitude/longitude como metadata.location.latitude/longitude.
     """
     coordinate_groups = {}
     
     for node in nodes_to_plot:
         if 'metadata' in node:
-            # Handle different metadata structures
             lat, lon = None, None
             
-            # Try metadata.latitude/longitude first (Escenario02Test1.json structure)
+            # Intentar primero metadata.latitude/longitude (estructura Escenario02Test1.json)
             if 'latitude' in node['metadata'] and 'longitude' in node['metadata']:
                 lat = node['metadata'].get('latitude')
                 lon = node['metadata'].get('longitude')
-            # Try metadata.location.latitude/longitude (topologiaEdfa1.json structure)
+            # Intentar metadata.location.latitude/longitude (estructura topologiaEdfa1.json)
             elif 'location' in node['metadata']:
                 location = node['metadata']['location']
                 if isinstance(location, dict):
@@ -288,7 +226,7 @@ def detect_coordinate_overlaps(nodes_to_plot, coordinate_tolerance=1e-6):
                     lon = location.get('longitude')
             
             if lat is not None and lon is not None:
-                # Round coordinates to handle floating point precision issues
+                # Redondear coordenadas para manejar problemas de precisión de punto flotante
                 coord_key = (round(float(lat) / coordinate_tolerance) * coordinate_tolerance,
                            round(float(lon) / coordinate_tolerance) * coordinate_tolerance)
                 
@@ -300,8 +238,8 @@ def detect_coordinate_overlaps(nodes_to_plot, coordinate_tolerance=1e-6):
 
 def apply_coordinate_offsets(coordinate_groups, offset_distance=0.001):
     """
-    Apply small offsets to nodes that share the same coordinates.
-    Returns a dictionary mapping node UIDs to their adjusted coordinates.
+    Aplica pequeños offsets para los nodos que comparten las mismas coordenadas.
+    Retorna un diccionario que mapea los UIDs de los nodos a sus coordenadas ajustadas.
     """
     adjusted_coordinates = {}
     
@@ -351,13 +289,13 @@ def apply_coordinate_offsets(coordinate_groups, offset_distance=0.001):
 
 def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, group_offset=13):
     """
-    Group nodes with the same coordinates together in horizontal layout.
-    This addresses the issue where elements sharing coordinates should be visually close together.
-    CRITICAL: Maintains topology order within each coordinate group.
+    Agrupa nodos con las mismas coordenadas juntos en el diseño horizontal.
+    Esto aborda el problema donde los elementos que comparten coordenadas deberían estar visualmente cerca juntos.
+    CRÍTICO: Mantiene el orden topológico dentro de cada grupo de coordenadas.
     """
     adjusted_positions = {}
     
-    # First, group nodes by their actual coordinates, preserving topology order
+    # Primero, agrupa nodos por sus coordenadas actuales, preservando el orden topológico
     coordinate_groups = {}
     coordinate_tolerance = 1e-6
     
@@ -367,7 +305,7 @@ def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, 
             lon = node['metadata']['location'].get('longitude', None)
             
             if lat is not None and lon is not None:
-                # Create coordinate key for grouping
+                # Crear clave de coordenadas para agrupar
                 coord_key = (
                     round(float(lat) / coordinate_tolerance) * coordinate_tolerance,
                     round(float(lon) / coordinate_tolerance) * coordinate_tolerance
@@ -377,23 +315,23 @@ def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, 
                     coordinate_groups[coord_key] = []
                 coordinate_groups[coord_key].append((node, i))
             else:
-                # Handle nodes without coordinates
+                # Manejo de nodos sin coordenadas
                 unique_key = f"no_coords_{i}"
                 coordinate_groups[unique_key] = [(node, i)]
         else:
-            # Handle nodes without metadata
+            # Manejo de nodos sin metadata
             unique_key = f"no_metadata_{i}"
             coordinate_groups[unique_key] = [(node, i)]
     
-    # Sort coordinate groups by the minimum original index to maintain topology flow
+    # Ordenar grupos de coordenadas por el índice original mínimo para mantener el flujo topológico
     sorted_groups = sorted(coordinate_groups.items(), key=lambda x: min(idx for _, idx in x[1]))
     
-    # Position groups horizontally
+    # Posiciona los grupos horizontalmente
     current_x = 0
     
     for coord_key, nodes_with_idx in sorted_groups:
-        # CRITICAL FIX: Sort nodes within each group by topology order (original index)
-        nodes_with_idx.sort(key=lambda x: x[1])  # Sort by original index
+        # Ordena nodos dentro de cada grupo por el orden topológico (índice original)
+        nodes_with_idx.sort(key=lambda x: x[1])  # ordena por el índice original
         
         group_center_x = current_x
         
@@ -405,7 +343,7 @@ def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, 
                 'y': 100
             }
         else:
-            # Multiple nodes with same coordinates - place them in topology order with small offsets
+            # Múltiples nodos con las mismas coordenadas - colócalos en el orden topológico con pequeños offsets
             group_width = group_offset * (len(nodes_with_idx) - 1)
             start_x = group_center_x - group_width / 2
             
@@ -519,7 +457,7 @@ def process_scenario02_data(file):
         
         def find_fiber_chain_end(start_fiber_uid, visited=None):
             """
-            Encontrar recursivamente el final de una cadena de fibras.
+            Encuentra recursivamente el final de una cadena de fibras.
             Devuelve (end_node_uid, fiber_chain) donde end_node_uid es un nodo real
             y fiber_chain es la lista de elementos de fibra en la cadena.
             """
@@ -1169,7 +1107,7 @@ def create_topology_visualization(topology_file_path):
         return {'error': f"Error al crear visualización: {e}"}
 
 def create_topology_visualization_from_data(data):
-    """Create topology visualization from data dict instead of file path."""
+    """Crea una visualización de topología a partir de un diccionario de datos."""
     try:
         elements = data.get('elements', [])
         connections = data.get('connections', [])
@@ -1374,7 +1312,7 @@ def enhance_elements_with_parameters(elements):
 
 def identify_source_destination_transceivers(elements):
     """
-    Identificar transceptores de origen y destino basado en topología de red.
+    Identifica transceptores de origen y destino basado en topología de red.
     Devuelve (source_uid, destination_uid)
     """
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
@@ -1416,21 +1354,21 @@ def identify_source_destination_transceivers(elements):
     return None, None
 
 def get_source_transceiver_defaults():
-    """Obtener parámetros por defecto para transceptores de origen (transmisores)."""
+    """Obtiene los parámetros por defecto para transceptores de origen (transmisores)."""
     return {
         'P_tot_dbm_input': {'value': 0, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia Total del Transmisor (P_tot_dbm_input) - Potencia total de salida del transmisor que será dividida entre todos los canales'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - OSNR inicial del transmisor usado para los cálculos'}
     }
 
 def get_destination_transceiver_defaults():
-    """Obtener parámetros por defecto para transceptores de destino (receptores)."""
+    """Obtiene los parámetros por defecto para transceptores de destino (receptores)."""
     return {
         'sens': {'value': 1, 'unit': 'dBm', 'editable': True, 'tooltip': 'Sensibilidad del Receptor - Nivel mínimo de potencia que el receptor puede detectar correctamente'},
         'osnr_req': {'value': 15.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR Requerido - Valor mínimo de OSNR necesario para el funcionamiento del circuito'}
     }
 
 def get_transceiver_defaults():
-    """Obtener parámetros por defecto para transceptores (función heredada para compatibilidad)."""
+    """Obtiene los parámetros por defecto para transceptores (función heredada para compatibilidad)."""
     return {
         'p_rb': {'value': -17.86, 'unit': 'dBm', 'editable': True, 'tooltip': 'Potencia de Señal Recibida - Modifique este valor para ajustar la potencia de señal'},
         'tx_osnr': {'value': 40.0, 'unit': 'dB', 'editable': True, 'tooltip': 'OSNR de Transmisión - Modifique el valor OSNR para optimizar la calidad de señal'},
@@ -1438,7 +1376,7 @@ def get_transceiver_defaults():
     }
 
 def get_fiber_defaults(existing_params):
-    """Obtener parámetros para elementos de fibra."""
+    """Obtiene los parámetros para elementos de fibra."""
     return {
         'loss_coef': {'value': existing_params.get('loss_coef', 0.2), 'unit': 'dB/km', 'editable': False, 'tooltip': 'Coeficiente de Pérdida de Fibra - El coeficiente que representa la tasa de pérdida de la fibra'},
         'length_km': {'value': existing_params.get('length', 80), 'unit': 'km', 'editable': False, 'tooltip': 'Longitud de Fibra (km) - La longitud total de la sección de fibra en kilómetros'},
@@ -1448,7 +1386,7 @@ def get_fiber_defaults(existing_params):
     }
 
 def get_edfa_defaults(edfa_config, operational):
-    """Obtener parámetros para elementos EDFA."""
+    """Obtiene los parámetros para elementos EDFA."""
     return {
         'gain_flatmax': {'value': edfa_config.get('gain_flatmax', 26), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Plana Máxima - La ganancia máxima alcanzada por el amplificador under condiciones planas'},
         'gain_min': {'value': edfa_config.get('gain_min', 15), 'unit': 'dB', 'editable': True, 'tooltip': 'Ganancia Mínima - La ganancia mínima alcanzable por el amplificador'},
@@ -1458,7 +1396,7 @@ def get_edfa_defaults(edfa_config, operational):
     }
 
 def find_edfa_config(type_variety):
-    """Encontrar configuración EDFA por type_variety."""
+    """Encuentra la configuración EDFA por type_variety."""
     config = edfa_equipment_data.get(type_variety, {})
     if not config:
         # Devolver valores por defecto si no se encuentra
@@ -1466,7 +1404,7 @@ def find_edfa_config(type_variety):
     return config
 
 def update_scenario02_parameters():
-    """Actualizar parámetros de red para elementos de scenario02."""
+    """Actualiza los parámetros de red para elementos de scenario02."""
     try:
         data = request.get_json()
         element_uid = data.get('element_uid')
@@ -1486,7 +1424,7 @@ def update_scenario02_parameters():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 def calculate_scenario02():
-    """Calcular red scenario02 basado en topología cargada y parámetros del usuario."""
+    """Calcula la red scenario02 basado en topología cargada y parámetros del usuario."""
     try:
         data = request.get_json()
         topology_data = data.get('topology_data', {})
@@ -1508,253 +1446,7 @@ def calculate_scenario02():
 
 # =================== FUNCIONES ACTUALIZADAS ===================
 
-def load_topology(topology_file_path, equipment_file_path="data/eqpt_final.json"):
-    """
-    Load network topology from JSON file and return network elements.
-    
-    Args:
-        topology_file_path (str): Path to the topology JSON file
-        equipment_file_path (str): Path to the equipment configuration file
-        
-    Returns:
-        dict: Dictionary containing network elements:
-            - 'network': The loaded network object
-            - 'transceivers': List of transceivers sorted by uid
-            - 'edfas': List of EDFAs sorted by uid
-            - 'fibers': List of fibers sorted by uid
-            - 'tx': First transceiver (transmitter)
-            - 'rx': Last transceiver (receiver)
-    """
-    if not GNPY_AVAILABLE:
-        raise ImportError("gnpy library is not available. Please install gnpy to load topologies.")
-        
-    try:
-        # Use full path for equipment file
-        if not os.path.isabs(equipment_file_path):
-            equipment_file_path = os.path.join(os.path.dirname(__file__), equipment_file_path)
-        
-        # Load equipment and network
-        equipment = load_equipment(Path(equipment_file_path))
-        network = load_network(Path(topology_file_path), equipment)
-        
-        # Extract and sort network elements
-        transceivers = sorted([n for n in network.nodes if isinstance(n, Transceiver)], key=lambda x: x.uid)
-        edfas = sorted([n for n in network.nodes if isinstance(n, Edfa)], key=lambda x: x.uid)
-        fibers = sorted([n for n in network.nodes if isinstance(n, Fiber)], key=lambda x: x.uid)
-        
-        # Validate topology
-        if len(transceivers) < 2:
-            raise ValueError(f"Topology must have at least 2 transceivers, found {len(transceivers)}")
-        
-        # Assign tx and rx (first and last transceivers)
-        tx = transceivers[0]
-        rx = transceivers[-1]
-        
-        return {
-            'network': network,
-            'transceivers': transceivers,
-            'edfas': edfas,
-            'fibers': fibers,
-            'tx': tx,
-            'rx': rx
-        }
-        
-    except Exception as e:
-        raise Exception(f"Error loading topology: {e}")
-
-def initialize_plot_data():
-    """Initialize plot data structure."""
-    return {
-        'distance': [],
-        'signal_power': [],
-        'ase_power': [], 
-        'osnr_bw': []
-    }
-
-def add_plot_point(plot_data, dist, si_current, osnr_val):
-    plot_data['distance'].append(dist)
-    plot_data['signal_power'].append(watt2dbm(sum(ch.power[0] for ch in si_current.carriers)))
-    # Sumamos la potencia de ruido ASE de todos los canales de GNPy
-    plot_data['ase_power'].append(watt2dbm(sum(si_current.ase)))
-    plot_data['osnr_bw'].append(osnr_val)
-
-def process_network_elements(si, edfas, fibers, tx, rx, nf_values, current_distance, plot_data):
-    """
-    Process network elements dynamically regardless of their number.
-    
-    Args:
-        si: Spectral information object
-        edfas: List of EDFA elements
-        fibers: List of fiber elements  
-        tx: Transmitter element
-        rx: Receiver element
-        nf_values: List of noise figures for EDFAs
-        current_distance: Current distance tracker
-        plot_data: Plot data dictionary
-    
-    Returns:
-        tuple: (final_si, final_distance, final_power_dbm, final_osnr_db, final_ase_lin)
-    """
-    if not GNPY_AVAILABLE:
-        raise ImportError("gnpy library is not available. Please install gnpy to process network elements.")
-    
-    # Constants
-    QUANTUM_NOISE_FLOOR_DBM = -58.0
-    
-    # Initialize tracking variables
-    current_total_ase_lin_for_parallel_calc = dbm2watt(-150.0)  # Very small, negligible value
-    
-    # Process transmitter (starting point)
-    p_tx = P_tot_dbm_input
-    o_tx = tx_osnr
-    add_plot_point(plot_data, current_distance, si, o_tx)
-    
-    # Process EDFAs and fibers in sequence
-    # Typically: EDFA -> Fiber -> EDFA -> Fiber -> ... -> EDFA
-    for i, edfa in enumerate(edfas):
-        # Process EDFA
-        si = edfa(si)
-        p_edfa = watt2dbm(sum(ch.power[0] for ch in si.carriers))
-        o_edfa = get_avg_osnr_db(si)
-        
-        # Calculate EDFA noise contribution
-        gain_db = edfa.operational.gain_target
-        if i < len(nf_values):
-            noise_factor_db = nf_values[i]
-        else:
-            # Default NF if not provided
-            noise_factor_db = 4.5
-        
-        p_ase_edfa_lin_manual = dbm2watt(QUANTUM_NOISE_FLOOR_DBM + noise_factor_db + gain_db)
-        current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
-        
-        add_plot_point(plot_data, current_distance, si, o_edfa)
-        
-        # Process corresponding fiber span (if exists)
-        if i < len(fibers):
-            fiber = fibers[i]
-            
-            # Store noise states before fiber
-            ase_before_fiber = si.ase.copy()
-            nli_before_fiber = si.nli.copy()
-            
-            # Set fiber input power
-            p_in_fiber = watt2dbm(sum(ch.power[0] for ch in si.carriers))
-            ase_in_fiber_lin_for_parallel_calc = current_total_ase_lin_for_parallel_calc
-            
-            fiber.ref_pch_in_dbm = p_in_fiber - 10 * np.log10(nch)
-            si = fiber(si)
-            
-            # Calculate fiber loss
-            loss_dB = fiber.params.loss_coef * fiber.params.length + fiber.params.con_in + fiber.params.con_out + fiber.params.att_in
-            loss_lin = 10**(-loss_dB / 10)
-            
-            # Apply loss to noise components
-            si.ase = ase_before_fiber * loss_lin
-            si.nli = nli_before_fiber * loss_lin
-            
-            # Update ASE tracking
-            current_total_ase_lin_for_parallel_calc = ase_in_fiber_lin_for_parallel_calc * loss_lin
-            
-            # Calculate fiber output
-            p_fiber = watt2dbm(sum(ch.power[0] for ch in si.carriers))
-            o_fiber = get_avg_osnr_db(si)
-            
-            # Update distance
-            current_distance += fiber.params.length / 1000
-            
-            add_plot_point(plot_data, current_distance, si, o_fiber)
-    
-    # Process receiver (final point)
-    si = rx(si)
-    p_rx = watt2dbm(sum(ch.power[0] for ch in si.carriers))
-    o_rx = get_avg_osnr_db(si)
-    
-    add_plot_point(plot_data, current_distance, si, o_rx)
-    
-    return si, current_distance, p_rx, o_rx, current_total_ase_lin_for_parallel_calc
-
-def create_plotly_figures(plot_data):
-    """Create Plotly figures from plot data."""
-    
-    # Plot 1 - Signal Power
-    fig1 = go.Figure()
-    fig1.add_trace(go.Scatter(
-        x=plot_data['distance'],
-        y=plot_data['signal_power'],
-        mode='lines+markers',
-        name='P_signal (dBm)',
-        line=dict(color='blue', width=2),
-        marker=dict(size=6)
-    ))
-    
-    fig1.update_layout(
-        title='Evolución de la Potencia de Señal a lo largo del enlace óptico',
-        xaxis_title='Distancia (km)',
-        yaxis_title='Potencia (dBm)',
-        width=800,
-        height=400,
-        showlegend=True,
-        grid=True
-    )
-    fig1.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    fig1.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    
-    # Plot 2 - ASE Power
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=plot_data['distance'],
-        y=plot_data['ase_power'],
-        mode='lines+markers',
-        name='P_ASE (dBm)',
-        line=dict(color='red', width=2),
-        marker=dict(size=6)
-    ))
-    
-    fig2.update_layout(
-        title='Evolución de la Potencia de Ruido ASE a lo largo del enlace óptico',
-        xaxis_title='Distancia (km)',
-        yaxis_title='Potencia (dBm)',
-        width=800,
-        height=400,
-        showlegend=True,
-        grid=True
-    )
-    fig2.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    fig2.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    
-    # Plot 3 - OSNR
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(
-        x=plot_data['distance'],
-        y=plot_data['osnr_bw'],
-        mode='lines+markers',
-        name='OSNR_bw (dB)',
-        line=dict(color='orange', width=2),
-        marker=dict(size=6)
-    ))
-    
-    fig3.update_layout(
-        title='Evolución de OSNR a lo largo del enlace óptico',
-        xaxis_title='Distancia (km)',
-        yaxis_title='OSNR (dB)',
-        width=800,
-        height=400,
-        showlegend=True,
-        grid=True
-    )
-    fig3.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    fig3.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-    
-    return {
-        'signal_power_plot': fig1,
-        'ase_power_plot': fig2,
-        'osnr_plot': fig3
-    }
-
-# =================== END MISSING CORE FUNCTIONS ===================
-
-# 4) SpectralInformation inicial (initialize as in escenario02)
+# SpectralInformation inicial
 freq = [f_min + spacing * i for i in range(nch)]
 signal = [dbm2watt(tx_power_dbm)] * nch # USAR LA POTENCIA POR CANAL CALCULADA
 delta = np.zeros(nch)
@@ -1785,7 +1477,7 @@ def db2lin(db):
 
 
 def ensure_json_serializable(obj):
-    """Convertir objetos numpy a tipos nativos de Python para serialización JSON"""
+    """Convierte los objetos numpy a tipos nativos de Python para serialización JSON"""
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     elif isinstance(obj, np.integer):
@@ -1803,7 +1495,7 @@ def ensure_json_serializable(obj):
 
 def create_spectral_information_for_calculation(nch, tx_power_dbm, tx_osnr, f_min, spacing, baud_rate, roll_off):
     """
-    Crear información espectral usando gnpy como en el notebook.
+    Crea información espectral usando gnpy como en el notebook.
     Esta función replica exactamente la lógica del notebook para crear el SpectralInformation inicial.
     """
     if not GNPY_AVAILABLE:
@@ -1834,7 +1526,7 @@ def create_spectral_information_for_calculation(nch, tx_power_dbm, tx_osnr, f_mi
 
 def get_avg_osnr_db_from_spectral_info(si):
     """
-    Calcular OSNR promedio exactamente como en el notebook usando SpectralInformation de gnpy.
+    Calcula el OSNR promedio exactamente como en el notebook usando SpectralInformation de gnpy.
     Esta función replica: get_avg_osnr_db(si) del notebook
     """
     if si is None or not GNPY_AVAILABLE:
@@ -1872,59 +1564,16 @@ def get_avg_osnr_db_from_spectral_info(si):
         print(f"  carriers count: {len(si.carriers)}")
         return float('inf')
 
-def get_avg_osnr_db_manual(signal_power_lin_per_channel, ase_noise_lin_per_channel, nli_noise_lin_per_channel=0.0):
-    """Manual OSNR calculation using individual parameters"""
-    total_noise_lin = ase_noise_lin_per_channel + nli_noise_lin_per_channel
-    if total_noise_lin <= 0:
-        return float('inf')
-    osnr_lin = signal_power_lin_per_channel / total_noise_lin
-    return lin2db(osnr_lin)
 
-def test_gnpy_integration():
-    """Función de prueba para verificar que la integración de gnpy funciona correctamente"""
-    try:
-        if not GNPY_AVAILABLE:
-            return ensure_json_serializable({'status': 'error', 'message': 'gnpy not available'})
-        
-        # Parámetros de prueba (como en el notebook)
-        f_min, f_max = 191.3e12, 195.1e12
-        spacing = 50e9
-        roll_off = 0.15
-        tx_osnr = 45
-        baud_rate = 32e9
-        P_tot_dbm_input = 50.0
-        
-        nch = int(np.floor((f_max - f_min) / spacing)) + 1
-        tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)
-        
-        # Crear información espectral de prueba
-        test_si = create_spectral_information_for_calculation(
-            nch, tx_power_dbm, tx_osnr, f_min, spacing, baud_rate, roll_off
-        )
-        
-        if test_si is None:
-            return ensure_json_serializable({'status': 'error', 'message': 'Could not create spectral information'})
-        
-        # Calcular OSNR usando el método de gnpy
-        osnr_bw = get_avg_osnr_db_from_spectral_info(test_si)
-        
-        return ensure_json_serializable({
-            'status': 'success', 
-            'message': f'gnpy integration working - OSNR_bw: {osnr_bw:.2f} dB',
-            'nch': int(nch),
-            'tx_power_dbm': float(tx_power_dbm),
-            'osnr_bw': float(osnr_bw)
-        })
-        
-    except Exception as e:
-        return ensure_json_serializable({'status': 'error', 'message': f'gnpy integration test failed: {str(e)}'})
+
+
 
 def validate_topology_requirements(elements, connections):
     """
-    Validar que la topología cumpla con los requisitos mínimos:
+    Valida que la topología cumpla con los requisitos mínimos:
     - Al menos 2 transceptores
     - Para topologías punto a punto (exactamente 2 transceivers): permite conexión directa
-    - Para topologías complejas (más de 2 transceivers): requiere al menos 1 EDFA y 1 span de Fibra
+    - Para topologías complejas (más de 2 transceivers): requiere al menos 1 EDFA y 1 tramo de fibra
     """
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     edfas = [e for e in elements if e.get('type') == 'Edfa']
@@ -1935,48 +1584,40 @@ def validate_topology_requirements(elements, connections):
         errors.append(f"Se requieren al menos 2 transceivers, encontrados: {len(transceivers)}")
         return errors
     
-    # Verificar si es topología punto a punto (exactamente 2 transceivers)
     is_point_to_point = len(transceivers) == 2
     
     if is_point_to_point:
-        # Para punto a punto, permitir conexión directa o con elementos intermedios
-        # No requerir obligatoriamente EDFAs o Fibras
-        pass
+        pass  # Para punto a punto, permitir conexión directa o con elementos intermedios
     else:
         # Para topologías complejas, mantener requisitos originales
         if len(edfas) < 1:
             errors.append(f"Para topologías complejas se requiere al menos 1 EDFA, encontrados: {len(edfas)}")
         if len(fibers) < 1:
-            errors.append(f"Para topologías complejas se requiere al menos 1 span de fibra, encontrados: {len(fibers)}")
+            errors.append(f"Para topologías complejas se requiere al menos 1 tramo de fibra, encontrados: {len(fibers)}")
     
     return errors
 
 def order_elements_by_topology(elements, connections):
     """
-    Ordenar elementos de red basado en las conexiones de topología reales.
+    Ordena los elementos de red basado en las conexiones de topología reales.
     Devuelve lista ordenada de elementos desde origen hasta destino.
     """
-    # Validar requisitos mínimos
     validation_errors = validate_topology_requirements(elements, connections)
     if validation_errors:
         raise ValueError("Topología no válida: " + "; ".join(validation_errors))
     
-    # Construir grafo de topología
     graph, elements_by_uid = build_topology_graph(elements, connections)
     
-    # Identificar transceptores de origen y destino
     transceivers = [e for e in elements if e.get('type') == 'Transceiver']
     source_transceiver = None
     destination_transceiver = None
     
-    # Encontrar transceptores con roles
     for t in transceivers:
         if t.get('role') == 'source':
             source_transceiver = t
         elif t.get('role') == 'destination':
             destination_transceiver = t
     
-    # Identificación de respaldo si los roles no están establecidos
     if not source_transceiver or not destination_transceiver:
         source_uid, dest_uid = identify_source_destination_transceivers(elements)
         source_transceiver = elements_by_uid.get(source_uid)
@@ -1985,13 +1626,11 @@ def order_elements_by_topology(elements, connections):
     if not source_transceiver or not destination_transceiver:
         raise ValueError("No se pudieron identificar los transceivers de origen y destino")
     
-    # Encontrar ruta a través de la red
     path = find_network_path(graph, source_transceiver['uid'], destination_transceiver['uid'])
     
     if not path:
         raise ValueError(f"No se encontró una ruta válida entre {source_transceiver['uid']} y {destination_transceiver['uid']}")
     
-    # Convertir ruta a elementos ordenados
     ordered_elements = []
     for uid in path:
         if uid in elements_by_uid:
@@ -2001,17 +1640,15 @@ def order_elements_by_topology(elements, connections):
 
 def calculate_scenario02_network(params):
     """
-    Función de cálculo principal basada en la lógica del notebook usando gnpy's object-oriented approach.
+    Función de cálculo principal basada en la lógica del notebook usando el enfoque orientado a objetos de gnpy.
     """
     try:
-        # Verificar disponibilidad de gnpy
         if not GNPY_AVAILABLE:
-            return {'success': False, 'error': 'gnpy library is not available. Please install gnpy to perform calculations.'}
+            return {'success': False, 'error': 'La librería gnpy no está disponible. Instale gnpy para realizar cálculos.'}
         
-        # Extraer parámetros
         topology_data = params.get('topology_data', {})
         
-        # Valores por defecto del notebook - coincidiendo exactamente
+        # Valores por defecto del notebook
         f_min, f_max = 191.3e12, 195.1e12
         spacing = 50e9
         roll_off = 0.15
@@ -2019,30 +1656,25 @@ def calculate_scenario02_network(params):
         B_n = 12.5e9  # Ancho de banda de referencia
         QUANTUM_NOISE_FLOOR_DBM = -58.0
         
-        # Obtener topología de red
         elements = topology_data.get('elements', [])
         connections = topology_data.get('connections', [])
         
-        # Ordenar elementos siguiendo las conexiones de topología reales
         try:
             ordered_elements, source_transceiver, destination_transceiver = order_elements_by_topology(elements, connections)
         except ValueError as e:
             return {'success': False, 'error': str(e)}
 
-        # Extraer parámetros del diccionario 'parameters' de los transceptores identificados
         source_params = source_transceiver.get('parameters', {})
         dest_params = destination_transceiver.get('parameters', {})
 
-        tx_osnr = source_params.get('tx_osnr', {}).get('value', 40.0)  # Usar 40 como en el notebook
-        P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 1.0)  # Usar 1.0 como en el notebook
-        sens = dest_params.get('sens', {}).get('value', 0.0)  # Usar 0.0 como en el notebook
-        osnr_req = dest_params.get('osnr_req', {}).get('value', 15.0)  # Nuevo parámetro OSNR requerido
+        tx_osnr = source_params.get('tx_osnr', {}).get('value', 40.0)
+        P_tot_dbm_input = source_params.get('P_tot_dbm_input', {}).get('value', 1.0)
+        sens = dest_params.get('sens', {}).get('value', 0.0)
+        osnr_req = dest_params.get('osnr_req', {}).get('value', 15.0)
         
-        # Calcular número de canales y potencia por canal (exactamente como en notebook)
         nch = int(np.floor((f_max - f_min) / spacing)) + 1
         tx_power_dbm = P_tot_dbm_input - 10 * np.log10(nch)  # Potencia por canal
         
-        # Crear información espectral inicial (exactamente como en notebook)
         freq = [f_min + spacing * i for i in range(nch)]
         signal = [gnpy_dbm2watt(tx_power_dbm)] * nch
         delta = np.zeros(nch)
@@ -2057,12 +1689,10 @@ def calculate_scenario02_network(params):
         si.signal = si.signal.astype(np.float64)
         si.nli = si.nli.astype(np.float64)
         
-        # Forzar ASE inicial para OSNR Tx exacto (como en notebook)
         lin_osnr0 = 10**(tx_osnr / 10)
         si.ase = np.array([np.sum(ch.power) / lin_osnr0 for ch in si.carriers], dtype=np.float64)
 
-        # Cargar red y equipo usando gnpy (como en notebook)
-        # First, clean the topology data to remove UI-specific fields that gnpy doesn't expect
+        # Limpiar datos de topología para gnpy
         cleaned_elements = []
         for element in elements:
             cleaned_element = {
@@ -2071,69 +1701,58 @@ def calculate_scenario02_network(params):
                 'type_variety': element.get('type_variety', 'default')
             }
             
-            # Add operational parameters for EDFAs
             if element.get('type') == 'Edfa' and 'operational' in element:
                 cleaned_element['operational'] = element['operational']
             
-            # Add params for Fibers
             if element.get('type') == 'Fiber' and 'params' in element:
                 cleaned_element['params'] = element['params']
             
-            # Add metadata if present
             if 'metadata' in element:
                 cleaned_element['metadata'] = element['metadata']
             
             cleaned_elements.append(cleaned_element)
         
-        # Create clean topology structure
         temp_topology = {
             'elements': cleaned_elements,
             'connections': connections
         }
         
-        # Write temporary topology file to uploads directory (for Docker compatibility)
         import os
         uploads_dir = '/app/uploads' if os.path.exists('/app/uploads') else '.'
         temp_topology_path = os.path.join(uploads_dir, 'temp_topology.json')
         with open(temp_topology_path, 'w') as f:
             json.dump(temp_topology, f, indent=2)
         
-        # Load network using gnpy
         equipment = load_equipment(Path("data/eqpt_final.json"))
         network = load_network(Path(temp_topology_path), equipment)
         
-        # Extract network elements (como en notebook)
         transceivers = sorted([n for n in network.nodes if isinstance(n, Transceiver)], key=lambda x: x.uid)
         edfas = sorted([n for n in network.nodes if isinstance(n, Edfa)], key=lambda x: x.uid)
         fibers = sorted([n for n in network.nodes if isinstance(n, Fiber)], key=lambda x: x.uid)
         
         if len(transceivers) < 2:
-            return {'success': False, 'error': 'Topology must have at least 2 transceivers'}
+            return {'success': False, 'error': 'La topología debe tener al menos 2 transceivers'}
         
-        tx = transceivers[0]  # Source transceiver
-        rx = transceivers[-1]  # Destination transceiver
+        tx = transceivers[0]  # Transceptor fuente
+        rx = transceivers[-1]  # Transceptor destino
         
-        # Aplicar NF values de parámetros de usuario a los EDFAs
+        # Aplicar valores NF de parámetros de usuario a los EDFAs
         for edfa in edfas:
-            # Buscar el EDFA correspondiente en los elementos ordenados
             for element in ordered_elements:
                 if element.get('uid') == edfa.uid and element.get('type') == 'Edfa':
                     nf_value = element.get('parameters', {}).get('nf0', {}).get('value', 6.0)
-                    # Actualizar el NF en el objeto gnpy
                     try:
                         if hasattr(edfa, 'params'):
                             edfa.params.nf_db = nf_value
                         elif hasattr(edfa, 'nf_db'):
                             edfa.nf_db = nf_value
                     except Exception as e:
-                        print(f"Warning: Could not update NF for {edfa.uid}: {e}")
+                        print(f"Advertencia: No se pudo actualizar NF para {edfa.uid}: {e}")
                     break
         
-        # Inicializar variables para seguimiento
         current_distance = 0.0
-        current_total_ase_lin_for_parallel_calc = gnpy_dbm2watt(-150.0)  # Valor inicial muy pequeño
+        current_total_ase_lin_for_parallel_calc = gnpy_dbm2watt(-150.0)
         
-        # Almacenamiento de resultados
         results = {
             'stages': [],
             'plot_data': {
@@ -2148,21 +1767,15 @@ def calculate_scenario02_network(params):
         
         def add_stage_result(name, distance, power_dbm, osnr_bw, osnr_01nm, osnr_parallel):
             """Agregar resultado de una etapa a los resultados"""
-            # Calculate power per channel as in the notebook: pch_dbm = p_dbm - 10 * np.log10(nch)
             power_per_channel_dbm = power_dbm - 10 * np.log10(nch)
-            
-            # Format power per channel with special handling for -0.00 as in notebook
             power_per_channel_str = f"{power_per_channel_dbm:.2f}" if power_per_channel_dbm != -0.00 else " 0.00"
             
-            # Format OSNR_bw with special handling for specific values as in notebook
             osnr_bw_formatted = f"{osnr_bw:.2f}"
             if name in ("Edfa3", "Site_B") and abs(osnr_bw - 13.00) < 0.01:
                 osnr_bw_formatted = "13.00"
             
-            # Only show classic OSNR for Site_B (receiver) as in notebook
             osnr_parallel_str = ''
             if name == rx.uid and osnr_parallel != '':
-                # Properly handle the type checking and infinity check
                 if isinstance(osnr_parallel, str):
                     parallel_val = float(osnr_parallel)
                 else:
@@ -2176,23 +1789,22 @@ def calculate_scenario02_network(params):
             results['stages'].append({
                 'name': str(name),
                 'distance': float(distance),
-                'power_dbm': float(power_dbm),  # Keep total power for internal calculations
-                'power_per_channel_dbm': float(power_per_channel_dbm),  # Add per channel power
-                'power_per_channel_str': power_per_channel_str,  # Formatted string for display
-                'osnr_bw': osnr_bw_formatted,  # Use formatted string
-                'osnr_01nm': format_osnr(float(osnr_01nm)),  # OSNR@0.1nm
-                'osnr_parallel': osnr_parallel_str  # Classic OSNR only for receiver
+                'power_dbm': float(power_dbm),
+                'power_per_channel_dbm': float(power_per_channel_dbm),
+                'power_per_channel_str': power_per_channel_str,
+                'osnr_bw': osnr_bw_formatted,
+                'osnr_01nm': format_osnr(float(osnr_01nm)),
+                'osnr_parallel': osnr_parallel_str
             })
             
-            # Agregar a plot data
             results['plot_data']['distance'].append(float(distance))
             results['plot_data']['signal_power'].append(float(power_dbm))
             results['plot_data']['ase_power'].append(float(gnpy_watt2dbm(sum(si.ase))))
             results['plot_data']['osnr_bw'].append(float(osnr_bw) if not np.isinf(osnr_bw) else 60.0)
         
-        # Procesar elementos siguiendo exactamente la secuencia del notebook
+        # Procesar elementos siguiendo la secuencia del notebook
         
-        # Site_A (transmisor inicial)
+        # Transmisor inicial
         p0 = P_tot_dbm_input
         o0 = tx_osnr
         osnr_01nm_initial = o0 + 10 * np.log10(baud_rate / B_n)
@@ -2200,17 +1812,14 @@ def calculate_scenario02_network(params):
         
         add_stage_result(tx.uid, current_distance, p0, o0, osnr_01nm_initial, osnr_parallel_initial)
         
-        # Procesar EDFAs y Fibers en secuencia
+        # Procesar EDFAs y fibras en secuencia
         for edfa in edfas:
-            # EDFA processing (como en notebook: si = edfa1(si))
             si = edfa(si)
             p_edfa = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
             o_edfa = get_avg_osnr_db(si)
             
-            # Cálculo manual de ASE para OSNR paralelo (como en notebook)
             gain_db = edfa.operational.gain_target
-            # Buscar NF del parámetro de usuario
-            nf_db = 6.0  # Default
+            nf_db = 6.0  # Valor por defecto
             for element in ordered_elements:
                 if element.get('uid') == edfa.uid and element.get('type') == 'Edfa':
                     nf_db = element.get('parameters', {}).get('nf0', {}).get('value', 6.0)
@@ -2224,38 +1833,29 @@ def calculate_scenario02_network(params):
             
             add_stage_result(edfa.uid, current_distance, p_edfa, o_edfa, osnr_01nm_edfa, osnr_parallel_edfa)
             
-            # Procesar fiber span si existe después de este EDFA
+            # Procesar tramo de fibra si existe después de este EDFA
             if len(fibers) > 0:
-                # Encontrar la fibra correspondiente
                 fiber_index = edfas.index(edfa)
                 if fiber_index < len(fibers):
                     fiber = fibers[fiber_index]
                     
-                    # Guardar ASE y NLI antes del span (como en notebook)
                     ase_before_span = si.ase.copy()
                     nli_before_span = si.nli.copy()
                     
-                    # Configurar ref_pch_in_dbm para la fibra
                     p_in_span = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
                     fiber.ref_pch_in_dbm = p_in_span - 10 * np.log10(nch)
                     
-                    # Procesar fibra (como en notebook: si = span1(si))
                     si = fiber(si)
                     
-                    # Calcular pérdida y aplicar a ASE/NLI (como en notebook)
                     loss_db = fiber.params.loss_coef * fiber.params.length + fiber.params.con_in + fiber.params.con_out + fiber.params.att_in
                     loss_lin = 10**(-loss_db / 10)
                     
                     si.ase = ase_before_span * loss_lin
                     si.nli = nli_before_span * loss_lin
                     
-                    # Actualizar seguimiento de ASE paralelo
                     current_total_ase_lin_for_parallel_calc *= loss_lin
-                    
-                    # Actualizar distancia
                     current_distance += fiber.params.length / 1000
                     
-                    # Calcular OSNR después del span
                     p_span = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
                     o_span = get_avg_osnr_db(si)
                     
@@ -2264,13 +1864,12 @@ def calculate_scenario02_network(params):
                     
                     add_stage_result(fiber.uid, current_distance, p_span, o_span, osnr_01nm_span, osnr_parallel_span)
         
-        # Receptor final (como en notebook: si = rx(si))
+        # Receptor final
         si = rx(si)
         p_rb = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
         o_final = get_avg_osnr_db(si)
         
         osnr_01nm_final = o_final + 10 * np.log10(baud_rate / B_n)
-        # 💡 Aquí se usa potencia por canal (como en el notebook)
         p_rb_per_channel = p_rb - 10 * np.log10(nch)
         osnr_parallel_final = classical_osnr_parallel(p_rb_per_channel, gnpy_watt2dbm(current_total_ase_lin_for_parallel_calc))
         
@@ -2589,71 +2188,3 @@ def generate_scenario02_plots(plot_data):
         'osnr_plot': osnr_fig.to_dict()
     }
 
-def test_coordinate_overlap_logic():
-    """
-    Test function to verify the coordinate overlap detection and offset logic.
-    Returns test results for debugging.
-    """
-    # Create test nodes with overlapping coordinates (matching topologiaEdfa1.json structure)
-    test_nodes = [
-        {
-            'uid': 'Site_A',
-            'type': 'Transceiver',
-            'metadata': {'location': {'latitude': 0, 'longitude': 0}}
-        },
-        {
-            'uid': 'Edfa1',
-            'type': 'Edfa',
-            'metadata': {'location': {'latitude': 0, 'longitude': 0}}
-        },
-        {
-            'uid': 'Edfa2',
-            'type': 'Edfa',
-            'metadata': {'location': {'latitude': 1.5, 'longitude': 0}}
-        },
-        {
-            'uid': 'Site_B',
-            'type': 'Transceiver',
-            'metadata': {'location': {'latitude': 3, 'longitude': 0}}
-        }
-    ]
-    
-    # Test coordinate overlap detection
-    coordinate_groups = detect_coordinate_overlaps(test_nodes)
-    
-    # Test coordinate offset application
-    adjusted_coordinates = apply_coordinate_offsets(coordinate_groups)
-    
-    # Test horizontal coordinate grouping logic
-    adjusted_horizontal = apply_horizontal_coordinate_grouping(test_nodes)
-    
-    test_results = {
-        'original_nodes': len(test_nodes),
-        'coordinate_groups': {str(k): [n['uid'] for n in v] for k, v in coordinate_groups.items()},
-        'overlapping_groups': len([g for g in coordinate_groups.values() if len(g) > 1]),
-        'adjusted_coordinates': {uid: coords for uid, coords in adjusted_coordinates.items()},
-        'horizontal_adjustments': {uid: pos for uid, pos in adjusted_horizontal.items()},
-        'success': True
-    }
-    
-    # Verify that overlapping nodes got different positions in horizontal layout
-    site_a_pos = adjusted_horizontal.get('Site_A')
-    edfa1_pos = adjusted_horizontal.get('Edfa1')
-    
-    if site_a_pos and edfa1_pos:
-        distance = ((site_a_pos['x'] - edfa1_pos['x'])**2 + 
-                   (site_a_pos['y'] - edfa1_pos['y'])**2)**0.5
-        test_results['horizontal_separation_distance'] = distance
-        test_results['properly_separated_horizontal'] = distance > 0 and distance < 50  # Should be close but not identical
-    
-    # Also verify map coordinate separation
-    manta_coords = adjusted_coordinates.get('Site_A')
-    edfa1_coords = adjusted_coordinates.get('Edfa1')
-    
-    if manta_coords and edfa1_coords:
-        map_distance = ((manta_coords['lat'] - edfa1_coords['lat'])**2 + 
-                       (manta_coords['lon'] - edfa1_coords['lon'])**2)**0.5
-        test_results['map_separation_distance'] = map_distance
-        test_results['properly_separated_map'] = map_distance > 0
-    
-    return ensure_json_serializable(test_results)
