@@ -349,7 +349,7 @@ def apply_coordinate_offsets(coordinate_groups, offset_distance=0.001):
     
     return adjusted_coordinates
 
-def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, group_offset=30):
+def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, group_offset=13):
     """
     Group nodes with the same coordinates together in horizontal layout.
     This addresses the issue where elements sharing coordinates should be visually close together.
@@ -760,7 +760,7 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
                 color=[t['color'] for t in transceivers],
                 symbol='circle'  # Círculo para transceivers
             ),
-            textposition='bottom right',
+            textposition='top right',
             textfont=dict(size=12, color='black'),
             showlegend=False,
             name="Transceivers"
@@ -942,21 +942,59 @@ def _create_horizontal_plot(nodes_to_plot, processed_connections, data):
         ))
 
     # Agregación de los marcadores y etiquetas de nodos principales de la red
-    node_x = [node_positions[el['uid']]['x'] for el in ordered_nodes_to_plot]
-    node_y = [node_positions[el['uid']]['y'] for el in ordered_nodes_to_plot]
-    node_text_on_graph = [el['uid'] for el in ordered_nodes_to_plot]
-
-    fig.add_trace(go.Scatter(
-        x=node_x, y=node_y, 
-        text=node_text_on_graph, 
-        hovertext=node_hover_texts,
-        hovertemplate='%{hovertext}<extra></extra>', 
-        mode='markers+text',
-        textposition='bottom center',
-        marker=dict(size=20, color=node_colors, symbol=node_symbols),
-        textfont=dict(size=11), 
-        showlegend=False
-    ))
+    # Separar transceivers de otros elementos para diferentes posiciones de texto
+    transceiver_indices = []
+    other_indices = []
+    
+    for i, el in enumerate(ordered_nodes_to_plot):
+        if el.get('type') == 'Transceiver':
+            transceiver_indices.append(i)
+        else:
+            other_indices.append(i)
+    
+    # Agregar transceivers con etiquetas arriba
+    if transceiver_indices:
+        tx_x = [node_positions[ordered_nodes_to_plot[i]['uid']]['x'] for i in transceiver_indices]
+        tx_y = [node_positions[ordered_nodes_to_plot[i]['uid']]['y'] for i in transceiver_indices]
+        tx_text = [ordered_nodes_to_plot[i]['uid'] for i in transceiver_indices]
+        tx_hover = [node_hover_texts[i] for i in transceiver_indices]
+        tx_colors = [node_colors[i] for i in transceiver_indices]
+        tx_symbols = [node_symbols[i] for i in transceiver_indices]
+        
+        fig.add_trace(go.Scatter(
+            x=tx_x, y=tx_y,
+            text=tx_text,
+            hovertext=tx_hover,
+            hovertemplate='%{hovertext}<extra></extra>',
+            mode='markers+text',
+            textposition='top center',
+            marker=dict(size=20, color=tx_colors, symbol=tx_symbols),
+            textfont=dict(size=11),
+            showlegend=False,
+            name="Transceivers"
+        ))
+    
+    # Agregar otros elementos con etiquetas abajo
+    if other_indices:
+        other_x = [node_positions[ordered_nodes_to_plot[i]['uid']]['x'] for i in other_indices]
+        other_y = [node_positions[ordered_nodes_to_plot[i]['uid']]['y'] for i in other_indices]
+        other_text = [ordered_nodes_to_plot[i]['uid'] for i in other_indices]
+        other_hover = [node_hover_texts[i] for i in other_indices]
+        other_colors = [node_colors[i] for i in other_indices]
+        other_symbols = [node_symbols[i] for i in other_indices]
+        
+        fig.add_trace(go.Scatter(
+            x=other_x, y=other_y,
+            text=other_text,
+            hovertext=other_hover,
+            hovertemplate='%{hovertext}<extra></extra>',
+            mode='markers+text',
+            textposition='bottom center',
+            marker=dict(size=20, color=other_colors, symbol=other_symbols),
+            textfont=dict(size=11),
+            showlegend=False,
+            name="Other Elements"
+        ))
     
     # Detectar si es topología punto a punto para ajustar título
     is_point_to_point = len(ordered_nodes_to_plot) == 2

@@ -101,7 +101,7 @@
         },
         "metadata": {
           "location": {
-            "latitude": 3,
+            "latitude": 4,
             "longitude": 0,
             "city": null,
             "region": ""
@@ -113,7 +113,7 @@
         "type": "Transceiver",
         "metadata": {
           "location": {
-            "latitude": 3,
+            "latitude": 4,
             "longitude": 0,
             "city": "Site B",
             "region": ""
