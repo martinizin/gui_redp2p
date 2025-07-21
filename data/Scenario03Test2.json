@@ -1,0 +1,888 @@
+{
+    "elements": [
+      {
+        "uid": "trx_Quito",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Quito",
+            "region": "Ecuador",
+            "latitude": -0.1807,
+            "longitude": -78.4678
+          }
+        }
+      },
+      {
+        "uid": "trx_Guayaquil",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Guayaquil",
+            "region": "Ecuador",
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "trx_Cuenca",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Cuenca",
+            "region": "Ecuador",
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "trx_Manta",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Manta",
+            "region": "Ecuador",
+            "latitude": -0.94937,
+            "longitude": -80.7313
+          }
+        }
+      },
+      {
+        "uid": "trx_Ambato",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Ambato",
+            "region": "Ecuador",
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "trx_Loja",
+        "type": "Transceiver",
+        "metadata": {
+          "location": {
+            "city": "Loja",
+            "region": "Ecuador",
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "roadm_Quito",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Quito",
+            "region": "Ecuador",
+            "latitude": -0.1807,
+            "longitude": -78.4678
+          }
+        }
+      },
+      {
+        "uid": "roadm_Guayaquil",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Guayaquil",
+            "region": "Ecuador",
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "roadm_Cuenca",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Cuenca",
+            "region": "Ecuador",
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "roadm_Manta",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Manta",
+            "region": "Ecuador",
+            "latitude": -0.94937,
+            "longitude": -80.7313
+          }
+        }
+      },
+      {
+        "uid": "roadm_Ambato",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Ambato",
+            "region": "Ecuador",
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "roadm_Loja",
+        "type": "Roadm",
+        "params": {
+          "target_pch_out_db": -20,
+          "restrictions": {
+            "preamp_variety_list": [],
+            "booster_variety_list": []
+          }
+        },
+        "metadata": {
+          "location": {
+            "city": "Loja",
+            "region": "Ecuador",
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Quito_to_fiber_Quito_Edfa1",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -0.1807,
+            "longitude": -78.4678
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Quito_from_fiber_Edfa1_Quito",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -0.1807,
+            "longitude": -78.4678
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Edfa1",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Guayaquil_from_fiber_Edfa1_Guayaquil",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Cuenca",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Guayaquil_from_fiber_Cuenca_Guayaquil",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.17,
+            "longitude": -79.9221
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Guayaquil",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Cuenca_from_fiber_Guayaquil_Cuenca",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Ambato",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Cuenca_from_fiber_Ambato_Cuenca",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -2.9006,
+            "longitude": -79.004
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Cuenca",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Ambato_from_fiber_Cuenca_Ambato",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Loja",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Ambato_from_fiber_Loja_Ambato",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.2587,
+            "longitude": -78.6354
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Loja_to_fiber_Loja_Ambato",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Loja_from_fiber_Ambato_Loja",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Loja_to_fiber_Loja_Manta",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Loja_from_fiber_Manta_Loja",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -4.0044,
+            "longitude": -79.2042
+          }
+        }
+      },
+      {
+        "uid": "Edfa_booster_roadm_Manta_to_fiber_Manta_Loja",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -0.94937,
+            "longitude": -80.7313
+          }
+        }
+      },
+      {
+        "uid": "Edfa_preamp_roadm_Manta_from_fiber_Loja_Manta",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 20,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -0.94937,
+            "longitude": -80.7313
+          }
+        }
+      },
+      {
+        "uid": "Edfa_Quito_Guayaquil",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 25,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.17535,
+            "longitude": -79.195
+          }
+        }
+      },
+      {
+        "uid": "Edfa_Guayaquil_Quito",
+        "type": "Edfa",
+        "type_variety": "std_medium_gain",
+        "operational": {
+          "gain_target": 25,
+          "tilt_target": 0,
+          "out_voa": 0
+        },
+        "metadata": {
+          "location": {
+            "latitude": -1.17535,
+            "longitude": -79.195
+          }
+        }
+      },
+      {
+        "uid": "fiber_Quito_Edfa1",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Edfa1_Guayaquil",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Guayaquil_Edfa1",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Edfa1_Quito",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Guayaquil_Cuenca",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Cuenca_Guayaquil",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 120000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Cuenca_Ambato",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 220000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Ambato_Cuenca",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 220000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Ambato_Loja",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 306000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Loja_Ambato",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 306000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Loja_Manta",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 370000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      },
+      {
+        "uid": "fiber_Manta_Loja",
+        "type": "Fiber",
+        "type_variety": "SSMF",
+        "params": {
+          "length": 370000,
+          "loss_coef": 0.22,
+          "length_units": "m"
+        }
+      }
+    ],
+    "connections": [
+      {
+        "from_node": "trx_Quito",
+        "to_node": "roadm_Quito"
+      },
+      {
+        "from_node": "roadm_Quito",
+        "to_node": "trx_Quito"
+      },
+      {
+        "from_node": "roadm_Quito",
+        "to_node": "Edfa_booster_roadm_Quito_to_fiber_Quito_Edfa1"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Quito_to_fiber_Quito_Edfa1",
+        "to_node": "fiber_Quito_Edfa1"
+      },
+      {
+        "from_node": "fiber_Quito_Edfa1",
+        "to_node": "Edfa_Quito_Guayaquil"
+      },
+      {
+        "from_node": "Edfa_Quito_Guayaquil",
+        "to_node": "fiber_Edfa1_Guayaquil"
+      },
+      {
+        "from_node": "fiber_Edfa1_Guayaquil",
+        "to_node": "Edfa_preamp_roadm_Guayaquil_from_fiber_Edfa1_Guayaquil"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Guayaquil_from_fiber_Edfa1_Guayaquil",
+        "to_node": "roadm_Guayaquil"
+      },
+      {
+        "from_node": "roadm_Guayaquil",
+        "to_node": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Edfa1"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Edfa1",
+        "to_node": "fiber_Guayaquil_Edfa1"
+      },
+      {
+        "from_node": "fiber_Guayaquil_Edfa1",
+        "to_node": "Edfa_Guayaquil_Quito"
+      },
+      {
+        "from_node": "Edfa_Guayaquil_Quito",
+        "to_node": "fiber_Edfa1_Quito"
+      },
+      {
+        "from_node": "fiber_Edfa1_Quito",
+        "to_node": "Edfa_preamp_roadm_Quito_from_fiber_Edfa1_Quito"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Quito_from_fiber_Edfa1_Quito",
+        "to_node": "roadm_Quito"
+      },
+      {
+        "from_node": "trx_Guayaquil",
+        "to_node": "roadm_Guayaquil"
+      },
+      {
+        "from_node": "roadm_Guayaquil",
+        "to_node": "trx_Guayaquil"
+      },
+      {
+        "from_node": "roadm_Guayaquil",
+        "to_node": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Cuenca"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Guayaquil_to_fiber_Guayaquil_Cuenca",
+        "to_node": "fiber_Guayaquil_Cuenca"
+      },
+      {
+        "from_node": "fiber_Guayaquil_Cuenca",
+        "to_node": "Edfa_preamp_roadm_Cuenca_from_fiber_Guayaquil_Cuenca"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Cuenca_from_fiber_Guayaquil_Cuenca",
+        "to_node": "roadm_Cuenca"
+      },
+      {
+        "from_node": "roadm_Cuenca",
+        "to_node": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Guayaquil"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Guayaquil",
+        "to_node": "fiber_Cuenca_Guayaquil"
+      },
+      {
+        "from_node": "fiber_Cuenca_Guayaquil",
+        "to_node": "Edfa_preamp_roadm_Guayaquil_from_fiber_Cuenca_Guayaquil"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Guayaquil_from_fiber_Cuenca_Guayaquil",
+        "to_node": "roadm_Guayaquil"
+      },
+      {
+        "from_node": "trx_Cuenca",
+        "to_node": "roadm_Cuenca"
+      },
+      {
+        "from_node": "roadm_Cuenca",
+        "to_node": "trx_Cuenca"
+      },
+      {
+        "from_node": "roadm_Cuenca",
+        "to_node": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Ambato"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Cuenca_to_fiber_Cuenca_Ambato",
+        "to_node": "fiber_Cuenca_Ambato"
+      },
+      {
+        "from_node": "fiber_Cuenca_Ambato",
+        "to_node": "Edfa_preamp_roadm_Ambato_from_fiber_Cuenca_Ambato"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Ambato_from_fiber_Cuenca_Ambato",
+        "to_node": "roadm_Ambato"
+      },
+      {
+        "from_node": "roadm_Ambato",
+        "to_node": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Cuenca"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Cuenca",
+        "to_node": "fiber_Ambato_Cuenca"
+      },
+      {
+        "from_node": "fiber_Ambato_Cuenca",
+        "to_node": "Edfa_preamp_roadm_Cuenca_from_fiber_Ambato_Cuenca"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Cuenca_from_fiber_Ambato_Cuenca",
+        "to_node": "roadm_Cuenca"
+      },
+      {
+        "from_node": "trx_Ambato",
+        "to_node": "roadm_Ambato"
+      },
+      {
+        "from_node": "roadm_Ambato",
+        "to_node": "trx_Ambato"
+      },
+      {
+        "from_node": "roadm_Ambato",
+        "to_node": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Loja"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Ambato_to_fiber_Ambato_Loja",
+        "to_node": "fiber_Ambato_Loja"
+      },
+      {
+        "from_node": "fiber_Ambato_Loja",
+        "to_node": "Edfa_preamp_roadm_Loja_from_fiber_Ambato_Loja"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Loja_from_fiber_Ambato_Loja",
+        "to_node": "roadm_Loja"
+      },
+      {
+        "from_node": "roadm_Loja",
+        "to_node": "Edfa_booster_roadm_Loja_to_fiber_Loja_Ambato"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Loja_to_fiber_Loja_Ambato",
+        "to_node": "fiber_Loja_Ambato"
+      },
+      {
+        "from_node": "fiber_Loja_Ambato",
+        "to_node": "Edfa_preamp_roadm_Ambato_from_fiber_Loja_Ambato"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Ambato_from_fiber_Loja_Ambato",
+        "to_node": "roadm_Ambato"
+      },
+      {
+        "from_node": "trx_Loja",
+        "to_node": "roadm_Loja"
+      },
+      {
+        "from_node": "roadm_Loja",
+        "to_node": "trx_Loja"
+      },
+      {
+        "from_node": "roadm_Loja",
+        "to_node": "Edfa_booster_roadm_Loja_to_fiber_Loja_Manta"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Loja_to_fiber_Loja_Manta",
+        "to_node": "fiber_Loja_Manta"
+      },
+      {
+        "from_node": "fiber_Loja_Manta",
+        "to_node": "Edfa_preamp_roadm_Manta_from_fiber_Loja_Manta"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Manta_from_fiber_Loja_Manta",
+        "to_node": "roadm_Manta"
+      },
+      {
+        "from_node": "roadm_Manta",
+        "to_node": "Edfa_booster_roadm_Manta_to_fiber_Manta_Loja"
+      },
+      {
+        "from_node": "Edfa_booster_roadm_Manta_to_fiber_Manta_Loja",
+        "to_node": "fiber_Manta_Loja"
+      },
+      {
+        "from_node": "fiber_Manta_Loja",
+        "to_node": "Edfa_preamp_roadm_Loja_from_fiber_Manta_Loja"
+      },
+      {
+        "from_node": "Edfa_preamp_roadm_Loja_from_fiber_Manta_Loja",
+        "to_node": "roadm_Loja"
+      },
+      {
+        "from_node": "trx_Manta",
+        "to_node": "roadm_Manta"
+      },
+      {
+        "from_node": "roadm_Manta",
+        "to_node": "trx_Manta"
+      }
+    ]
+  }

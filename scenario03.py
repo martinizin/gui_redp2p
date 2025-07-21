@@ -7,6 +7,9 @@ import networkx as nx
 import sys
 import traceback
 import numpy as np
+import re
+import io
+import contextlib
 
 # Gnpy imports for route calculation
 from gnpy.tools.json_io import load_equipment, load_network
@@ -253,7 +256,7 @@ def validate_topology_requirements(topology_data):
         # Validar conexiones bidireccionales (como advertencia, no bloqueo)
         bidirectional_warnings = validate_bidirectional_connections(connections, elements)
         if bidirectional_warnings:
-            warnings.extend([f"Recomendado: {warning}" for warning in bidirectional_warnings])
+            warnings.extend(bidirectional_warnings)
         
         documentation_url = "https://guiatopologias.netlify.app/"
         
@@ -305,54 +308,131 @@ def validate_topology_requirements(topology_data):
 
 def validate_bidirectional_connections(connections, elements):
     """
-    Validar que las conexiones sean bidireccionales.
-    Por cada conexión A -> B, debe existir una conexión B -> A.
+    Validar que las conexiones sean bidireccionales en redes ópticas.
+    En redes ópticas, la bidireccionalidad se logra mediante pares de fibras
+    y equipos dedicados para cada dirección (A→B y B→A).
     """
     errors = []
     
-    # Crear mapeo de conexiones
-    connection_pairs = {}
-    element_uids = {e['uid'] for e in elements}
-    
-    for conn in connections:
-        from_node = conn.get('from_node')
-        to_node = conn.get('to_node')
+    try:
+        # Extraer conexiones lógicas entre ROADMs desde la arquitectura física
+        logical_connections = extract_logical_roadm_connections(connections, elements)
         
-        if not from_node or not to_node:
-            continue
+        # Verificar bidireccionalidad a nivel lógico
+        unidirectional_paths = []
+        connection_map = {}
+        
+        for (from_roadm, to_roadm) in logical_connections:
+            connection_key = (from_roadm, to_roadm)
+            reverse_key = (to_roadm, from_roadm)
             
-        # Verificar que ambos nodos existen en la topología
-        if from_node not in element_uids or to_node not in element_uids:
-            continue
+            connection_map[connection_key] = True
             
-        # Registrar la conexión
-        connection_key = (from_node, to_node)
-        reverse_key = (to_node, from_node)
+            # Verificar si existe la conexión inversa
+            if reverse_key not in connection_map:
+                # Buscar evidencia de la conexión reversa en las conexiones lógicas
+                reverse_exists = reverse_key in logical_connections
+                if not reverse_exists:
+                    unidirectional_paths.append(f"{from_roadm} → {to_roadm}")
         
-        if connection_key not in connection_pairs:
-            connection_pairs[connection_key] = False
-        
-        if reverse_key in connection_pairs:
-            # Marcar ambas direcciones como encontradas
-            connection_pairs[reverse_key] = True
-            connection_pairs[connection_key] = True
-        else:
-            # Crear entrada para la conexión reversa
-            connection_pairs[reverse_key] = False
+        if unidirectional_paths:
+            # Solo reportar como advertencia, no error crítico
+            errors.append(f"Conexiones que podrían beneficiarse de rutas bidireccionales: {', '.join(unidirectional_paths[:3])}")
     
-    # Buscar conexiones sin dirección opuesta
-    missing_connections = []
-    for (from_node, to_node), has_reverse in connection_pairs.items():
-        if not has_reverse:
-            missing_connections.append(f"{from_node} ↔ {to_node}")
-    
-    if missing_connections:
-        errors.append(
-            f"Faltan conexiones bidireccionales para: {', '.join(missing_connections[:5])}" +
-            (f" y {len(missing_connections) - 5} más" if len(missing_connections) > 5 else "")
-        )
+    except Exception as e:
+        # Si hay error en el análisis, no reportar problemas de bidireccionalidad
+        # para evitar falsos positivos en topologías válidas
+        print(f"Warning: Could not analyze bidirectional connections: {e}")
     
     return errors
+
+def extract_logical_roadm_connections(connections, elements):
+    """
+    Extrae conexiones lógicas entre ROADMs desde la arquitectura física de la red óptica.
+    Analiza patrones de nomenclatura para identificar pares de fibras bidireccionales.
+    """
+    logical_connections = set()
+    
+    # Obtener todos los ROADMs
+    roadms = {e['uid'] for e in elements if e.get('type') == 'Roadm'}
+    
+    # Analizar elementos de fibra para encontrar patrones bidireccionales
+    fibers = [e for e in elements if e.get('type') == 'Fiber']
+    fiber_patterns = set()
+    
+    for fiber in fibers:
+        fiber_uid = fiber.get('uid', '')
+        
+        # Buscar patrones como "fiber (1 → 2)", "fiber (A → B)"
+        pattern = r'fiber\s*\(\s*(\w+)\s*→\s*(\w+)\s*\)'
+        match = re.search(pattern, fiber_uid)
+        
+        if match:
+            from_node = match.group(1)
+            to_node = match.group(2)
+            
+            # Verificar si los nodos corresponden a ROADMs o son parte de rutas hacia ROADMs
+            from_roadm = extract_roadm_from_identifier(from_node, roadms)
+            to_roadm = extract_roadm_from_identifier(to_node, roadms)
+            
+            if from_roadm and to_roadm and from_roadm != to_roadm:
+                fiber_patterns.add((from_roadm, to_roadm))
+    
+    # Analizar conexiones de boosters y preamps para identificar rutas lógicas
+    for conn in connections:
+        from_node = conn.get('from_node', '')
+        to_node = conn.get('to_node', '')
+        
+        # Buscar patrones de booster: "roadm_X" → "Edfa_booster_roadm_X_to_fiber (X → Y)"
+        if from_node.startswith('roadm_') and 'booster' in to_node:
+            roadm_pattern = r'roadm_(\w+)'
+            booster_pattern = r'Edfa_booster_roadm_\w+_to_fiber\s*\(\s*\w+\s*→\s*(\w+)\s*\)'
+            
+            from_match = re.search(roadm_pattern, from_node)
+            to_match = re.search(booster_pattern, to_node)
+            
+            if from_match and to_match:
+                from_roadm_id = from_match.group(1)
+                to_identifier = to_match.group(1)
+                
+                # Determinar el ROADM de destino
+                from_roadm = f"roadm_{from_roadm_id}"
+                to_roadm = extract_roadm_from_identifier(to_identifier, roadms)
+                
+                if from_roadm in roadms and to_roadm and to_roadm in roadms:
+                    logical_connections.add((from_roadm, to_roadm))
+    
+    # Combinar patrones de fibra con conexiones lógicas
+    logical_connections.update(fiber_patterns)
+    
+    return logical_connections
+
+def extract_roadm_from_identifier(identifier, roadms):
+    """
+    Extrae el identificador de ROADM desde un identificador que puede ser
+    un número de nodo, un nombre de EDFA, o un identificador de ROADM directo.
+    """
+    # Si ya es un ROADM directo
+    if f"roadm_{identifier}" in roadms:
+        return f"roadm_{identifier}"
+    
+    # Buscar patrones de EDFA que contengan números de ROADM
+    # Patrón para EDFAs con números: "Edfa13_2_6" -> podría indicar ruta entre roadm_2 y roadm_6
+    edfa_pattern = r'Edfa\d+_(\d+)_(\d+)'
+    match = re.search(edfa_pattern, identifier)
+    if match:
+        # En caso de EDFA intermedio, el primer número suele ser el origen
+        roadm_candidate = f"roadm_{match.group(1)}"
+        if roadm_candidate in roadms:
+            return roadm_candidate
+    
+    # Si es solo un número, asumir que es ID de ROADM
+    if identifier.isdigit():
+        roadm_candidate = f"roadm_{identifier}"
+        if roadm_candidate in roadms:
+            return roadm_candidate
+    
+    return None
 
 def validate_topology():
     """Endpoint para validar requisitos de topología."""
@@ -486,9 +566,24 @@ def calculate_routes():
         if not TOPO.exists():
             return jsonify({'error': f'Archivo de topología no encontrado: {TOPO}'}), 404
         
-        # Cargar red y configuración de equipos
-        equipment = load_equipment(EQPT)
-        network = load_network(TOPO, equipment)
+        # Capturar mensajes de carga de equipos y red
+        global_console_output = io.StringIO()
+        global_console_error = io.StringIO()
+        
+        with contextlib.redirect_stdout(global_console_output), contextlib.redirect_stderr(global_console_error):
+            # Cargar red y configuración de equipos
+            equipment = load_equipment(EQPT)
+            network = load_network(TOPO, equipment)
+        
+        # Capturar mensajes de carga inicial
+        initial_stdout = global_console_output.getvalue().strip()
+        initial_stderr = global_console_error.getvalue().strip()
+        
+        console_messages = []
+        if initial_stdout:
+            console_messages.append(f"=== Carga de Equipos y Red ===\n{initial_stdout}")
+        if initial_stderr:
+            console_messages.append(f"=== Advertencias de Carga ===\n{initial_stderr}")
         
         # Validar requisitos de topología antes de los cálculos
         with open(TOPO, 'r', encoding='utf-8') as f:
@@ -558,21 +653,53 @@ def calculate_routes():
         
         # Evaluar rutas
         resultados = []
+        
         for i, uid_path in enumerate(paths_uid):
             try:
                 path_nodes = [uid2node[uid] for uid in uid_path]
                 
-                # Diseñar red y ejecutar simulación (exactamente como en el notebook)
-                net_designed, req, ref_req = designed_network(
-                    equipment, network,
-                    source=src.uid,
-                    destination=dst.uid,
-                    nodes_list=[n.uid for n in path_nodes],
-                    loose_list=['STRICT'],
-                    args_power=si.power_dbm
-                )
+                # Capturar salida de consola durante la simulación
+                console_output = io.StringIO()
+                console_error = io.StringIO()
                 
-                path, _, _, infos = transmission_simulation(equipment, net_designed, req, ref_req)
+                try:
+                    with contextlib.redirect_stdout(console_output), contextlib.redirect_stderr(console_error):
+                        # Diseñar red y ejecutar simulación (exactamente como en el notebook)
+                        net_designed, req, ref_req = designed_network(
+                            equipment, network,
+                            source=src.uid,
+                            destination=dst.uid,
+                            nodes_list=[n.uid for n in path_nodes],
+                            loose_list=['STRICT'],
+                            args_power=si.power_dbm
+                        )
+                        
+                        path, _, _, infos = transmission_simulation(equipment, net_designed, req, ref_req)
+                    
+                    # Capturar mensajes de consola
+                    stdout_content = console_output.getvalue().strip()
+                    stderr_content = console_error.getvalue().strip()
+                    
+                    if stdout_content:
+                        console_messages.append(f"=== Ruta {i+1} - Información del Proceso ===\n{stdout_content}")
+                    if stderr_content:
+                        console_messages.append(f"=== Ruta {i+1} - Advertencias/Errores ===\n{stderr_content}")
+                    
+                    # Si no hay contenido en stdout/stderr, pero hay warnings de gnpy, intentar capturarlos
+                    if not stdout_content and not stderr_content:
+                        console_messages.append(f"=== Ruta {i+1} - Procesamiento Completado ===\nRuta calculada exitosamente sin mensajes adicionales.")
+                        
+                except Exception as sim_error:
+                    # Capturar cualquier error durante la redirección de consola
+                    stdout_content = console_output.getvalue().strip()
+                    stderr_content = console_error.getvalue().strip()
+                    
+                    if stdout_content:
+                        console_messages.append(f"=== Ruta {i+1} - Salida Antes del Error ===\n{stdout_content}")
+                    if stderr_content:
+                        console_messages.append(f"=== Ruta {i+1} - Errores Capturados ===\n{stderr_content}")
+                    
+                    raise sim_error  # Re-raise para ser manejado por el except exterior
                 receiver = path[-1]
                 
                 # Copiar métricas desde infos hacia el receiver
@@ -624,7 +751,28 @@ def calculate_routes():
                     continue
                     
             except Exception as e:
-                print(f"❌ Ruta {i+1} falló: {e}")
+                # Capturar mensaje de error con contexto de consola si está disponible
+                console_output = locals().get('console_output')
+                console_error = locals().get('console_error')
+                
+                error_details = f"❌ Ruta {i+1} falló: {e}"
+                
+                if console_output:
+                    stdout_content = console_output.getvalue().strip()
+                    if stdout_content:
+                        console_messages.append(f"Ruta {i+1} - Salida antes del error:\n{stdout_content}")
+                        
+                if console_error:
+                    stderr_content = console_error.getvalue().strip()
+                    if stderr_content:
+                        console_messages.append(f"Ruta {i+1} - Error:\n{stderr_content}")
+                
+                # Capturar el traceback completo para mostrar más contexto
+                import traceback as tb
+                full_traceback = tb.format_exc()
+                console_messages.append(f"Ruta {i+1} - Excepción completa:\n{str(e)}\n\nTraceback completo:\n{full_traceback}")
+                
+                print(error_details)
                 traceback.print_exc()
                 continue
         
@@ -662,6 +810,10 @@ def calculate_routes():
             'routes': resultados
         }
         
+        # Incluir mensajes de consola para ayudar al usuario a entender lo que pasó
+        if console_messages:
+            response['console_messages'] = console_messages
+        
         # Incluir advertencias de validación si existen
         if validation_result.get('warnings'):
             response['validation_warnings'] = {
@@ -681,18 +833,29 @@ def calculate_routes():
         error_message = str(e)
         documentation_url = "https://guiatopologias.netlify.app/"
         
+        # Incluir mensajes de consola si están disponibles
+        console_info = []
+        if 'console_messages' in locals() and console_messages:
+            console_info = console_messages
+        
         if any(keyword in error_message.lower() for keyword in ['trx', 'fiber', 'roadm', 'edfa', 'connection', 'bidirectional']):
-            return jsonify({
+            error_response = {
                 'error': 'Error de topología en el cálculo de rutas',
                 'details': f'Error interno del servidor: {str(e)}',
                 'validation_message': f'La topología puede no cumplir con los requisitos para redes bidireccionales.\n\nError específico: {str(e)}\n\nConsulte la documentación para verificar los requisitos de topología.',
                 'documentation_url': documentation_url,
                 'error_type': 'topology_error'
-            }), 500
+            }
+            if console_info:
+                error_response['console_messages'] = console_info
+            return jsonify(error_response), 500
         else:
-            return jsonify({
+            error_response = {
                 'error': 'Error interno del servidor',
                 'details': str(e),
                 'documentation_url': documentation_url,
                 'error_type': 'server_error'
-            }), 500
+            }
+            if console_info:
+                error_response['console_messages'] = console_info
+            return jsonify(error_response), 500

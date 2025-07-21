@@ -737,8 +737,15 @@
             font-family: 'Courier New', monospace;
             font-size: 0.9rem;
             color: #495057;
-            max-height: 200px;
-            overflow-y: auto;
+        }
+        
+        .error-details pre {
+            margin: 0;
+            padding: 0;
+            background: none;
+            border: none;
+            font-size: inherit;
+            color: inherit;
         }
 
         .validation-errors {
@@ -984,7 +991,17 @@
                 messageContent += `
                     <div class="error-details">
                         <h5>Detalles técnicos:</h5>
-                        <pre>${additionalData.details}</pre>
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto;">${additionalData.details}</pre>
+                    </div>
+                `;
+            }
+            
+            // Add console messages if provided
+            if (additionalData && additionalData.console_messages && additionalData.console_messages.length > 0) {
+                messageContent += `
+                    <div class="error-details">
+                        <h5>Mensajes de consola:</h5>
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto;">${additionalData.console_messages.join('\n\n')}</pre>
                     </div>
                 `;
             }
@@ -992,14 +1009,31 @@
             // Add documentation link if provided
             if (documentationUrl) {
                 messageContent += `
-                    <a href="${documentationUrl}" target="_blank" class="documentation-link">
-                        <i class="fas fa-external-link-alt"></i>
-                        Ver Documentación de Requisitos
-                    </a>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="${documentationUrl}" target="_blank" class="documentation-link" onclick="window.open('${documentationUrl}', '_blank');">
+                            <i class="fas fa-external-link-alt"></i>
+                            Ver Documentación de Requisitos
+                        </a>
+                    </div>
                 `;
             }
             
             body.innerHTML = messageContent;
+            
+            // Update footer with documentation button if URL is provided
+            const footer = document.getElementById('modalFooter');
+            if (documentationUrl) {
+                footer.innerHTML = `
+                    <button class="btn btn-primary" onclick="window.open('${documentationUrl}', '_blank');">
+                        <i class="fas fa-external-link-alt"></i> Ver Documentación
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeCustomModal()">Cerrar</button>
+                `;
+            } else {
+                footer.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeCustomModal()">Cerrar</button>
+                `;
+            }
             
             // Show modal
             modal.classList.add('show');
@@ -2010,13 +2044,31 @@
                     
                     // Show validation warnings if present (calculations succeeded but recommendations exist)
                     if (data.validation_warnings) {
+                        let additionalData = {
+                            validation_errors: data.validation_warnings.warnings || []
+                        };
+                        
+                        // Include console messages if available
+                        if (data.console_messages && data.console_messages.length > 0) {
+                            additionalData.console_messages = data.console_messages;
+                        }
+                        
                         showCustomModal(
                             'Cálculo Exitoso con Recomendaciones',
-                            'Los cálculos se completaron correctamente, pero se detectaron oportunidades de mejora en la topología.',
+                            'Si los cálculos no se completaron correctamente , evalue las observaciones en la topología.',
                             'info',
                             data.validation_warnings.documentation_url,
+                            additionalData
+                        );
+                    } else if (data.console_messages && data.console_messages.length > 0) {
+                        // Show console messages even if no validation warnings
+                        showCustomModal(
+                            'Información del Proceso de Cálculo',
+                            'Si los calculos no se completaron correctamente, evalue las inconsistencias en la topología.',
+                            'info',
+                            'https://guiatopologias.netlify.app/',
                             {
-                                validation_errors: data.validation_warnings.warnings || []
+                                console_messages: data.console_messages
                             }
                         );
                     }
@@ -2042,6 +2094,11 @@
                         additionalData.details = data.details;
                     }
                     
+                    // Add console messages if provided
+                    if (data.console_messages && data.console_messages.length > 0) {
+                        additionalData.console_messages = data.console_messages;
+                    }
+                    
                     // Determine error type for appropriate styling
                     let errorType = 'error';
                     if (data.error_type === 'topology_error' || data.validation_errors) {
@@ -2062,7 +2119,8 @@
                     'error',
                     'https://guiatopologias.netlify.app/',
                     {
-                        details: error.message || error.toString()
+                        details: error.message || error.toString(),
+                        console_messages: ['Error de red: No se pudo conectar con el servidor']
                     }
                 );
             });
