@@ -11,6 +11,13 @@ env/
 # Docker containers
 containers/
 
+# Archivos relacionados con Docker (creados para imagen Docker)
+Dockerfile
+.dockerignore
+build_docker.sh
+build_docker.bat
+DOCKER_INSTRUCTIONS.md
+
 # Archivos de configuración del sistema
 *.DS_Store
 Thumbs.db

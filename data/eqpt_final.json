@@ -150,10 +150,10 @@
     {
       "type_variety": "std_fixed_gain",
       "type_def": "fixed_gain",
-      "gain_flatmax": 21,
-      "gain_min": 20,
-      "p_max": 21,
-      "nf0": 5.5,
+      "gain_flatmax": 210,
+      "gain_min": 2,
+      "p_max": 210,
+      "nf0": 5,
       "allowed_for_design": false
     },
     {

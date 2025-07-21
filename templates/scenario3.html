@@ -1006,18 +1006,6 @@
                 `;
             }
             
-            // Add documentation link if provided
-            if (documentationUrl) {
-                messageContent += `
-                    <div style="text-align: center; margin-top: 20px;">
-                        <a href="${documentationUrl}" target="_blank" class="documentation-link" onclick="window.open('${documentationUrl}', '_blank');">
-                            <i class="fas fa-external-link-alt"></i>
-                            Ver Documentación de Requisitos
-                        </a>
-                    </div>
-                `;
-            }
-            
             body.innerHTML = messageContent;
             
             // Update footer with documentation button if URL is provided
@@ -1210,8 +1198,9 @@
                             );
                         } else if (data.validation && data.validation.warnings) {
                             showCustomModal(
-                                'Archivo Subido con Recomendaciones',
-                                `El archivo "${data.filename}" se subió correctamente y permite cálculos, pero se recomienda revisar las mejores prácticas.`,
+                                'Archivo Subido con Advertencias',
+                                `El archivo "${data.filename}" se subió correctamente pero es
+                                probable que tenga problemas que impiden los cálculos.`,
                                 'warning',
                                 data.validation.documentation_url,
                                 {

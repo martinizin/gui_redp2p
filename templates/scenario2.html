@@ -419,8 +419,6 @@
                         </div>
                         <div class="col-md-6">
                             <small><strong>OSNR Final (bw):</strong> ${finalResults.final_osnr_bw} dB</small><br>
-                            <small><strong>OSNR Último EDFA:</strong> ${finalResults.last_edfa_osnr_bw} dB</small><br>
-                            <small><strong>Último EDFA:</strong> ${finalResults.last_edfa_name || 'N/A'}</small><br>
                             <small><strong>Distancia Total:</strong> ${finalResults.total_distance_km.toFixed(1)} km</small><br>
                             <small><strong>Potencia Tx por Canal:</strong> ${finalResults.tx_power_per_channel_dbm ? finalResults.tx_power_per_channel_dbm.toFixed(2) + ' dBm' : 'N/A'}</small>
                         </div>
@@ -446,6 +444,22 @@
                     selectedElement.parameters[paramName].value = newValue;
                 }
             });
+
+            // CRÍTICO: Actualizar también enhancedData para que los cambios se reflejen en los cálculos
+            if (enhancedData && enhancedData.elements) {
+                const elementToUpdate = enhancedData.elements.find(el => el.uid === selectedElement.uid);
+                if (elementToUpdate && elementToUpdate.parameters) {
+                    inputs.forEach(input => {
+                        const paramName = input.name;
+                        const newValue = parseFloat(input.value);
+                        if (elementToUpdate.parameters[paramName] && elementToUpdate.parameters[paramName].editable) {
+                            const oldValue = elementToUpdate.parameters[paramName].value;
+                            elementToUpdate.parameters[paramName].value = newValue;
+                            console.log(`Updated ${selectedElement.uid}.${paramName}: ${oldValue} → ${newValue}`);
+                        }
+                    });
+                }
+            }
 
             // Regenera tooltip y actualiza la gráfica
             const newTooltip = generateElementTooltip(selectedElement);

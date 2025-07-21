@@ -103,7 +103,7 @@ def handle_scenario03():
 def get_topology_names():
     """Devuelve lista de archivos de topología disponibles."""
     try:
-        files = [f for f in os.listdir(TOPOLOGY_DIR) if f.endswith('.json') and f not in ['eqpt_configv1.json', 'eqpt_config_openroadm_ver4.json', 'eqpt_config.json']]
+        files = [f for f in os.listdir(TOPOLOGY_DIR) if f.endswith('.json') and f not in ['eqpt_configv1.json', 'eqpt_config.json']]
         return jsonify(files)
     except FileNotFoundError:
         return jsonify([])

@@ -40,8 +40,8 @@
         "loss_coef": 0.2,
         "length_units": "km",
         "att_in": 0,
-        "con_in": 0.1,
-        "con_out": 0.1
+        "con_in": 0,
+        "con_out": 0
       },
       "metadata": {
         "location": {
@@ -80,8 +80,8 @@
         "loss_coef": 0.2,
         "length_units": "km",
         "att_in": 0,
-        "con_in": 0.1,
-        "con_out": 0.1
+        "con_in": 0,
+        "con_out": 0
       },
       "metadata": {
         "location": {
@@ -120,8 +120,8 @@
         "loss_coef": 0.2,
         "length_units": "km",
         "att_in": 0,
-        "con_in": 0.1,
-        "con_out": 0.1
+        "con_in": 0,
+        "con_out": 0
       },
       "metadata": {
         "location": {

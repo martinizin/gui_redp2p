@@ -263,19 +263,19 @@ def apply_coordinate_offsets(coordinate_groups, offset_distance=0.001):
                         'lon': lon
                     }
         else:
-            # Multiple nodes at same location - apply offsets
+            # Múltiples nodos en la misma ubicación - aplica los offsets
             base_lat, base_lon = coord_key
             
-            # Calculate offsets in a small circle around the original point
+            # Calcula los offsets en un pequeño círculo alrededor del punto original
             for i, node in enumerate(nodes):
                 if i == 0:
-                    # First node stays at original position
+                    # El primer nodo permanece en la posición original
                     adjusted_coordinates[node['uid']] = {
                         'lat': base_lat,
                         'lon': base_lon
                     }
                 else:
-                    # Subsequent nodes get small circular offsets
+                    # Los nodos posteriores obtienen pequeños offsets circulares
                     angle = (2 * np.pi * i) / len(nodes)
                     lat_offset = offset_distance * np.cos(angle)
                     lon_offset = offset_distance * np.sin(angle)
@@ -336,7 +336,7 @@ def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, 
         group_center_x = current_x
         
         if len(nodes_with_idx) == 1:
-            # Single node - place at group center
+            # Un solo nodo - colócalo en el centro del grupo
             node, original_idx = nodes_with_idx[0]
             adjusted_positions[node['uid']] = {
                 'x': group_center_x,
@@ -348,23 +348,23 @@ def apply_horizontal_coordinate_grouping(ordered_nodes, horizontal_spacing=100, 
             start_x = group_center_x - group_width / 2
             
             for j, (node, original_idx) in enumerate(nodes_with_idx):
-                # Position nodes horizontally in topology order with small spacing
+                # Posiciona los nodos horizontalmente en el orden topológico con pequeño espaciado
                 node_x = start_x + (j * group_offset)
                 node_y = 100
                 
-                # MINIMAL vertical offset to avoid connection line issues
-                # Keep offset very small to maintain straight connections
+                # Mínimo offset vertical para evitar problemas de líneas de conexión
+                # Mantiene el offset muy pequeño para mantener las conexiones rectas
                 if j > 0:
-                    node_y += (j % 2) * 1 - 0.5  # Very small alternating offsets (±0.5px)
+                    node_y += (j % 2) * 1 - 0.5  # Muy pequeños offsets alternados (±0.5px)
                 
                 adjusted_positions[node['uid']] = {
                     'x': node_x,
                     'y': node_y
                 }
         
-        # Move to next group position
+        # Mueve a la siguiente posición del grupo
         if len(nodes_with_idx) > 1:
-            # Account for the space used by this group
+            # Toma en cuenta el espacio usado por este grupo
             current_x += horizontal_spacing + group_offset * len(nodes_with_idx)
         else:
             current_x += horizontal_spacing
@@ -571,7 +571,7 @@ def _create_map_plot(nodes_to_plot, processed_connections, data):
     
     nodes_by_uid = {node['uid']: node for node in nodes_to_plot}
     
-    # Detect coordinate overlaps and apply offsets
+    # Detecta las superposiciones de coordenadas y aplica los offsets
     coordinate_groups = detect_coordinate_overlaps(nodes_to_plot)
     adjusted_coordinates = apply_coordinate_offsets(coordinate_groups)
     
@@ -1410,15 +1410,39 @@ def update_scenario02_parameters():
         element_uid = data.get('element_uid')
         parameter_name = data.get('parameter_name')
         new_value = data.get('new_value')
+        topology_data = data.get('topology_data', {})
         
-        # Aquí normalmente guardarías los parámetros actualizados en una base de datos o sesión
-        # Por ahora, solo devolvemos éxito
+        # Actualizar el valor en topology_data
+        elements = topology_data.get('elements', [])
+        parameter_updated = False
+        
+        for element in elements:
+            if element.get('uid') == element_uid:
+                if 'parameters' not in element:
+                    element['parameters'] = {}
+                
+                if parameter_name in element['parameters']:
+                    old_value = element['parameters'][parameter_name]['value']
+                    element['parameters'][parameter_name]['value'] = new_value
+                    parameter_updated = True
+                    print(f"=== PARAMETER UPDATE ===")
+                    print(f"Element: {element_uid}")
+                    print(f"Parameter: {parameter_name}")
+                    print(f"Old value: {old_value}")
+                    print(f"New value: {new_value}")
+                    print(f"=== END UPDATE ===")
+                else:
+                    print(f"Warning: Parameter {parameter_name} not found in element {element_uid}")
+                break
+        
         return jsonify({
             'success': True,
             'message': f'Parameter {parameter_name} updated for element {element_uid}',
             'element_uid': element_uid,
             'parameter_name': parameter_name,
-            'new_value': new_value
+            'new_value': new_value,
+            'parameter_updated': parameter_updated,
+            'updated_topology_data': topology_data
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -1659,6 +1683,16 @@ def calculate_scenario02_network(params):
         elements = topology_data.get('elements', [])
         connections = topology_data.get('connections', [])
         
+        # Debug: Imprimir parámetros de elementos para verificar que los valores modificados están presentes
+        print("=== DEBUG: Verificando parámetros de elementos ===")
+        for element in elements:
+            if element.get('type') == 'Edfa' and 'parameters' in element:
+                uid = element.get('uid')
+                params = element.get('parameters', {})
+                gain_target = params.get('gain_target', {}).get('value', 'N/A')
+                nf0 = params.get('nf0', {}).get('value', 'N/A')
+                print(f"EDFA {uid}: gain_target={gain_target}, nf0={nf0}")
+        
         try:
             ordered_elements, source_transceiver, destination_transceiver = order_elements_by_topology(elements, connections)
         except ValueError as e:
@@ -1702,7 +1736,26 @@ def calculate_scenario02_network(params):
             }
             
             if element.get('type') == 'Edfa' and 'operational' in element:
-                cleaned_element['operational'] = element['operational']
+                # Copiar operational existente
+                cleaned_element['operational'] = element['operational'].copy()
+                
+                # CRÍTICO: Aplicar valores de parámetros actualizados por el usuario
+                if 'parameters' in element:
+                    user_params = element.get('parameters', {})
+                    
+                    # Actualizar gain_target desde parámetros de usuario
+                    if 'gain_target' in user_params:
+                        gain_target_value = user_params['gain_target'].get('value')
+                        if gain_target_value is not None:
+                            cleaned_element['operational']['gain_target'] = gain_target_value
+                            print(f"Aplicando gain_target del usuario a {element.get('uid')}: {gain_target_value} dB")
+                    
+                    # Actualizar nf0 desde parámetros de usuario
+                    if 'nf0' in user_params:
+                        nf0_value = user_params['nf0'].get('value')
+                        if nf0_value is not None:
+                            cleaned_element['operational']['nf0'] = nf0_value
+                            print(f"Aplicando nf0 del usuario a {element.get('uid')}: {nf0_value} dB")
             
             if element.get('type') == 'Fiber' and 'params' in element:
                 cleaned_element['params'] = element['params']
@@ -1736,19 +1789,17 @@ def calculate_scenario02_network(params):
         tx = transceivers[0]  # Transceptor fuente
         rx = transceivers[-1]  # Transceptor destino
         
-        # Aplicar valores NF de parámetros de usuario a los EDFAs
+        # Verificar que los valores de parámetros de usuario se hayan aplicado correctamente a los EDFAs
         for edfa in edfas:
-            for element in ordered_elements:
-                if element.get('uid') == edfa.uid and element.get('type') == 'Edfa':
-                    nf_value = element.get('parameters', {}).get('nf0', {}).get('value', 6.0)
-                    try:
-                        if hasattr(edfa, 'params'):
-                            edfa.params.nf_db = nf_value
-                        elif hasattr(edfa, 'nf_db'):
-                            edfa.nf_db = nf_value
-                    except Exception as e:
-                        print(f"Advertencia: No se pudo actualizar NF para {edfa.uid}: {e}")
-                    break
+            print(f"=== VERIFICACIÓN EDFA {edfa.uid} ===")
+            print(f"gain_target actual en objeto gnpy: {edfa.operational.gain_target} dB")
+            try:
+                if hasattr(edfa, 'params'):
+                    print(f"nf_db actual en objeto gnpy: {getattr(edfa.params, 'nf_db', 'N/A')} dB")
+                elif hasattr(edfa, 'nf_db'):
+                    print(f"nf_db actual en objeto gnpy: {getattr(edfa, 'nf_db', 'N/A')} dB")
+            except Exception as e:
+                print(f"No se pudo leer NF para {edfa.uid}: {e}")
         
         current_distance = 0.0
         current_total_ase_lin_for_parallel_calc = gnpy_dbm2watt(-150.0)
@@ -1818,12 +1869,21 @@ def calculate_scenario02_network(params):
             p_edfa = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
             o_edfa = get_avg_osnr_db(si)
             
+            # Los valores ya están correctos en el objeto gnpy gracias a la actualización en temp_topology
             gain_db = edfa.operational.gain_target
+            
+            # Obtener NF desde los parámetros de usuario o usar valor por defecto
             nf_db = 6.0  # Valor por defecto
             for element in ordered_elements:
                 if element.get('uid') == edfa.uid and element.get('type') == 'Edfa':
-                    nf_db = element.get('parameters', {}).get('nf0', {}).get('value', 6.0)
+                    user_nf0 = element.get('parameters', {}).get('nf0', {}).get('value')
+                    if user_nf0 is not None:
+                        nf_db = user_nf0
                     break
+            
+            print(f"=== CÁLCULO EDFA {edfa.uid} ===")
+            print(f"gain_db usado en cálculo: {gain_db} dB")
+            print(f"nf_db usado en cálculo: {nf_db} dB")
             
             p_ase_edfa_lin_manual = gnpy_dbm2watt(QUANTUM_NOISE_FLOOR_DBM + nf_db + gain_db)
             current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
@@ -1864,48 +1924,48 @@ def calculate_scenario02_network(params):
                     
                     add_stage_result(fiber.uid, current_distance, p_span, o_span, osnr_01nm_span, osnr_parallel_span)
         
-        # Receptor final
+        # Receptor final (Site_B)
         si = rx(si)
         p_rb = gnpy_watt2dbm(sum(ch.power[0] for ch in si.carriers))
+        p_rbb = p_rb - 10 * np.log10(nch)
         o_final = get_avg_osnr_db(si)
         
         osnr_01nm_final = o_final + 10 * np.log10(baud_rate / B_n)
-        p_rb_per_channel = p_rb - 10 * np.log10(nch)
-        osnr_parallel_final = classical_osnr_parallel(p_rb_per_channel, gnpy_watt2dbm(current_total_ase_lin_for_parallel_calc))
+        osnr_parallel_final = classical_osnr_parallel(p_rbb, gnpy_watt2dbm(current_total_ase_lin_for_parallel_calc))
         
         add_stage_result(rx.uid, current_distance, p_rb, o_final, osnr_01nm_final, osnr_parallel_final)
         
+        # 9) Verificación contra sensibilidad del receptor
+        p_rb_formatted = f"{p_rbb:.2f}"
+        sens_formatted = f"{sens:.2f}"
+        
         # Resultados finales
-        power_condition = p_rb >= sens
+        power_condition = p_rbb >= sens
         
-        # Encontrar el último EDFA en los stages para comparar con osnr_req
-        last_edfa_osnr_bw = None
-        last_edfa_name = None
+        # Obtener el OSNR_clásico del receptor final (último stage) para comparar con osnr_req
+        final_osnr_clasico = None
+        final_stage_name = None
         
-        # Buscar el último EDFA en orden reverso
-        for stage in reversed(results['stages']):
-            stage_name = stage['name']
-            # Verificar si es un EDFA (buscar en elementos ordenados)
-            for element in ordered_elements:
-                if element.get('uid') == stage_name and element.get('type') == 'Edfa':
-                    last_edfa_name = stage_name
-                    # Convertir OSNR_bw de formato string a float para comparación
-                    osnr_bw_str = stage['osnr_bw']
-                    if osnr_bw_str != '∞':
-                        try:
-                            last_edfa_osnr_bw = float(osnr_bw_str)
-                        except ValueError:
-                            last_edfa_osnr_bw = None
-                    else:
-                        last_edfa_osnr_bw = float('inf')
-                    break
-            if last_edfa_name:
-                break
+        # Tomar el último stage (receptor final)
+        if results['stages']:
+            final_stage = results['stages'][-1]  # Último elemento (receptor final)
+            final_stage_name = final_stage['name']
+            # Convertir OSNR_clásico (osnr_parallel) de formato string a float para comparación
+            osnr_clasico_str = final_stage['osnr_parallel']
+            if osnr_clasico_str != '∞' and osnr_clasico_str != '':
+                try:
+                    final_osnr_clasico = float(osnr_clasico_str)
+                except ValueError:
+                    final_osnr_clasico = None
+            elif osnr_clasico_str == '∞':
+                final_osnr_clasico = float('inf')
+            else:
+                final_osnr_clasico = None
         
         # Determinar si el circuito es operacional
-        osnr_condition = True  # Por defecto True si no hay EDFAs
-        if last_edfa_osnr_bw is not None:
-            osnr_condition = last_edfa_osnr_bw > osnr_req
+        osnr_condition = True  # Por defecto True si no hay valor
+        if final_osnr_clasico is not None:
+            osnr_condition = final_osnr_clasico >= osnr_req
         
         circuit_operational = power_condition and osnr_condition
         
@@ -1913,34 +1973,37 @@ def calculate_scenario02_network(params):
         power_status = "✓" if power_condition else "✗"
         osnr_status = "✓" if osnr_condition else "✗"
         
-        power_msg = f"Potencia: {power_status} {p_rb:.2f} dBm {'≥' if power_condition else '<'} {sens:.2f} dBm (sensibilidad)"
-        
-        if last_edfa_osnr_bw is not None:
-            if last_edfa_osnr_bw == float('inf'):
-                osnr_msg = f"OSNR: {osnr_status}(último EDFA: {last_edfa_name}) ∞ dB > {osnr_req:.2f} dB "
-            else:
-                osnr_msg = f"OSNR: {osnr_status} {last_edfa_osnr_bw:.2f}(último EDFA: {last_edfa_name}) dB {'≥' if osnr_condition else '<'} {osnr_req:.2f} dB "
+        if p_rbb < sens:
+            power_msg = f"Potencia: {power_status} La potencia de la señal recibida ({p_rb_formatted} dBm) es menor que la sensibilidad del receptor ({sens_formatted} dBm)."
         else:
-            osnr_msg = f"OSNR: {osnr_status} No hay EDFAs en la red"
+            power_msg = f"Potencia: {power_status} ¡Éxito! La potencia de la señal recibida ({p_rb_formatted} dBm) es mayor o igual que la sensibilidad del receptor ({sens_formatted} dBm)."
+        
+        if final_osnr_clasico is not None:
+            if final_osnr_clasico == float('inf'):
+                osnr_msg = f"OSNR clásico: {osnr_status} ∞ dB ({final_stage_name}) ≥ {osnr_req:.2f} dB "
+            else:
+                osnr_msg = f"OSNR clásico: {osnr_status} {final_osnr_clasico:.3f} dB ({final_stage_name}) {'≥' if osnr_condition else '<'} {osnr_req:.2f} dB "
+        else:
+            osnr_msg = f"OSNR clásico: {osnr_status} No disponible en el receptor final"
         
         operational_msg = f"{'✓ Circuito operacional' if circuit_operational else '✗ Circuito NO operacional'}"
         
         detailed_message = f"{operational_msg}\n{power_msg}\n{osnr_msg}"
         
         results['final_results'] = {
-            'final_power_dbm': float(p_rb),
+            'final_power_dbm': float(p_rbb),
             'receiver_sensitivity_dbm': float(sens),
             'link_successful': bool(power_condition),  # Mantener compatibilidad con lógica existente
             'circuit_operational': bool(circuit_operational),  # Nueva condición operacional
-            'power_margin_db': float(p_rb - sens),
+            'power_margin_db': float(p_rbb - sens),
             'final_osnr_bw': format_osnr(float(o_final)),
             'final_osnr_01nm': format_osnr(float(osnr_01nm_final)),
             'total_distance_km': float(current_distance),
             'nch': int(nch),
             'tx_power_per_channel_dbm': float(tx_power_dbm),
             'osnr_req': float(osnr_req),
-            'last_edfa_osnr_bw': format_osnr(float(last_edfa_osnr_bw)) if last_edfa_osnr_bw is not None else 'N/A',
-            'last_edfa_name': last_edfa_name if last_edfa_name else 'N/A',
+            'final_osnr_clasico': format_osnr(float(final_osnr_clasico)) if final_osnr_clasico is not None else 'N/A',
+            'final_stage_name': final_stage_name if final_stage_name else 'N/A',
             'power_condition': bool(power_condition),
             'osnr_condition': bool(osnr_condition),
             'message': detailed_message
