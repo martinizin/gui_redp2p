@@ -1,0 +1,96 @@
+<style>
+  /* Scoped footer styles for consistency across pages */
+  .udla-footer {
+    margin-top: 3rem;
+    padding: 2rem 0 1rem 0;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  .udla-footer .container {
+    max-width: 900px;
+  }
+  
+  .udla-footer-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .udla-logo-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .udla-logo {
+    height: 50px;
+    width: auto;
+    transition: opacity 0.3s ease;
+  }
+  
+  .udla-logo:hover {
+    opacity: 0.8;
+  }
+  
+  .udla-registered-mark {
+    position: absolute;
+    top: -5px;
+    left: -10px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #1a472a;
+  }
+  
+  .udla-footer-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin: 0;
+    text-align: center;
+  }
+  
+  .udla-footer-text h5 {
+    color: #1a472a;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Responsive design */
+  @media (max-width: 768px) {
+    .udla-logo {
+      height: 45px;
+    }
+    
+    .udla-registered-mark {
+      font-size: 10px;
+      left: -8px;
+      top: -3px;
+    }
+  }
+</style>
+
+<footer class="udla-footer">
+  <div class="container">
+    <div class="udla-footer-content">
+      <!-- Logo with Registered Mark -->
+      <div class="udla-logo-container">
+        <span class="udla-registered-mark">®</span>
+        <img src="{{ url_for('static', filename='UDLA_logo.png') }}" 
+             alt="UDLA - Universidad de las Américas" 
+             class="udla-logo" 
+             title="Universidad de las Américas">
+      </div>
+      
+      <!-- Institution Name and App Description -->
+      <div class="udla-footer-text">
+        <h5 class="mb-1">Universidad de las Américas</h5>
+        <p class="mb-0 text-muted" style="font-size: 0.8rem;">Simulación de Topologías de Red - DemoGUI</p>
+      </div>
+    </div>
+  </div>
+</footer> 
