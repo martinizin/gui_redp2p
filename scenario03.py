@@ -24,7 +24,66 @@ load_dotenv(env_path)
 # Configuración
 EQPT_DIR = os.getenv('EQPT_DIR', 'data')
 TOPOLOGY_DIR = os.getenv('TOPOLOGY_DIR', 'topologias')
+TEMP_TOPOLOGY_DIR = os.path.join(TOPOLOGY_DIR, 'temp_uploads')  # Directorio temporal para uploads
 EQPT_CONFIG_FILE = os.path.join(EQPT_DIR, 'eqpt_configv1.json')
+
+# Lista de archivos de topología por defecto (que siempre deben estar disponibles)
+DEFAULT_TOPOLOGY_FILES = [
+    'CORONET_Global_Topology.json',
+    'Sweden_OpenROADMv4_example_network.json', 
+    'topologiaEC.json',
+]
+
+def clean_temp_topologies():
+    """Limpia todas las topologías temporales subidas por usuarios."""
+    try:
+        if os.path.exists(TEMP_TOPOLOGY_DIR):
+            for filename in os.listdir(TEMP_TOPOLOGY_DIR):
+                if filename.endswith('.json'):
+                    filepath = os.path.join(TEMP_TOPOLOGY_DIR, filename)
+                    os.remove(filepath)
+                    # print(f"Archivo temporal eliminado: {filename}")  # Comentado para limpiar consola
+            # Remover el directorio si está vacío
+            try:
+                os.rmdir(TEMP_TOPOLOGY_DIR)
+                # print("Directorio temporal eliminado")  # Comentado para limpiar consola
+            except OSError:
+                pass  # El directorio no está vacío o no se puede eliminar
+    except Exception as e:
+        print(f"Error limpiando topologías temporales: {e}")
+
+def get_default_topology_files():
+    """Obtiene lista de archivos de topología por defecto que existen."""
+    default_files = []
+    try:
+        for filename in DEFAULT_TOPOLOGY_FILES:
+            filepath = os.path.join(TOPOLOGY_DIR, filename)
+            if os.path.exists(filepath):
+                default_files.append(filename)
+    except Exception as e:
+        print(f"Error obteniendo archivos por defecto: {e}")
+    
+    # También incluir cualquier otro archivo .json que esté en el directorio principal (excluyendo configs)
+    try:
+        for filename in os.listdir(TOPOLOGY_DIR):
+            if (filename.endswith('.json') and 
+                filename not in ['eqpt_configv1.json', 'eqpt_config.json'] and
+                filename not in default_files):
+                default_files.append(filename)
+    except FileNotFoundError:
+        pass
+    
+    return default_files
+
+def get_temp_topology_files():
+    """Obtiene lista de archivos de topología temporales subidos por usuario."""
+    temp_files = []
+    try:
+        if os.path.exists(TEMP_TOPOLOGY_DIR):
+            temp_files = [f for f in os.listdir(TEMP_TOPOLOGY_DIR) if f.endswith('.json')]
+    except Exception as e:
+        print(f"Error obteniendo archivos temporales: {e}")
+    return temp_files
 
 # Cargar configuración de equipos (similar a scenario02.py)
 edfa_equipment_data = {}
@@ -58,14 +117,17 @@ def format_scientific_notation(value):
 
 def handle_scenario03():
     """Maneja la lógica para el escenario 3."""
+    # Limpiar topologías temporales al cargar la página
+    clean_temp_topologies()
+    
     maps_api_key = os.getenv('MAPS_API_KEY')
     
-    # Debug: Verificar si el archivo .env existe y la clave API está cargada
-    env_file_path = os.path.join(os.path.dirname(__file__), '.env')
-    print(f"DEBUG: ruta del archivo .env: {env_file_path}")
-    print(f"DEBUG: archivo .env existe: {os.path.exists(env_file_path)}")
-    print(f"DEBUG: clave API cargada: {maps_api_key is not None}")
-    print(f"DEBUG: valor de la clave API: {maps_api_key[:10] if maps_api_key else 'None'}...")
+    # Debug: Verificar si el archivo .env existe y la clave API está cargada (comentado para limpiar consola)
+    # env_file_path = os.path.join(os.path.dirname(__file__), '.env')
+    # print(f"DEBUG: ruta del archivo .env: {env_file_path}")
+    # print(f"DEBUG: archivo .env existe: {os.path.exists(env_file_path)}")
+    # print(f"DEBUG: clave API cargada: {maps_api_key is not None}")
+    # print(f"DEBUG: valor de la clave API: {maps_api_key[:10] if maps_api_key else 'None'}...")
     
     # Cargar configuración de equipos para obtener parámetros SI (coincidiendo con los valores por defecto del notebook)
     eqpt_config = load_equipment_config()
@@ -102,11 +164,19 @@ def handle_scenario03():
     return render_template('scenario3.html', maps_api_key=maps_api_key, si_config=si_config)
 
 def get_topology_names():
-    """Devuelve lista de archivos de topología disponibles."""
+    """Devuelve lista de archivos de topología disponibles (por defecto + temporales)."""
     try:
-        files = [f for f in os.listdir(TOPOLOGY_DIR) if f.endswith('.json') and f not in ['eqpt_configv1.json', 'eqpt_config.json']]
-        return jsonify(files)
-    except FileNotFoundError:
+        # Obtener archivos por defecto y temporales
+        default_files = get_default_topology_files()
+        temp_files = get_temp_topology_files()
+        
+        # Combinar listas: archivos por defecto primero, luego temporales
+        all_files = default_files + temp_files
+        
+        # Devolver lista simple para compatibilidad con frontend existente
+        return jsonify(all_files)
+    except Exception as e:
+        print(f"Error en get_topology_names: {e}")
         return jsonify([])
 
 def get_topology_data(filename=None):
@@ -114,9 +184,22 @@ def get_topology_data(filename=None):
     if filename is None:
         filename = request.args.get('filename', 'CORONET_Global_Topology.json')
     
+    # Buscar archivo primero en directorio principal, luego en temporal
     filepath = os.path.join(TOPOLOGY_DIR, filename)
+    temp_filepath = os.path.join(TEMP_TOPOLOGY_DIR, filename)
+    
+    # Determinar qué archivo usar
+    if os.path.exists(filepath):
+        actual_filepath = filepath
+        file_source = 'default'
+    elif os.path.exists(temp_filepath):
+        actual_filepath = temp_filepath
+        file_source = 'temporary'
+    else:
+        return jsonify({'error': f'Archivo {filename} no encontrado'}), 404
+    
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(actual_filepath, 'r', encoding='utf-8') as f:
             topology_data = json.load(f)
         
         # Cargar configuración de equipos
@@ -131,6 +214,10 @@ def get_topology_data(filename=None):
         # Validar requisitos de topología para redes bidireccionales
         validation_result = validate_topology_requirements(enhanced_data)
         enhanced_data['validation'] = validation_result
+        
+        # Agregar información sobre la fuente del archivo
+        enhanced_data['file_source'] = file_source
+        enhanced_data['filename'] = filename
         
         return jsonify(enhanced_data)
     except FileNotFoundError:
@@ -486,7 +573,7 @@ def update_network_parameters():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 def upload_topology_file(file):
-    """Maneja la carga de archivos de topología."""
+    """Maneja la carga de archivos de topología (guarda en directorio temporal)."""
     if not file:
         return jsonify({'error': 'No hay archivo en la solicitud'}), 400
     
@@ -495,10 +582,12 @@ def upload_topology_file(file):
     
     if file and file.filename.endswith('.json'):
         filename = file.filename
-        filepath = os.path.join(TOPOLOGY_DIR, filename)
         
-        # Asegurar que el directorio existe
-        os.makedirs(TOPOLOGY_DIR, exist_ok=True)
+        # Guardar en directorio temporal (no permanente)
+        filepath = os.path.join(TEMP_TOPOLOGY_DIR, filename)
+        
+        # Asegurar que el directorio temporal existe
+        os.makedirs(TEMP_TOPOLOGY_DIR, exist_ok=True)
         
         try:
             file.save(filepath)
@@ -510,22 +599,27 @@ def upload_topology_file(file):
                 
                 validation_result = validate_topology_requirements(topology_data)
                 response_data = {
-                    'message': 'Archivo subido exitosamente', 
+                    'message': 'Archivo subido exitosamente (temporal - se eliminará al recargar la página)', 
                     'filename': filename,
+                    'file_source': 'temporary',
                     'validation': validation_result
                 }
                 
                 # Determinar mensaje según severidad
                 if not validation_result['valid'] and validation_result.get('severity') == 'critical':
-                    response_data['warning'] = 'El archivo se subió correctamente, pero la topología tiene problemas críticos que impiden los cálculos de rutas.'
+                    response_data['warning'] = 'El archivo se subió correctamente como temporal, pero la topología tiene problemas críticos que impiden los cálculos de rutas.'
                 elif validation_result.get('warnings'):
-                    response_data['info'] = 'El archivo se subió correctamente. La topología permite cálculos pero se recomienda revisar las mejores prácticas.'
+                    response_data['info'] = 'El archivo se subió correctamente como temporal. La topología permite cálculos pero se recomienda revisar las mejores prácticas.'
                 
                 return jsonify(response_data), 200
                 
             except (json.JSONDecodeError, Exception):
                 # Si hay error validando, aún confirmar que el archivo se subió
-                return jsonify({'message': 'Archivo subido exitosamente', 'filename': filename}), 200
+                return jsonify({
+                    'message': 'Archivo subido exitosamente (temporal - se eliminará al recargar la página)', 
+                    'filename': filename,
+                    'file_source': 'temporary'
+                }), 200
         except Exception as e:
             return jsonify({'error': f'Error guardando el archivo: {str(e)}'}), 500
     else:
@@ -559,13 +653,22 @@ def calculate_routes():
         
         # Rutas de archivos
         EQPT = Path(EQPT_CONFIG_FILE)
-        TOPO = Path(os.path.join(TOPOLOGY_DIR, topology_filename))
+        
+        # Buscar archivo de topología primero en directorio principal, luego en temporal
+        TOPO_DEFAULT = Path(os.path.join(TOPOLOGY_DIR, topology_filename))
+        TOPO_TEMP = Path(os.path.join(TEMP_TOPOLOGY_DIR, topology_filename))
+        
+        if TOPO_DEFAULT.exists():
+            TOPO = TOPO_DEFAULT
+            topo_source = 'default'
+        elif TOPO_TEMP.exists():
+            TOPO = TOPO_TEMP
+            topo_source = 'temporary'
+        else:
+            return jsonify({'error': f'Archivo de topología no encontrado: {topology_filename}'}), 404
         
         if not EQPT.exists():
             return jsonify({'error': f'Archivo de configuración no encontrado: {EQPT}'}), 404
-        
-        if not TOPO.exists():
-            return jsonify({'error': f'Archivo de topología no encontrado: {TOPO}'}), 404
         
         # Capturar mensajes de carga de equipos y red
         global_console_output = io.StringIO()
@@ -792,6 +895,8 @@ def calculate_routes():
             'success': True,
             'source_uid': source_uid,
             'destination_uid': destination_uid,
+            'topology_filename': topology_filename,
+            'topology_source': topo_source,
             'num_routes_requested': num_routes,
             'num_routes_found': len(resultados),
             'calculation_criteria': calculation_criteria,
