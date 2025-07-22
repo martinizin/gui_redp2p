@@ -1,0 +1,177 @@
+{
+  "elements": [
+    {
+      "uid": "Site_A",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "latitude": 0,
+          "longitude": 0,
+          "city": "Site A",
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Edfa1",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 23,
+        "tilt_target": 0,
+        "out_voa": 0,
+        "nf0": 5
+      },
+      "metadata": {
+        "location": {
+          "latitude": 0,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Span1",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "params": {
+        "length": 150.0,
+        "loss_coef": 0.2,
+        "length_units": "km",
+        "att_in": 0,
+        "con_in": 0,
+        "con_out": 0
+      },
+      "metadata": {
+        "location": {
+          "latitude": 1,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Edfa2",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 23,
+        "tilt_target": 0,
+        "out_voa": 0,
+        "nf0": 5
+      },
+      "metadata": {
+        "location": {
+          "latitude": 1,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Span2",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "params": {
+        "length": 80.0,
+        "loss_coef": 0.2,
+        "length_units": "km",
+        "att_in": 0,
+        "con_in": 0,
+        "con_out": 0
+      },
+      "metadata": {
+        "location": {
+          "latitude": 2,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Edfa3",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 23,
+        "tilt_target": 0,
+        "out_voa": 0,
+        "nf0": 5
+      },
+      "metadata": {
+        "location": {
+          "latitude": 2,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Span3",
+      "type": "Fiber",
+      "type_variety": "SSMF",
+      "params": {
+        "length": 185.0,
+        "loss_coef": 0.2,
+        "length_units": "km",
+        "att_in": 0,
+        "con_in": 0,
+        "con_out": 0
+      },
+      "metadata": {
+        "location": {
+          "latitude": 3,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Edfa4",
+      "type": "Edfa",
+      "type_variety": "std_fixed_gain",
+      "operational": {
+        "gain_target": 23,
+        "tilt_target": 0,
+        "out_voa": 0,
+        "nf0": 5
+      },
+      "metadata": {
+        "location": {
+          "latitude": 4,
+          "longitude": 0,
+          "city": null,
+          "region": ""
+        }
+      }
+    },
+    {
+      "uid": "Site_B",
+      "type": "Transceiver",
+      "metadata": {
+        "location": {
+          "latitude": 4,
+          "longitude": 0,
+          "city": "Site B",
+          "region": ""
+        }
+      }
+    }
+  ],
+  "connections": [
+    { "from_node": "Site_A", "to_node": "Edfa1" },
+    { "from_node": "Edfa1",  "to_node": "Span1" },
+    { "from_node": "Span1",  "to_node": "Edfa2" },
+    { "from_node": "Edfa2",  "to_node": "Span2" },
+    { "from_node": "Span2",  "to_node": "Edfa3" },
+    { "from_node": "Edfa3",  "to_node": "Span3" },
+    { "from_node": "Span3",  "to_node": "Edfa4" },
+    { "from_node": "Edfa4",  "to_node": "Site_B" }
+  ]
+} 

@@ -47,15 +47,37 @@
     <div class="container mt-5">
         <h1 class="mb-4">Simulación de Topologías de red punto a punto</h1>
         {% include 'scenario_nav.html' %}
+        
+        {% if is_example_topology %}
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle-fill"></i>
+            <strong>Topología de Ejemplo:</strong> Se ha cargado automáticamente una topología de ejemplo para que puedas explorar las funcionalidades. 
+            Puedes subir tu propia topología usando el formulario a continuación.
+        </div>
+        <p>Está visualizando la <strong>topología de ejemplo</strong>. Suba un archivo <code>.json</code> para cargar una topología diferente.</p>
+        {% else %}
         <p>Suba un archivo <code>.json</code> para visualizar la topología de red.</p>
+        {% endif %}
         
         <div class="card p-4 mb-4">
             <form action="{{ url_for('scenario02') }}" method="post" enctype="multipart/form-data">
                 <div class="mb-3">
                     <label for="file" class="form-label"><b>Archivo de red (.json)</b></label>
-                    <input class="form-control" type="file" id="file" name="file" accept=".json" required>
+                    <input class="form-control" type="file" id="file" name="file" accept=".json" {% if not is_example_topology %}required{% endif %}>
+                    {% if is_example_topology %}
+                    <div class="form-text">
+                        <i class="bi bi-lightbulb text-warning"></i>
+                        <em>Opcional: Puedes subir tu propia topología para reemplazar la topología de ejemplo actual.</em>
+                    </div>
+                    {% endif %}
                 </div>
-                <button type="submit" class="btn btn-success">Cargar y Visualizar</button>
+                <button type="submit" class="btn btn-success">
+                    {% if is_example_topology %}
+                    Cargar Nueva Topología
+                    {% else %}
+                    Cargar y Visualizar
+                    {% endif %}
+                </button>
             </form>
         </div>
 
@@ -78,6 +100,14 @@
             <button id="calculateBtn" class="btn btn-success btn-lg">
                 <i class="bi bi-calculator"></i> CALCULAR
             </button>
+            {% if is_example_topology %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-gear"></i> 
+                    Haga clic en los elementos del diagrama para modificar sus parámetros antes de calcular
+                </small>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 

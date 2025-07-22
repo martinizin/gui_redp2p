@@ -22,8 +22,9 @@ env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(env_path)
 
 # Configuración
-TOPOLOGY_DIR = os.getenv('TOPOLOGY_DIR', 'data')
-EQPT_CONFIG_FILE = os.path.join(TOPOLOGY_DIR, 'eqpt_configv1.json')
+EQPT_DIR = os.getenv('EQPT_DIR', 'data')
+TOPOLOGY_DIR = os.getenv('TOPOLOGY_DIR', 'topologias')
+EQPT_CONFIG_FILE = os.path.join(EQPT_DIR, 'eqpt_configv1.json')
 
 # Cargar configuración de equipos (similar a scenario02.py)
 edfa_equipment_data = {}

@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import os
+import json
 
 from scenario01 import calcular_red, obtener_topologia_datos
-from scenario02 import calculate_scenario02, update_scenario02_parameters, process_scenario02_data
+from scenario02 import calculate_scenario02, update_scenario02_parameters, process_scenario02_data, create_topology_visualization_from_data
 from scenario03 import handle_scenario03, get_topology_names, get_topology_data, upload_topology_file, update_network_parameters, calculate_routes
 
 # Carga las variables de entorno - specify explicit path for Docker compatibility
@@ -51,9 +52,40 @@ def scenario02():
         else:
             return render_template('scenario2.html', 
                                  graph_json=result['graph_json'],
-                                 enhanced_data=result.get('enhanced_data'))
-
-    return render_template('scenario2.html')
+                                 enhanced_data=result.get('enhanced_data'),
+                                 is_example_topology=False)
+    
+    # GET request - Cargar topología de ejemplo automáticamente
+    try:
+        example_topology_path = 'data/enlace_WDM.json'
+        if os.path.exists(example_topology_path):
+            # Cargar los datos de la topología de ejemplo
+            with open(example_topology_path, 'r', encoding='utf-8') as f:
+                topology_data = json.load(f)
+            
+            # Usar la función de visualización de topología existente
+            result = create_topology_visualization_from_data(topology_data)
+            
+            if 'error' in result:
+                return render_template('scenario2.html', error=f"Error al cargar topología de ejemplo: {result['error']}")
+            
+            # Procesar elementos para obtener enhanced_data
+            from scenario02 import enhance_elements_with_parameters
+            enhanced_elements = enhance_elements_with_parameters(topology_data.get('elements', []))
+            enhanced_data = topology_data.copy()
+            enhanced_data['elements'] = enhanced_elements
+            
+            return render_template('scenario2.html', 
+                                 graph_json=result['figure'].to_json(),
+                                 enhanced_data=enhanced_data,
+                                 is_example_topology=True)
+        else:
+            # Si no existe el archivo de ejemplo, mostrar la página vacía
+            return render_template('scenario2.html', 
+                                 error="Archivo de topología de ejemplo no encontrado")
+    except Exception as e:
+        return render_template('scenario2.html', 
+                             error=f"Error al cargar topología de ejemplo: {e}")
 
 @app.route('/scenario03')
 def scenario03():

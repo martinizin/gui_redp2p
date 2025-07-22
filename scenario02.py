@@ -1425,12 +1425,12 @@ def update_scenario02_parameters():
                     old_value = element['parameters'][parameter_name]['value']
                     element['parameters'][parameter_name]['value'] = new_value
                     parameter_updated = True
-                    print(f"=== PARAMETER UPDATE ===")
-                    print(f"Element: {element_uid}")
-                    print(f"Parameter: {parameter_name}")
-                    print(f"Old value: {old_value}")
-                    print(f"New value: {new_value}")
-                    print(f"=== END UPDATE ===")
+                    # print(f"=== PARAMETER UPDATE ===")
+                    # print(f"Element: {element_uid}")
+                    # print(f"Parameter: {parameter_name}")
+                    # print(f"Old value: {old_value}")
+                    # print(f"New value: {new_value}")
+                    # print(f"=== END UPDATE ===")
                 else:
                     print(f"Warning: Parameter {parameter_name} not found in element {element_uid}")
                 break
@@ -1683,15 +1683,15 @@ def calculate_scenario02_network(params):
         elements = topology_data.get('elements', [])
         connections = topology_data.get('connections', [])
         
-        # Debug: Imprimir parámetros de elementos para verificar que los valores modificados están presentes
-        print("=== DEBUG: Verificando parámetros de elementos ===")
-        for element in elements:
-            if element.get('type') == 'Edfa' and 'parameters' in element:
-                uid = element.get('uid')
-                params = element.get('parameters', {})
-                gain_target = params.get('gain_target', {}).get('value', 'N/A')
-                nf0 = params.get('nf0', {}).get('value', 'N/A')
-                print(f"EDFA {uid}: gain_target={gain_target}, nf0={nf0}")
+        # Debug: Verificar parámetros de elementos (comentado para limpiar consola)
+        # print("=== DEBUG: Verificando parámetros de elementos ===")
+        # for element in elements:
+        #     if element.get('type') == 'Edfa' and 'parameters' in element:
+        #         uid = element.get('uid')
+        #         params = element.get('parameters', {})
+        #         gain_target = params.get('gain_target', {}).get('value', 'N/A')
+        #         nf0 = params.get('nf0', {}).get('value', 'N/A')
+        #         print(f"EDFA {uid}: gain_target={gain_target}, nf0={nf0}")
         
         try:
             ordered_elements, source_transceiver, destination_transceiver = order_elements_by_topology(elements, connections)
@@ -1748,14 +1748,14 @@ def calculate_scenario02_network(params):
                         gain_target_value = user_params['gain_target'].get('value')
                         if gain_target_value is not None:
                             cleaned_element['operational']['gain_target'] = gain_target_value
-                            print(f"Aplicando gain_target del usuario a {element.get('uid')}: {gain_target_value} dB")
+                            # print(f"Aplicando gain_target del usuario a {element.get('uid')}: {gain_target_value} dB")
                     
                     # Actualizar nf0 desde parámetros de usuario
                     if 'nf0' in user_params:
                         nf0_value = user_params['nf0'].get('value')
                         if nf0_value is not None:
                             cleaned_element['operational']['nf0'] = nf0_value
-                            print(f"Aplicando nf0 del usuario a {element.get('uid')}: {nf0_value} dB")
+                            # print(f"Aplicando nf0 del usuario a {element.get('uid')}: {nf0_value} dB")
             
             if element.get('type') == 'Fiber' and 'params' in element:
                 cleaned_element['params'] = element['params']
@@ -1789,17 +1789,17 @@ def calculate_scenario02_network(params):
         tx = transceivers[0]  # Transceptor fuente
         rx = transceivers[-1]  # Transceptor destino
         
-        # Verificar que los valores de parámetros de usuario se hayan aplicado correctamente a los EDFAs
-        for edfa in edfas:
-            print(f"=== VERIFICACIÓN EDFA {edfa.uid} ===")
-            print(f"gain_target actual en objeto gnpy: {edfa.operational.gain_target} dB")
-            try:
-                if hasattr(edfa, 'params'):
-                    print(f"nf_db actual en objeto gnpy: {getattr(edfa.params, 'nf_db', 'N/A')} dB")
-                elif hasattr(edfa, 'nf_db'):
-                    print(f"nf_db actual en objeto gnpy: {getattr(edfa, 'nf_db', 'N/A')} dB")
-            except Exception as e:
-                print(f"No se pudo leer NF para {edfa.uid}: {e}")
+        # Verificar que los valores de parámetros de usuario se hayan aplicado correctamente a los EDFAs (comentado para limpiar consola)
+        # for edfa in edfas:
+        #     print(f"=== VERIFICACIÓN EDFA {edfa.uid} ===")
+        #     print(f"gain_target actual en objeto gnpy: {edfa.operational.gain_target} dB")
+        #     try:
+        #         if hasattr(edfa, 'params'):
+        #             print(f"nf_db actual en objeto gnpy: {getattr(edfa.params, 'nf_db', 'N/A')} dB")
+        #         elif hasattr(edfa, 'nf_db'):
+        #             print(f"nf_db actual en objeto gnpy: {getattr(edfa, 'nf_db', 'N/A')} dB")
+        #     except Exception as e:
+        #         print(f"No se pudo leer NF para {edfa.uid}: {e}")
         
         current_distance = 0.0
         current_total_ase_lin_for_parallel_calc = gnpy_dbm2watt(-150.0)
@@ -1881,9 +1881,9 @@ def calculate_scenario02_network(params):
                         nf_db = user_nf0
                     break
             
-            print(f"=== CÁLCULO EDFA {edfa.uid} ===")
-            print(f"gain_db usado en cálculo: {gain_db} dB")
-            print(f"nf_db usado en cálculo: {nf_db} dB")
+            # print(f"=== CÁLCULO EDFA {edfa.uid} ===")
+            # print(f"gain_db usado en cálculo: {gain_db} dB")
+            # print(f"nf_db usado en cálculo: {nf_db} dB")
             
             p_ase_edfa_lin_manual = gnpy_dbm2watt(QUANTUM_NOISE_FLOOR_DBM + nf_db + gain_db)
             current_total_ase_lin_for_parallel_calc = (current_total_ase_lin_for_parallel_calc * 10**(gain_db / 10)) + p_ase_edfa_lin_manual
