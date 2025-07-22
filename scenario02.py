@@ -1849,7 +1849,7 @@ def calculate_scenario02_network(params):
             })
             
             results['plot_data']['distance'].append(float(distance))
-            results['plot_data']['signal_power'].append(float(power_dbm))
+            results['plot_data']['signal_power'].append(float(gnpy_watt2dbm(si.carriers[0].power[0])))
             results['plot_data']['ase_power'].append(float(gnpy_watt2dbm(sum(si.ase))))
             results['plot_data']['osnr_bw'].append(float(osnr_bw) if not np.isinf(osnr_bw) else 60.0)
         
