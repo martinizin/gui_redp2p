@@ -4,7 +4,7 @@ import os
 import numpy as np
 from flask import jsonify, request
 from pathlib import Path
-import traceback
+
 
 # Verificar si gnpy está disponible
 try:
@@ -1980,9 +1980,9 @@ def calculate_scenario02_network(params):
         
         if final_osnr_clasico is not None:
             if final_osnr_clasico == float('inf'):
-                osnr_msg = f"OSNR clásico: {osnr_status} ∞ dB ({final_stage_name}) ≥ {osnr_req:.2f} dB "
+                osnr_msg = f"OSNR clásico: {osnr_status} ∞ dB ≥ Osnr Requerido: {osnr_req:.2f} dB "
             else:
-                osnr_msg = f"OSNR clásico: {osnr_status} {final_osnr_clasico:.3f} dB ({final_stage_name}) {'≥' if osnr_condition else '<'} {osnr_req:.2f} dB "
+                osnr_msg = f"OSNR clásico: {osnr_status} {final_osnr_clasico:.3f} dB {'≥' if osnr_condition else '<'} Osnr Requerido: {osnr_req:.2f} dB "
         else:
             osnr_msg = f"OSNR clásico: {osnr_status} No disponible en el receptor final"
         
