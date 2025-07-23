@@ -122,13 +122,11 @@ def handle_scenario03():
     
     maps_api_key = os.getenv('MAPS_API_KEY')
     
-    # Debug: Verificar si el archivo .env existe y la clave API está cargada (comentado para limpiar consola)
+    # Debug: Verificar si el archivo .env existe y la clave API está cargada
     # env_file_path = os.path.join(os.path.dirname(__file__), '.env')
     # print(f"DEBUG: ruta del archivo .env: {env_file_path}")
     # print(f"DEBUG: archivo .env existe: {os.path.exists(env_file_path)}")
-    # print(f"DEBUG: clave API cargada: {maps_api_key is not None}")
-    # print(f"DEBUG: valor de la clave API: {maps_api_key[:10] if maps_api_key else 'None'}...")
-    
+
     # Cargar configuración de equipos para obtener parámetros SI (coincidiendo con los valores por defecto del notebook)
     eqpt_config = load_equipment_config()
     si_config = {}

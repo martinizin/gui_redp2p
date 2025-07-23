@@ -1683,7 +1683,7 @@ def calculate_scenario02_network(params):
         elements = topology_data.get('elements', [])
         connections = topology_data.get('connections', [])
         
-        # Debug: Verificar parámetros de elementos (comentado para limpiar consola)
+        # Debug: Verificar parámetros de elementos
         # print("=== DEBUG: Verificando parámetros de elementos ===")
         # for element in elements:
         #     if element.get('type') == 'Edfa' and 'parameters' in element:
@@ -1789,7 +1789,7 @@ def calculate_scenario02_network(params):
         tx = transceivers[0]  # Transceptor fuente
         rx = transceivers[-1]  # Transceptor destino
         
-        # Verificar que los valores de parámetros de usuario se hayan aplicado correctamente a los EDFAs (comentado para limpiar consola)
+        # Verificar que los valores de parámetros de usuario se hayan aplicado correctamente a los EDFAs 
         # for edfa in edfas:
         #     print(f"=== VERIFICACIÓN EDFA {edfa.uid} ===")
         #     print(f"gain_target actual en objeto gnpy: {edfa.operational.gain_target} dB")
