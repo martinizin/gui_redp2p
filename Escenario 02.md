@@ -1,7 +1,7 @@
 # Documentación del Escenario 02
 
 ## Resumen
-El **Escenario 02** es un simulador avanzado de redes ópticas que utiliza la librería profesional **gnpy** (Gaussian Noise model in Python) para realizar cálculos detallados de OSNR, análisis de ruido ASE y NLI, y simulaciones de propagación en redes punto a punto complejas. Este escenario representa el estado del arte en simulación de redes ópticas WDM (Wavelength Division Multiplexing).
+El **Escenario 02** es un simulador avanzado de redes ópticas que utiliza la librería profesional **gnpy** (Gaussian Noise model in Python) para realizar cálculos detallados de OSNR, análisis de ruido ASE y NLI, y simulaciones de propagación en redes punto a punto complejas. 
 
 ## ¿Qué se desarrolló?
 
@@ -277,13 +277,5 @@ plots = results['plots']  # Contiene gráficos Plotly listos para mostrar
 - ✅ **Validación Dual**: Potencia Y calidad de señal (OSNR)
 - ✅ **Multi-Canal**: Análisis WDM completo
 
-## Aplicaciones Profesionales
 
-El Escenario 02 es ideal para:
-- **Ingenieros de Redes Ópticas**: Diseño y validación de enlaces
-- **Consultores de Telecomunicaciones**: Estudios de factibilidad  
-- **Operadores de Red**: Planificación de expansiones
-- **Proveedores de Equipos**: Validación de especificaciones
-- **Instituciones Educativas**: Enseñanza de conceptos avanzados
-
-Este escenario representa la **herramienta más avanzada** de la suite, proporcionando cálculos de **calidad profesional** para el diseño de redes ópticas modernas.
+Este escenario representa el **escenario más complejo** del proyecto, proporcionando cálculos de **detallados** y lógicos.
