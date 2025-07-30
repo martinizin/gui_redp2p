@@ -150,34 +150,7 @@ El **Escenario 03** es un sistema avanzado de **planificación y optimización d
 }
 ```
 
-## Casos de Uso Empresariales
-
-### 1. **Planificación de Redes Nacionales**
-- Optimización de rutas entre ciudades principales
-- Análisis de múltiples alternativas de ruta
-- Selección de rutas primarias y de respaldo
-
-### 2. **Operadores de Telecomunicaciones**
-- Planificación de expansión de red
-- Análisis de factibilidad de nuevos enlaces
-- Optimización de rutas existentes
-
-### 3. **Proveedores de Internet (ISP)**
-- Diseño de backbone nacional/regional
-- Análisis de redundancia de rutas
-- Planificación de capacidad de red
-
-### 4. **Consultores de Telecomunicaciones**
-- Estudios de factibilidad técnica
-- Comparación de alternativas de diseño  
-- Informes técnicos para licitaciones
-
-### 5. **Investigación y Desarrollo**
-- Análisis de nuevas topologías de red
-- Validación de algoritmos de routing
-- Benchmarking de configuraciones
-
-## Requisitos para Ejecutar
+## Requisitos para Ejecutar (si se clona el proyecto)
 
 ### Dependencias Esenciales:
 ```python
@@ -347,14 +320,5 @@ for fiber in best_route['fibras']:
 - **Validación Permisiva**: Permite cálculos con advertencias
 - **Configuración de Equipos**: Requiere archivo `eqpt_configv1.json` válido
 
-## Aplicaciones Profesionales
 
-El Escenario 03 es la herramienta ideal para:
-
-- **Planificadores de Red**: Diseño óptimo de topologías complejas
-- **Ingenieros de Sistemas**: Análisis de rendimiento de múltiples rutas
-- **Operadores Tier-1**: Optimización de redes backbone nacionales
-- **Consultores Especializados**: Estudios comparativos de alternativas
-- **Instituciones de Investigación**: Análisis de algoritmos de routing óptico
-
-Este escenario representa la **herramienta más sofisticada** para planificación de redes ópticas, combinando algoritmos de optimización de rutas con simulaciones de calidad industrial mediante gnpy.
+Este escenario representa la **una herramienta** para planificación de redes ópticas, combinando algoritmos de optimización de rutas con simulaciones mediante gnpy.
