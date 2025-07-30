@@ -68,7 +68,7 @@ El **Escenario 01** es un simulador de propagación de señales ópticas que mod
 - Visualización de efectos de atenuación
 - Experimentación con diferentes parámetros
 
-## Requisitos para Ejecutar
+## Requisitos para Ejecutar (si se clona el repositorio)
 
 ### Dependencias Python:
 ```python
