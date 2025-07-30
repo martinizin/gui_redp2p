@@ -90,28 +90,6 @@ El **Escenario 02** es un simulador avanzado de redes ópticas que utiliza la li
 - **Ganancia máxima plana**: 26 dB (desde configuración de equipos)
 - **Potencia de saturación**: 23 dBm (límite físico)
 
-## Casos de Uso Profesionales
-
-### 1. **Diseño de Enlaces Metropolitanos**
-- Verificación de viabilidad de enlaces de 80-200 km
-- Optimización de configuraciones EDFA
-- Análisis de márgenes operacionales
-
-### 2. **Planificación de Redes WDM**
-- Cálculo de capacidad de canales ópticos
-- Optimización de potencia por canal
-- Análisis de efectos no lineales
-
-### 3. **Validación de Equipos**
-- Verificación de especificaciones de EDFAs
-- Comparación de diferentes tipos de fibra
-- Análisis de sensibilidad del receptor
-
-### 4. **Estudios de Factibilidad**
-- Evaluación técnica de proyectos de fibra óptica
-- Análisis costo-beneficio de configuraciones
-- Informes técnicos profesionales
-
 ## Requisitos para Ejecutar
 
 ### Dependencias Críticas:
